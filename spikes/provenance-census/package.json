@@ -1,0 +1,19 @@
+{
+  "name": "@isitreal/spike-provenance-census",
+  "version": "0.1.0",
+  "private": true,
+  "description": "M0 spike: count how often provenance markers and platform AI labels appear during normal browsing.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@isitreal/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.3.7",
+    "esbuild": "^0.28.2"
+  }
+}

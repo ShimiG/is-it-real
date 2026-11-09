@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Provenance census</title>
+    <style>
+      body {
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+        width: 360px;
+        margin: 12px;
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0 0 8px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-bottom: 8px;
+      }
+      td {
+        padding: 2px 4px;
+        border-bottom: 1px solid #ddd;
+      }
+      td:last-child {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      textarea {
+        width: 100%;
+        height: 70px;
+        box-sizing: border-box;
+      }
+      button {
+        margin: 4px 4px 0 0;
+      }
+      .note {
+        color: #555;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Provenance census</h1>
+    <p class="note" id="since"></p>
+    <table id="stats"></table>
+    <label><input type="checkbox" id="paused" /> Paused</label>
+    <p class="note">Never scanned (one pattern per line, matched against the site name):</p>
+    <textarea id="deny"></textarea>
+    <div>
+      <button id="save">Save list</button>
+      <button id="export">Export JSON</button>
+      <button id="reset">Reset counts</button>
+    </div>
+    <p class="note">Everything stays on this computer. Export only when you choose to.</p>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Is It Real? Provenance census (dev spike)",
+  "version": "0.1.0",
+  "description": "Counts how often AI labels and provenance markers appear while you browse. Data stays on this computer.",
+  "permissions": ["storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [
+    { "matches": ["http://*/*", "https://*/*"], "js": ["content.js"], "run_at": "document_idle" }
+  ],
+  "action": { "default_title": "Provenance census", "default_popup": "popup.html" }
+}
