@@ -1,6 +1,7 @@
 # Is It Real? Work Plan (v0.1, draft for approval)
 
 > Status: **PROPOSED, NOT APPROVED.** Nothing gets built until the owner approves this plan.
+> Owner decisions recorded 2026-11-08 (see §12): private repo, English only, Claude plugin first, offline only, video in the MVP. License still open.
 > Created 2026-11-08. Source research: [`docs/research/ai-content-forensics-report.md`](docs/research/ai-content-forensics-report.md) (Gemini Deep Research), plus the extra research noted in §11.
 
 ---
@@ -24,7 +25,7 @@ Delivery path: **Claude plugin first, then a standalone browser extension, then 
 | P1 | **Algorithms first, LLMs last** | Every verdict comes from deterministic math (statistics, signal processing, cryptographic checks). A small local language model may be used as a **probability meter** (token log-probabilities, never prompted or asked for opinions). A chat LLM such as Claude is used only to orchestrate and to explain results in plain language, never to decide them. |
 | P2 | **"I can't tell" is a valid answer** | The research shows detectors are bounded by theory and easy to evade (report §§1, 6). The UI must never show false certainty. Three verdicts: *Signs of AI*, *No signs found*, *Can't tell*. |
 | P3 | **Scam risk over AI-ness** | For an older user, "this page asks you to pay with gift cards" matters more than "this text is 72% AI". Scam heuristics are a first-class detector, not an add-on. |
-| P4 | **Private by default** | Everything runs locally. Nothing is uploaded and there's no telemetry. Any network lookup (for example domain age) is opt-in and clearly labelled. |
+| P4 | **Offline and private** | Everything runs locally. Nothing is uploaded, there's no telemetry, and there are no online lookups. The only network use: a one-time download of the open model files at install, and reading the page's own images/videos from the site the browser already loaded them from. |
 | P5 | **Fairness is measured, not assumed** | Text detectors are known to wrongly flag non-native writers (Liang et al. 2023: 61% false positives on TOEFL essays). We test for this and publish the numbers, and never use text-only "AI" verdicts to accuse anyone. |
 | P6 | **Accessible by design** | Large type, high contrast, plain language, read-aloud, a "what should I do?" action, WCAG 2.2 AA. |
 
@@ -41,7 +42,7 @@ Delivery path: **Claude plugin first, then a standalone browser extension, then 
 | **PRNU sensor-noise absence** | Technically yes | **Low on web images.** Resizing and JPEG recompression destroy PRNU, so "no PRNU" is also true for most real photos online. The report's "> 0.95 accuracy" applies to original-resolution files. | Research spike only |
 | **Text watermarks** (Kirchenbauer, SynthID-Text) | Detection needs the vendor's secret keys | N/A for third parties | Out of scope; document why |
 | **Image watermarks** (SynthID-Image, Tree-Ring, Stable Signature) | Need vendor keys or models | N/A | Out of scope; link to vendor checkers where they exist |
-| **Video**: per-frame image checks, temporal flicker FFT, C2PA on video files | Partly. Cross-origin and DRM video frames can't be read by page scripts; an extension can use `tabCapture`/`captureVisibleTab` | Low to moderate | Phase 2b (after images work) |
+| **Video**: per-frame image checks, temporal flicker FFT, C2PA on video files | Partly. Cross-origin and DRM video frames can't be read by page scripts; an extension can use `tabCapture`/`captureVisibleTab` | Low to moderate | **MVP** (owner decision), labelled experimental |
 | **Lip-sync / LipForensics**, **audio deepfakes** (LPC glottal, bispectrum, AASIST) | Heavy models; audio needs capture permission | Moderate in lab settings | Later phase (mobile is where voice-clone calls happen) |
 
 **Bottom line:** the most dependable, explainable wins are (1) provenance metadata, (2) scam-pattern detection, and (3) a calibrated combination of weak statistical signals with an honest "can't tell" zone.
@@ -107,7 +108,7 @@ Weighted rule engine with explainable hits:
 - impersonation (bank, government, tech-support and delivery brand names on a non-matching domain)
 - link text vs. `href` mismatch, lookalike and homoglyph domains (punycode, edit distance to a top-brands list)
 - "too good to be true" investment promises, celebrity name plus investment
-- opt-in network checks: domain age (RDAP)
+- *(later, if online lookups are ever allowed: domain age via RDAP)*
 
 Each hit maps to a plain-language reason and advice ("Real banks never ask for gift cards. Don't pay. Call your bank using the number on your card.").
 
@@ -118,13 +119,21 @@ Each hit maps to a plain-language reason and advice ("Real banks never ask for g
 3. IPTC/XMP/EXIF/PNG-chunk generator metadata.
 4. Spectral analysis: FFT magnitude spectrum, periodic upsampling peaks, DWT HH-band energy.
 5. ONNX classifier (shortlist: CommunityForensics DeepfakeDet ViT, Qwip's MobileViT models and others, chosen by our own eval).
-6. "Search for this image" button that opens a reverse image search **only on user click** (useful against stolen and AI romance-scam photos).
+6. *(Later, not in the offline MVP:)* a "Search for this image" button for reverse image search, useful against stolen and AI romance-scam photos.
 
 Skip tiny images (icons, under 128 px) and limit to the N largest visible images.
 
-### 5.4 Video (phase 2b)
+### 5.4 Video (in the MVP, labelled experimental)
 
-Sample about 1 frame per second from visible `<video>` elements (or a tab capture when frames are cross-origin or DRM), run the image pipeline per frame, and add a temporal-consistency signal (frame-to-frame flicker spectrum in the face region). Clearly labelled **experimental**.
+Pipeline (same core in both hosts):
+1. C2PA and container metadata on the video file when the file itself is reachable (MP4/WebM).
+2. Sample about 1 frame per second (up to about 30 frames), run the image pipeline per frame and aggregate (median plus the share of flagged frames).
+3. Temporal-consistency signal: frame-to-frame flicker spectrum and optical-flow jitter, focused on the face region when a face is found (a small on-device face detector, not an LLM).
+4. Lip-sync and audio checks stay in "later".
+
+Getting frames differs by host:
+- **Plugin (Phase 1):** the MCP server downloads direct video files (`.mp4`/`.webm` URLs) and extracts frames locally with ffmpeg. Streamed video (YouTube, Facebook, HLS/`blob:` URLs) is the hard case, because Claude in Chrome's screenshots go to Claude, not to our tools. **M0 spike:** test a local bridge where a small page script sends canvas frames to the MCP server on `127.0.0.1`. If that's blocked (cross-origin "tainted" video, DRM), the plugin says "couldn't check this video" honestly.
+- **Extension (Phase 2):** `tabCapture` reads whatever is on screen, so streamed and cross-origin video work too (DRM video shows up black and is reported as "couldn't check").
 
 ### 5.5 Fusion and calibration
 
@@ -147,7 +156,7 @@ Sample about 1 frame per second from visible `<video>` elements (or a tab captur
 - One big button: **"Check this page"**. The result is a traffic-light card plus at most 3 plain-language reasons.
 - A **"What should I do?"** panel: don't pay, don't click, call a family member, report links.
 - Text 18 px or larger, a large-text mode, high contrast, full keyboard use, screen-reader labels, optional read-aloud (Web Speech API).
-- i18n from day one (English first; RTL-ready, Hebrew a likely second language, to be confirmed).
+- English only for the MVP. All user-facing strings live in one message file so other languages (including right-to-left ones) can be added later without code changes.
 - Never a bare percentage without words. Always show "why".
 - Usability test with 3–5 older users before the store release.
 
@@ -155,7 +164,7 @@ Sample about 1 frame per second from visible `<video>` elements (or a tab captur
 
 - **Monorepo:** pnpm workspaces, TypeScript, Vitest, ESLint/Prettier, GitHub Actions CI.
 - `packages/core`: detectors, fusion and explain (runs in Node and the browser).
-- `packages/mcp-server`: Node MCP server exposing `check_text`, `check_image`, `check_page_bundle` and `scam_check`.
+- `packages/mcp-server`: Node MCP server exposing `check_text`, `check_image`, `check_video`, `check_page_bundle` and `scam_check` (video frames via ffmpeg).
 - `packages/claude-plugin`: plugin manifest, the `check-this-page` skill and the MCP server config.
 - `apps/extension`: WXT (MV3, Chrome first, then Firefox/Edge), side-panel UI, offscreen inference.
 - `eval/`: datasets loader, runners, reports.
@@ -163,7 +172,7 @@ Sample about 1 frame per second from visible `<video>` elements (or a tab captur
 - **Provenance:** `@contentauth/c2pa-web` in the browser and the c2pa Node bindings on the server side.
 - **License:** recommended Apache-2.0 (includes a patent grant). Each model's license is checked and listed in `MODELS.md`.
 
-## 9. Milestones (about 10 weeks part-time; each ends with a demo and a tagged release)
+## 9. Milestones (about 12 weeks part-time with video in the MVP; each ends with a demo and a tagged release)
 
 | M | Weeks | Deliverable | Done when |
 |---|---|---|---|
@@ -171,10 +180,11 @@ Sample about 1 frame per second from visible `<video>` elements (or a tab captur
 | **M1** Text Tier 0 + Scam engine | 1.5 | Pure-algorithm text stats and scam rules, with reason templates | Unit tests; scam eval ≥ 90% recall on our elder-scam set at < 5% FPR on normal pages |
 | **M2** Text Tier 1 | 1.5 | Fast-DetectGPT on a small ONNX LM (Node and browser), then Binoculars/DivEye; calibration and conformal thresholds | Published TPR @ 1% FPR on RAID subset plus a bias table |
 | **M3** Images | 2 | C2PA, metadata, FFT and ONNX classifier, plus fusion | C2PA test assets verified; classifier eval on fresh generators published |
-| **M4** Claude plugin (Phase 1) | 1 | MCP server, the `check-this-page` skill and a demo video | Claude in Chrome reads a page, tools return verdicts, Claude explains them without changing them |
+| **M3b** Video | 1.5 | Frame sampling (ffmpeg in Node, canvas/tab capture in browser), per-frame image pipeline, temporal signal, video C2PA | Eval on a deepfake video test set (e.g. FaceForensics++ subset plus fresh text-to-video clips) published, labelled experimental |
+| **M4** Claude plugin (Phase 1) | 1 | MCP server, the `check-this-page` skill and a demo video | Claude in Chrome reads a page, tools return verdicts for text, images and direct video files, Claude explains them without changing them. **Gate:** the owner confirms the model works well enough before Phase 2 starts |
 | **M5** Standalone extension (Phase 2) | 2 | MV3 extension, accessible side panel, offscreen WebGPU, on-demand model download | Works offline after the model download; WCAG check; tested with 3–5 older users |
 | **M6** Launch | 1 | `EVAL.md`, README with GIFs, Chrome Web Store listing, blog/portfolio write-up | Public repo and store listing |
-| **Later** | n/a | Video (experimental), Firefox, mobile (share-sheet screenshot check), audio/voice-clone research | Separate plans |
+| **Later** | n/a | More languages, online lookups (opt-in), lip-sync/audio, Firefox, mobile (share-sheet screenshot check), audio/voice-clone research | Separate plans |
 
 ## 10. Risks and mitigations
 
@@ -183,7 +193,8 @@ Sample about 1 frame per second from visible `<video>` elements (or a tab captur
 | Detectors are evadable (paraphrasing, re-encoding) | "Can't tell" band; lead with scam risk; publish failure cases |
 | False accusations (bias against non-native writers) | Conformal ≤ 1% FPR, a per-group bias table, wording that never says "this person used AI" |
 | Small models score worse than paper numbers | Measure first; choose the model by eval; Tier 1 is an optional "deep check" |
-| Model download size (100–400 MB) | Opt-in, cached, quantized (q4/q8), with a progress UI |
+| Model download size (100–400 MB) | One-time download at install, cached, quantized (q4/q8), with a progress UI |
+| Streamed video unreadable in the plugin phase | M0 spike on a localhost frame bridge; otherwise honest "couldn't check"; full support arrives with the extension's tab capture |
 | Cross-origin/DRM media unreadable | Background fetch with host permissions; tab capture fallback; say "couldn't check" honestly |
 | Claude in Chrome needs a paid plan, which limits elder reach | Phase 1 is a dev and demo vehicle; the free standalone extension is the real accessibility deliverable |
 | New generators outdate the classifiers | Classifier is one signal among many; a re-train/re-eval script in `eval/` |
@@ -195,11 +206,13 @@ Sample about 1 frame per second from visible `<video>` elements (or a tab captur
 - **Existing open-source in-browser image detectors** to benchmark against or reuse: Qwip (ONNX, WebGPU) https://chromeboard.com/extension/qwip-ai-detection-beta-jihgkhibgodlejmgfgonjjmilebggnca, CommunityForensics ViT ONNX https://huggingface.co/onnx-community/CommunityForensics-DeepfakeDet-ViT-ONNX, LAID benchmark of lightweight detectors https://arxiv.org/abs/2507.05162, DejAIvu https://arxiv.org/abs/2502.08821
 - **Differentiator vs. existing tools:** multi-modal, provenance-first, scam-focused, calibrated "can't tell", designed for older users, with a public eval.
 
-## 12. Open decisions for the owner
+## 12. Owner decisions (2026-11-08)
 
-1. **Repo name and visibility:** `is-it-real`, private until M6, then public?
-2. **License:** Apache-2.0 (recommended) or MIT?
-3. **Languages:** English only for the MVP, or English plus Hebrew (RTL)?
-4. **Phase 1 vehicle:** Claude plugin with an MCP server plus Claude in Chrome (as above), or go straight to the standalone extension and add the MCP server as a side output?
-5. **Network lookups** (domain age, reverse image search): allowed as opt-in, or fully offline?
-6. **Video in the MVP**, or keep it in "later"?
+| # | Question | Decision |
+|---|---|---|
+| 1 | Repo name and visibility | `is-it-real`, **private for now** |
+| 2 | License | **Open.** Apache-2.0, MIT or GPL-3.0 (see the comparison in the chat; to be decided before the repo goes public) |
+| 3 | Languages | **English only for now**; other languages later (strings kept in one file to make that easy) |
+| 4 | Phase 1 vehicle | **Claude plugin first.** Move to the standalone extension once the detection model works well (gate at the end of M4) |
+| 5 | Network lookups | **Offline only.** No domain-age or reverse-image lookups for now |
+| 6 | Video | **In the first version** (new milestone M3b, labelled experimental) |
