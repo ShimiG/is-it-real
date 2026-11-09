@@ -1,0 +1,16 @@
+{
+  "name": "@isitreal/eval",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Reproducible evaluation harness: detection rates, false positives by subgroup, abstention share.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "eval": "tsx src/cli.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@isitreal/core": "workspace:*",
+    "zod": "^4.6.7"
+  }
+}

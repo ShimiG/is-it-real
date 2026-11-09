@@ -1,0 +1,20 @@
+{
+  "name": "@isitreal/core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Detection core: shared types, detectors, fusion and plain-language reasons.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./provenance/sniff": "./src/provenance/sniff.ts",
+    "./platform-labels": "./src/platform-labels.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "sideEffects": false
+}

@@ -1,0 +1,31 @@
+{
+  "name": "is-it-real",
+  "private": true,
+  "description": "Free, open-source, on-device detector for AI-generated content and AI-driven scams.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "eval": "pnpm --filter @isitreal/eval run eval",
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm eval"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.19.0",
+    "eslint": "^10.14.0",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.1.0"
+  }
+}

@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+dist
+eval/reports
+docs/research
+docs/history
+LICENSE

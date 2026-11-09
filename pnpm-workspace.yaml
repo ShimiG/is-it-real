@@ -1,0 +1,6 @@
+packages:
+  - packages/*
+  - eval
+  - spikes/*
+onlyBuiltDependencies:
+  - esbuild
