@@ -1,8 +1,9 @@
-# Is It Real? Work Plan (v0.2, draft for approval)
+# Is It Real? Work Plan (v0.3, draft for approval)
 
 > Status: **PROPOSED, NOT APPROVED.** Nothing gets built until the owner approves this plan.
 > Owner decisions recorded 2026-11-08/09 (see §12): private repo, Apache-2.0, English only, Claude plugin first, offline only, video in the MVP.
 > v0.2 folds in the portfolio advice from the original (lost) planning chat: finish-first scope, a "Not assessed" outcome, never saying "Human", platform AI-label badges, background provenance checks, decision records and the portfolio deliverables in §13.
+> v0.3 merges the first planning chat's handoff ([`docs/history/2026-11-07-first-planning-chat.md`](docs/history/2026-11-07-first-planning-chat.md)): its outcome levels (Verified AI / Likely AI), DOM-not-screenshots, the alert-fatigue rules for background mode, the provenance-frequency experiment, privacy details and the competitor landscape.
 > Created 2026-11-08. Source research: [`docs/research/ai-content-forensics-report.md`](docs/research/ai-content-forensics-report.md) (Gemini Deep Research), plus the extra research noted in §11.
 
 ---
@@ -24,12 +25,13 @@ Delivery path: **Claude plugin first, then a standalone browser extension, then 
 | # | Principle | What it means in practice |
 |---|-----------|---------------------------|
 | P1 | **Algorithms first, LLMs last** | Every verdict comes from deterministic math (statistics, signal processing, cryptographic checks). A small local language model may be used as a **probability meter** (token log-probabilities, never prompted or asked for opinions). A chat LLM such as Claude is used only to orchestrate and to explain results in plain language, never to decide them. |
-| P2 | **"I can't tell" is a valid answer** | The research shows detectors are bounded by theory and easy to evade (report §§1, 6). The UI must never show false certainty. Four outcomes: *Signs of AI*, *No signs found*, *Can't tell* (evidence is mixed) and *Not assessed* (too short, unsupported or unreadable). **The tool never says "Human" or "Real"**: absence of evidence is not proof. |
+| P2 | **"I can't tell" is a valid answer** | The research shows detectors are bounded by theory and easy to evade (report §§1, 6). The UI must never show false certainty. Four outcomes: **Verified AI** (cryptographic provenance or the platform's own AI label), **Likely AI** (statistical evidence above the conformal threshold), **No clear signs** (inconclusive: nothing found, or mixed evidence) and **Not assessed** (too short, not English, unreadable or unsupported). **The tool never says "Human" or "Real"**: absence of evidence is not proof. |
 | P3 | **Scam risk over AI-ness** | For an older user, "this page asks you to pay with gift cards" matters more than "this text is 72% AI". Scam heuristics are a first-class detector, not an add-on. |
 | P4 | **Offline and private** | Everything runs locally. Nothing is uploaded, there's no telemetry, and there are no online lookups. The only network use: a one-time download of the open model files at install, and reading the page's own images/videos from the site the browser already loaded them from. |
 | P5 | **Fairness is measured, not assumed** | Text detectors are known to wrongly flag non-native writers (Liang et al. 2023: 61% false positives on TOEFL essays). We test for this and publish the numbers, and never use text-only "AI" verdicts to accuse anyone. |
 | P6 | **Accessible by design** | Large type, high contrast, plain language, read-aloud, a "what should I do?" action, WCAG 2.2 AA. |
 | P7 | **Finish first** | A small project that ships beats a big one half-built. Milestones are ordered so a usable, demo-able version exists at the end of M4 (about week 7); everything after that is additive. |
+| P8 | **Read the page, not a picture of it** | Text and media come from the DOM and the original files. Screenshots destroy metadata, C2PA and frequency signals, and OCR corrupts token statistics. Screenshot capture is only a fallback and is labelled low confidence. |
 
 ## 3. Reality check: what is and isn't detectable (from the report plus my review)
 
@@ -84,7 +86,7 @@ Delivery path: **Claude plugin first, then a standalone browser extension, then 
 type Signal = { detector: string; modality: 'text'|'image'|'video'|'page';
                 score: number /* 0..1, calibrated */; weight: number;
                 evidence: string[] /* machine-readable reason codes */ };
-type Verdict = { label: 'signs_of_ai'|'no_signs'|'cant_tell'|'not_assessed'; // never 'human'
+type Verdict = { label: 'verified_ai'|'likely_ai'|'no_clear_signs'|'not_assessed'; // never 'human'
                  scamRisk: 'high'|'medium'|'low';
                  confidence: number; signals: Signal[];
                  reasons: LocalizedReason[] /* template-based */ };
@@ -142,9 +144,11 @@ Getting frames differs by host:
 
 - Per-detector Platt scaling on a calibration set.
 - A logistic-regression combiner over the calibrated signals (simple, explainable, no black box).
-- **Conformal thresholds** targeting ≤ 1% false positives on human content. The band between thresholds becomes "can't tell".
+- **Conformal thresholds** targeting ≤ 1% false positives on human content. Anything below the threshold is "No clear signs".
 - Scam risk is computed separately and shown first.
-- Hard overrides: a valid C2PA manifest or platform label declaring AI generation gives *Signs of AI* regardless of the statistical signals (and the reason says so). Nothing can produce "Human".
+- Hard overrides: a valid C2PA manifest or platform label declaring AI generation gives **Verified AI** regardless of the statistical signals (and the reason says so). Nothing can produce "Human".
+- Two calibrations with two jobs: the **conformal threshold** (α = 1%) decides whether to flag *Likely AI*; **isotonic/Platt** calibration produces the confidence shown in the evidence panel.
+- **Not assessed gates:** under about 150 tokens, a language-ID check says not English, or the content falls into a bucket we have no calibration data for.
 
 ## 6. Evaluation (the portfolio centrepiece)
 
@@ -172,7 +176,8 @@ Getting frames differs by host:
 - `packages/core`: detectors, fusion and explain (runs in Node and the browser).
 - `packages/mcp-server`: Node MCP server exposing `check_text`, `check_image`, `check_video`, `check_page_bundle` and `scam_check` (video frames via ffmpeg).
 - `packages/claude-plugin`: plugin manifest, the `check-this-page` skill and the MCP server config.
-- `apps/extension`: WXT (MV3, Chrome first, then Firefox/Edge), side-panel UI, offscreen inference. **Background mode:** as you browse, only the cheap checks run automatically (C2PA, metadata, platform labels, scam rules) and show small badges; the heavy model checks run when you press "Check this page".
+- `apps/extension`: WXT (MV3, Chrome first, then Firefox/Edge), side-panel UI, offscreen inference. **Background mode:** as you browse, only the cheap checks run automatically (C2PA, metadata, platform labels, scam rules) and show small badges; the heavy model checks run when you press "Check this page" or right-click an item.
+  **Alert rules (avoid alert fatigue):** at about 500 assessable items a day, even a 1% false-positive rate is about 5 false alarms a day. So the extension **interrupts only for Verified AI, a high scam risk, or very high statistical confidence (α ≈ 0.1%)**. Everything else is a quiet badge. These rules are tuned with the M0 experiment below.
 - `eval/`: datasets loader, runners, reports.
 - **ML runtime:** ONNX Runtime Web / Transformers.js (WebGPU with a WASM fallback); `onnxruntime-node` for the MCP server and eval.
 - **Provenance:** `@contentauth/c2pa-web` in the browser and the c2pa Node bindings on the server side.
@@ -185,7 +190,7 @@ Ordered so that **a complete, demo-able tool exists after M4 (about week 7)**. V
 
 | M | Weeks | Deliverable | Done when |
 |---|---|---|---|
-| **M0** Foundations | 1 | Monorepo, CI, `Signal`/`Verdict` types, eval-harness skeleton, LICENSE, CONTRIBUTING, first decision records (§13), video-bridge spike | CI green; `pnpm eval` runs on a toy set; spike result written up |
+| **M0** Foundations | 1 | Monorepo, CI, `Signal`/`Verdict` types, eval-harness skeleton, CONTRIBUTING, first decision records (§13). **Three spikes:** (a) video frame bridge; (b) how the plugin is hosted: Claude Code plus Claude in Chrome with a local MCP server, and whether Claude in Chrome on its own accepts custom connectors; (c) **provenance-frequency experiment**: browse normally for a few days and count how often C2PA, IPTC or platform AI labels actually appear | CI green; `pnpm eval` runs on a toy set; spike results written up. If (c) shows labels are rare, background alerts would mostly be statistical guesses, so the alert rules are revisited before M6 |
 | **M1** Text Tier 0 + Scam engine | 1.5 | Pure-algorithm text stats and scam rules, with reason templates | Unit tests; scam eval ≥ 90% recall on our elder-scam set at < 5% FPR on normal pages |
 | **M2** Text Tier 1 | 1.5 | Fast-DetectGPT on a small ONNX LM (Node and browser), parity-checked against the Python reference; calibration and conformal thresholds; Binoculars/DivEye if time allows | Published TPR @ 1% FPR on a RAID subset plus a bias table |
 | **M3** Images | 2 | C2PA, metadata, platform labels, FFT and ONNX classifier, plus fusion | C2PA test assets verified; classifier eval on fresh generators published |
@@ -209,6 +214,7 @@ Ordered so that **a complete, demo-able tool exists after M4 (about week 7)**. V
 | New generators outdate the classifiers | Classifier is one signal among many; a re-train/re-eval script in `eval/` |
 | Scope creep, so it never ships | P7: v0.1 at M4 is complete on its own; anything not in a milestone goes to "Later" |
 | A public detector wrongly flags real people, hurting them and the project's reputation | Never says "Human" or accuses anyone; cautious wording; publish false-positive rates |
+| Privacy of scanned pages | Cache stores hashes only, never content; a domain deny-list (banking, health and email by default, user-editable) is never scanned; optional permissions are requested at runtime, not at install |
 | **Employment agreement** may claim side projects near the employer's field (AI and customer communications) | Owner checks the contract before the repo goes public; built on personal time and equipment and kept in personal accounts |
 
 ## 11. Extra research notes (beyond the Gemini report)
@@ -216,7 +222,13 @@ Ordered so that **a complete, demo-able tool exists after M4 (about week 7)**. V
 - **C2PA in the browser:** the official JS SDK moved to `@contentauth/c2pa-web` (the old `c2pa` package was deprecated around Oct 2025). It runs in Web Workers. Ed25519 signatures may not be supported; verify at M3. https://opensource.contentauthenticity.org/docs/c2pa-js/packages/c2pa-web/
 - **WebGPU in MV3 extensions** isn't available in the service worker; use an offscreen document. https://medium.com/@GenerationAI/transformers-js-onnx-runtime-webgpu-in-chrome-extension-13b563933ca9
 - **Existing open-source in-browser image detectors** to benchmark against or reuse: Qwip (ONNX, WebGPU) https://chromeboard.com/extension/qwip-ai-detection-beta-jihgkhibgodlejmgfgonjjmilebggnca, CommunityForensics ViT ONNX https://huggingface.co/onnx-community/CommunityForensics-DeepfakeDet-ViT-ONNX, LAID benchmark of lightweight detectors https://arxiv.org/abs/2507.05162, DejAIvu https://arxiv.org/abs/2502.08821
-- **Differentiator vs. existing tools:** multi-modal, provenance-first, scam-focused, calibrated "can't tell", designed for older users, with a public eval.
+- **Competitor landscape** (searched 2026-11-07, from the first planning chat):
+  - Text: Pangram (often rated most accurate), GPTZero "Origin", Originality.ai, Copyleaks, Winston AI.
+  - Multi-modal page scanners: Hive AI Detector (free; seems lightly maintained), AI Identifiers, UncovAI, BitMind (about 70–80% on images in one review), IsItAI, deepeye, Resemble AI Deepfake Detector.
+  - C2PA only: Digimarc Content Credentials extension (open source), "Content Credentials Verif".
+  - To verify: Google's SynthID Detector portal, McAfee on-device deepfake audio detection, TrueMedia.org (shut down early 2025, models open-sourced; possible reusable assets).
+  - Pattern: almost all are right-click, then the vendor's cloud, then a percentage.
+- **Differentiator:** none of them is provenance-first, on-device, open source, scam-focused for older users, uses calibrated outcome levels that never say "Human", and exposes an MCP endpoint. We don't try to beat Pangram or Hive on raw accuracy; the edge is trust, transparency and the audience.
 
 ## 12. Owner decisions (2026-11-08)
 
@@ -229,6 +241,7 @@ Ordered so that **a complete, demo-able tool exists after M4 (about week 7)**. V
 | 5 | Network lookups | **Offline only.** No domain-age or reverse-image lookups for now |
 | 6 | Video | **In the first version** (milestone M5, labelled experimental) |
 | 7 | Bring-your-own-key cloud image API (from the original chat) | **Not included**: it conflicts with offline-only. Can come back later as an opt-in |
+| 0 | Audience | **Older adults and the general public**, scam protection first. (The first planning chat suggested journalists and fact-checkers; the owner's later goals moved it.) Professionals remain a secondary audience via the evidence panel and MCP endpoint |
 | 8 | Python service for the text detector (from the original chat) | **No**: TypeScript + ONNX core so the extension can reuse it; Python only to check results in `eval/` |
 
 ## 13. Portfolio deliverables (what a reviewer sees in five minutes)
@@ -236,13 +249,13 @@ Ordered so that **a complete, demo-able tool exists after M4 (about week 7)**. V
 - README with an architecture diagram and a GIF.
 - `docs/decisions/`: 6–8 short decision records (ADRs):
   1. Algorithms decide, LLMs only explain
-  2. Four outcome levels, and why it never says "Human"
+  2. Four outcome levels (Verified AI / Likely AI / No clear signs / Not assessed), and why it never says "Human"
   3. Offline only (and no bring-your-own-key cloud APIs)
   4. TypeScript/ONNX shared core; Python only for evaluation parity
   5. Claude plugin first, extension after the M5 gate
   6. Conformal thresholds at ≤ 1% false positives on human content
   7. Scam risk is shown before AI signals
-  8. Video capture strategy per host
+  8. Video capture strategy per host, and DOM-first reading (screenshots only as a fallback)
 - `EVAL.md`: detection rates, false-positive rates by subgroup, failure cases.
 - A 2-minute demo video.
 - A Chrome Web Store listing (unlisted is fine).

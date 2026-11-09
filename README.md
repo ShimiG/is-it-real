@@ -6,9 +6,10 @@ A free, open-source, on-device detector for AI-generated text, images and video,
 
 - Algorithms first: provenance (C2PA), metadata, statistics and signal processing. LLMs are used only to explain results, never to decide them.
 - Private: everything runs locally in your browser.
-- Honest: when the evidence isn't strong enough, it says "can't tell". It never claims something is "human" or "real".
+- Honest: when the evidence isn't strong enough, it says "No clear signs" or "Not assessed". It never claims something is "human" or "real".
 
 Background research: [docs/research/ai-content-forensics-report.md](docs/research/ai-content-forensics-report.md)
+First planning chat (handoff notes): [docs/history/2026-11-07-first-planning-chat.md](docs/history/2026-11-07-first-planning-chat.md)
 
 ## License
 
