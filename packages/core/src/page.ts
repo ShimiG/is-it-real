@@ -1,10 +1,55 @@
+import { checkImageProvenance, type C2paReader } from './image/provenance.js';
 import { resolveOutcome } from './outcome.js';
+import { matchPlatformLabels, PLATFORM_LABELS_VERSION } from './platform-labels.js';
 import { analyzeScam, type ScamInput } from './scam/engine.js';
 import { detectTextStats } from './text/detector.js';
 import { detectTextDeep } from './text/ensemble.js';
 import type { LanguageModel } from './text/lm.js';
-import type { PageReport } from './types.js';
+import type { DetectorResult, PageReport, Verdict } from './types.js';
 import { ENGINE_VERSION } from './version.js';
+
+/** Optional host-provided capabilities. Without them the checks that need them are skipped. */
+export interface Capabilities {
+  /** Local language model for the deep text check (Tier 1). */
+  lm?: LanguageModel;
+  /** C2PA Content Credentials reader. */
+  c2pa?: C2paReader;
+}
+
+export interface ImageInput {
+  /** The ORIGINAL file bytes, not a screenshot (ADR-0008). */
+  bytes: Uint8Array;
+  /** Short strings shown next to the image on the page: badges, captions, alt text. */
+  nearbyLabels?: string[];
+}
+
+export interface PageInput extends ScamInput {
+  images?: ImageInput[];
+  /** Short strings from anywhere on the page that may be platform AI labels. */
+  pageLabels?: string[];
+}
+
+const LABEL_DETECTOR = `page.platform-label@${PLATFORM_LABELS_VERSION}`;
+
+function labelResult(
+  hostname: string | undefined,
+  labels: readonly string[] | undefined,
+): DetectorResult | null {
+  if (hostname === undefined || labels === undefined || labels.length === 0) return null;
+  const hits = matchPlatformLabels(hostname, labels);
+  if (hits.length === 0) return null;
+  return {
+    status: 'assessed',
+    signal: {
+      detector: LABEL_DETECTOR,
+      modality: 'page',
+      kind: 'platform_label',
+      score: 1,
+      reasons: ['platform_label_ai'],
+      details: { platform: hits[0]!.platform, label: hits[0]!.text },
+    },
+  };
+}
 
 /**
  * Checks a block of text (a message, an email, a page's main text): scam risk first (ADR-0007),
@@ -34,4 +79,51 @@ export async function checkTextDeep(input: ScamInput, lm: LanguageModel): Promis
     items: [verdict],
     engine: ENGINE_VERSION,
   };
+}
+
+/**
+ * Checks one image: what the file says about itself (Content Credentials, metadata) and what the
+ * site says about it (a platform AI label next to it). Statistical image checks join later in M3.
+ */
+export async function checkImage(
+  image: ImageInput,
+  context: { hostname?: string; c2pa?: C2paReader } = {},
+): Promise<Verdict> {
+  const provenance = await checkImageProvenance(image.bytes, context.c2pa);
+  const label = labelResult(context.hostname, image.nearbyLabels);
+  if (label === null) return provenance;
+  // Re-resolve with the label added. A label counts even when the file itself could not be read.
+  const fileResults: DetectorResult[] =
+    provenance.outcome === 'not_assessed'
+      ? []
+      : provenance.signals.map((signal) => ({ status: 'assessed' as const, signal }));
+  return resolveOutcome('image', [...fileResults, label]);
+}
+
+/**
+ * Checks a whole page: scam risk first, then the main text, each image, and any platform AI
+ * label found on the page. Everything runs locally; nothing is fetched here.
+ */
+export async function checkPage(
+  input: PageInput,
+  capabilities: Capabilities = {},
+): Promise<PageReport> {
+  const scam = analyzeScam(input);
+  const items: Verdict[] = [];
+  if (input.text.trim().length > 0) {
+    const text = capabilities.lm
+      ? await detectTextDeep(input.text, capabilities.lm)
+      : detectTextStats(input.text);
+    items.push(resolveOutcome('text', [text]));
+  }
+  for (const image of input.images ?? []) {
+    const context = {
+      ...(input.pageHost === undefined ? {} : { hostname: input.pageHost }),
+      ...(capabilities.c2pa === undefined ? {} : { c2pa: capabilities.c2pa }),
+    };
+    items.push(await checkImage(image, context));
+  }
+  const pageLabel = labelResult(input.pageHost, input.pageLabels);
+  if (pageLabel !== null) items.push(resolveOutcome('page', [pageLabel]));
+  return { scamRisk: scam.risk, scamReasons: scam.reasons, items, engine: ENGINE_VERSION };
 }

@@ -8,6 +8,7 @@ import { createC2paReader } from '../src/index.js';
 const fixture = (name: string) =>
   readFile(join(dirname(fileURLToPath(import.meta.url)), 'fixtures', name));
 const reader = createC2paReader();
+const text = async (name: string) => (await fixture(name)).toString('utf8');
 
 describe('C2PA reader on real files', () => {
   it('reads a valid manifest that does not declare AI', async () => {
@@ -65,5 +66,25 @@ describe('C2PA reader on real files', () => {
     const verdict = await checkImageProvenance(bytes, reader);
     expect(verdict.outcome).toBe('no_clear_signs');
     expect(verdict.reasons).toEqual(['c2pa_invalid_signature']);
+  });
+
+  it('reports "trusted" when the signer chains to a trusted root, and drops the unrecognised-signer note', async () => {
+    const trusting = createC2paReader({ extraAnchorsPem: await text('test-anchors.pem') });
+    const verdict = await checkImageProvenance(await fixture('ai-declared.jpg'), trusting);
+    expect(verdict).toMatchObject({ outcome: 'verified_ai', reasons: ['c2pa_declares_ai'] });
+    expect(verdict.signals.find((s) => s.detector.startsWith('image.c2pa'))!.details).toMatchObject(
+      { state: 'trusted' },
+    );
+  });
+
+  it('the public test certificate is not on the official trust list', async () => {
+    const summary = summarizeManifestStore(
+      await reader.read(await fixture('ai-declared.jpg'), 'image/jpeg'),
+    )!;
+    expect(summary.state).toBe('valid');
+    const noList = createC2paReader({ trust: 'none' });
+    expect(
+      summarizeManifestStore(await noList.read(await fixture('C.jpg'), 'image/jpeg'))!.state,
+    ).toBe('valid');
   });
 });

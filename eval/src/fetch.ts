@@ -210,6 +210,7 @@ function buildGhostbuster() {
   console.log(`ghostbuster: ${rows.length} texts`);
 }
 
+const C2PA_TESTFILES_COMMIT = '22beccc075707475b038d8789d0136c009e43143';
 const LIANG_COMMIT = '1d05ed8242d4694a0ed7b73a79c52be8864470f9';
 
 /**
@@ -253,6 +254,13 @@ function buildLiang() {
 await fetchSms();
 await fetchFdgpt();
 buildLiang();
+// Official C2PA test images (CC BY-SA 4.0), used by the conformance test in packages/c2pa-node.
+cloneRepo(
+  'public-testfiles',
+  'https://github.com/c2pa-org/public-testfiles',
+  C2PA_TESTFILES_COMMIT,
+);
+console.log('c2pa public-testfiles: ready');
 // The Ghostbuster repository is about 2 GB; only fetch it when asked.
 if (process.argv.includes('--full')) buildGhostbuster();
 else console.log('ghostbuster: skipped (run with --full; about 2 GB)');
