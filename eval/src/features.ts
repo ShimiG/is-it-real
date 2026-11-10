@@ -31,6 +31,16 @@ export const FEATURES_FILE = resolve(
   'text-features.v1.jsonl',
 );
 
+/** Datasets in the table: downloaded ones live in datasets/.cache, our own in datasets/. */
+const DATASETS: [string, 'cache' | 'repo'][] = [
+  ['liang', 'cache'],
+  ['ghostbuster', 'cache'],
+  ['fdgpt', 'cache'],
+  ['current-2026', 'repo'],
+];
+/** External checks: never trained or calibrated on. */
+const TEST_ONLY = new Set(['fdgpt', 'current-2026']);
+
 export interface FeatureRow {
   id: string;
   dataset: string;
@@ -57,7 +67,11 @@ const round = (x: number) => Number(x.toFixed(5));
 
 async function main() {
   const { values } = parseArgs({
-    options: { shard: { type: 'string' }, merge: { type: 'boolean', default: false } },
+    options: {
+      shard: { type: 'string' },
+      merge: { type: 'boolean', default: false },
+      only: { type: 'string' },
+    },
   });
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
   const cache = join(root, 'datasets', '.cache');
@@ -89,8 +103,10 @@ async function main() {
       : [],
   );
   let n = 0;
-  for (const dataset of ['liang', 'ghostbuster', 'fdgpt']) {
-    const items = await loadJsonl(join(cache, dataset, 'text.jsonl'));
+  for (const [dataset, where] of DATASETS) {
+    if (values.only !== undefined && values.only !== dataset) continue;
+    const dir = where === 'cache' ? cache : join(root, 'datasets');
+    const items = await loadJsonl(join(dir, dataset, 'text.jsonl'));
     for (let i = 0; i < items.length; i++) {
       const item = items[i]!;
       if (i % shards !== shard || done.has(item.id)) continue;
@@ -108,8 +124,7 @@ async function main() {
         truth: item.truth,
         subgroup: item.subgroup,
         group: item.group ?? item.id,
-        // The Fast-DetectGPT set is an external check: never trained or calibrated on.
-        split: dataset === 'fdgpt' ? 'test' : splitOfItem(item),
+        split: TEST_ONLY.has(dataset) ? 'test' : splitOfItem(item),
         words: nWords,
         english,
         t0: TEXT_FEATURES.map((k) => round(f[k])),

@@ -76,6 +76,30 @@ Trained and calibrated without one kind of text, then tested on it:
 
 The ranking carries over, but the false-alarm rate does not: on unseen kinds of text it was 2 to 4 times the target. The guarantee only covers text that resembles the calibration set. This is why the plan has an "uncalibrated kind of content, so Not assessed" gate; it is not built yet, and until it is, the product should say _Likely AI_ only for kinds of text we calibrated on (essay-like, news-like, story-like, learner writing).
 
+## Addendum: text from a current model (2026-11-10)
+
+All AI text above is from 2023-era models, so I added a test set from a current one: 100 texts (34 essays, 33 news articles, 33 stories) written by helper agents of the Claude Code session that built this project (configured model `claude-fable-5-2`), on the same prompts as 100 human texts in the test split. Details and quirks: `eval/datasets/current-2026/README.md`. Nothing was retrained.
+
+|                                    | 2023 ChatGPT and Claude | Current model (2026)                                          |
+| ---------------------------------- | ----------------------- | ------------------------------------------------------------- |
+| Caught at the strict 1% setting    | 68.1%                   | **13 of 100** (essays 8 of 34, news 5 of 33, stories 0 of 33) |
+| Separation from human text (AUROC) | 0.983                   | 0.731                                                         |
+| Caught at a looser 5% setting      | not measured            | 46 of 100                                                     |
+
+Why: to GPT-2, the current model's writing looks almost like human writing.
+
+| Median value                               | Human | ChatGPT 2023 | Claude 2023 | Current model |
+| ------------------------------------------ | ----- | ------------ | ----------- | ------------- |
+| Fast-DetectGPT criterion                   | 0.70  | 4.04         | 2.22        | 1.41          |
+| Share of words that were GPT-2's top guess | 36%   | 46%          | 41%         | 35%           |
+
+What this means:
+
+- **On today's AI text, the text detector will rarely say _Likely AI_.** It stays honest (it says "No clear signs", never "Human"), but it adds little for modern text.
+- This matches the theory in the research report: as models get closer to human writing, statistical detection approaches chance. It strengthens the plan's priorities: provenance labels and scam rules first, statistical text detection as a supporting signal.
+- Limits of this check: 100 texts, one model family, three kinds of writing, lightly trimmed texts.
+- Options to improve it: retrain with current-model text in the training set (needs several hundred more such texts, and risks fitting one model family), and score with a stronger model than GPT-2.
+
 ## Not done in M2
 
 - **RAID benchmark** (the plan's target): its files are not reachable from the build environment. Ghostbuster and the Fast-DetectGPT set stand in.
@@ -85,7 +109,7 @@ The ranking carries over, but the false-alarm rate does not: on unseen kinds of 
 
 ## Follow-ups
 
-1. A test set from current models (2025-2026), including paraphrased text.
+1. More current-model text (other vendors, paraphrased text), and retraining with it (see the addendum).
 2. The kind-of-text gate, so unfamiliar content returns _Not assessed_.
 3. A smaller or quantized model for the browser (665 MB is too large); each candidate needs its own feature table and calibration.
 4. More calibration data from more kinds of everyday text (emails, social posts, product reviews).

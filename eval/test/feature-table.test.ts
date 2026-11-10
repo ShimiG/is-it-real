@@ -24,7 +24,11 @@ describe.skipIf(!existsSync(FEATURES_FILE))('feature table', () => {
 
   it('keeps the bias and external sets out of training and calibration', () => {
     const testOnly = rows.filter(
-      (r) => r.dataset === 'liang' || r.dataset === 'fdgpt' || r.subgroup === 'humanizer-rewritten',
+      (r) =>
+        r.dataset === 'liang' ||
+        r.dataset === 'fdgpt' ||
+        r.dataset === 'current-2026' ||
+        r.subgroup === 'humanizer-rewritten',
     );
     expect(testOnly.length).toBeGreaterThan(1000);
     expect(testOnly.every((r) => r.split === 'test')).toBe(true);
