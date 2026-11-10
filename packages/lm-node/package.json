@@ -1,0 +1,19 @@
+{
+  "name": "@isitreal/lm-node",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Runs a small local language model in Node (ONNX Runtime) as a probability meter for the detection core.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@isitreal/core": "workspace:*",
+    "gpt-tokenizer": "^4.1.1",
+    "onnxruntime-node": "^1.31.1"
+  }
+}

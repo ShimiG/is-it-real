@@ -4,3 +4,4 @@ packages:
   - spikes/*
 onlyBuiltDependencies:
   - esbuild
+  - onnxruntime-node

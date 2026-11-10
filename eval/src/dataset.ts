@@ -6,6 +6,8 @@ export const TextItemSchema = z.object({
   id: z.string().min(1),
   /** Items sharing a group (a passage and its AI continuation) always land in the same split. */
   group: z.string().optional(),
+  /** Force a split (e.g. 'test' for sets that must never be trained or calibrated on). */
+  split: z.enum(['train', 'calib', 'test']).optional(),
   modality: z.literal('text'),
   truth: z.enum(['ai', 'human']),
   subgroup: z.string().min(1),

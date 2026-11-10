@@ -10,3 +10,12 @@ export function splitOf(group: string): Split {
   const b = (h >>> 0) % 20;
   return b < 8 ? 'train' : b < 15 ? 'calib' : 'test';
 }
+
+/** Split of an item: an explicit `split` wins, otherwise the hash of its group (or id). */
+export function splitOfItem(item: {
+  id: string;
+  group?: string | undefined;
+  split?: Split | undefined;
+}): Split {
+  return item.split ?? splitOf(item.group ?? item.id);
+}

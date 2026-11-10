@@ -13,3 +13,6 @@ export * from './text/detector.js';
 export * from './calibration.js';
 export * from './version.js';
 export * from './page.js';
+export * from './text/lm.js';
+export * from './logistic.js';
+export * from './text/ensemble.js';

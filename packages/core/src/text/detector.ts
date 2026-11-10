@@ -1,17 +1,14 @@
 import type { DetectorResult, ReasonCode } from '../types.js';
 import { conformalScore } from '../calibration.js';
+import { applyLogistic, type LogisticModel, type LogisticResult } from '../logistic.js';
 import { words } from './normalize.js';
 import { isLikelyEnglish, textFeatures, type TextFeature } from './stats.js';
 import model from './text-stats.model.json' with { type: 'json' };
 
 /** Logistic model over standardised Tier 0 features, produced by `pnpm --filter @isitreal/eval train:text`. */
-export interface TextStatsModel {
+export interface TextStatsModel extends LogisticModel {
   id: string;
   features: TextFeature[];
-  mean: number[];
-  std: number[];
-  weights: number[];
-  bias: number;
   minWords: number;
   /** Raw scores of held-out HUMAN calibration texts, ascending (see calibration.ts). */
   calibration: number[];
@@ -27,25 +24,13 @@ const FEATURE_REASON: Partial<Record<TextFeature, ReasonCode>> = {
   aiPhraseRate: 'text_ai_phrasing',
 };
 
-const sigmoid = (z: number) => 1 / (1 + Math.exp(-z));
-
 /** Raw (uncalibrated) logistic score and per-feature contributions. */
-export function scoreTextStats(
-  text: string,
-  m: TextStatsModel = TEXT_STATS_MODEL,
-): {
-  raw: number;
-  contributions: Record<string, number>;
-} {
+export function scoreTextStats(text: string, m: TextStatsModel = TEXT_STATS_MODEL): LogisticResult {
   const f = textFeatures(text);
-  let z = m.bias;
-  const contributions: Record<string, number> = {};
-  m.features.forEach((name, i) => {
-    const c = m.weights[i]! * ((f[name] - m.mean[i]!) / (m.std[i]! || 1));
-    contributions[name] = c;
-    z += c;
-  });
-  return { raw: sigmoid(z), contributions };
+  return applyLogistic(
+    m,
+    m.features.map((name) => f[name]),
+  );
 }
 
 /** Tier 0 text detector: pure statistics, English only, refuses short texts. */
