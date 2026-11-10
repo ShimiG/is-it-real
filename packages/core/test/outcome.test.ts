@@ -59,7 +59,10 @@ describe('resolveOutcome', () => {
     expect(v).toMatchObject({ outcome: 'not_assessed', confidence: null, reasons: ['too_short'] });
   });
 
-  it('a label that does not declare AI is not enough for verified_ai', () => {
-    expect(resolveOutcome('image', [label(0)]).outcome).toBe('not_assessed');
+  it('a checked label that does not declare AI gives "no clear signs", never verified_ai', () => {
+    expect(resolveOutcome('image', [label(0)])).toMatchObject({
+      outcome: 'no_clear_signs',
+      confidence: null,
+    });
   });
 });

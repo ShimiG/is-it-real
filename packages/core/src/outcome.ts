@@ -10,7 +10,8 @@ const isDeclaredAi = (s: Signal): boolean =>
  *
  * Rules (ADR-0002, ADR-0006):
  * 1. Any provenance or platform label that declares AI generation -> `verified_ai` (hard override).
- * 2. Otherwise, if no detector could assess the item -> `not_assessed`.
+ * 2. Otherwise, with no statistical signal: `no_clear_signs` when provenance was checked and
+ *    declared nothing, `not_assessed` when no detector could assess the item.
  * 3. Otherwise the strongest statistical score is compared with the conformal threshold:
  *    at/above -> `likely_ai`; below -> `no_clear_signs`.
  * Nothing ever yields "human".
@@ -38,6 +39,19 @@ export function resolveOutcome(
 
   const statistical = signals.filter((s) => s.kind === 'statistical');
   if (statistical.length === 0) {
+    // Provenance was checked and nothing declared AI: an honest "no clear signs", with whatever
+    // the check did find (e.g. a manifest with no AI claim, or a broken signature) as context.
+    const checked = signals.filter((s) => s.kind === 'provenance' || s.kind === 'platform_label');
+    if (checked.length > 0) {
+      return {
+        modality,
+        outcome: 'no_clear_signs',
+        confidence: null,
+        alert: false,
+        signals,
+        reasons: unique(checked.flatMap((s) => s.reasons)),
+      };
+    }
     const notAssessed = results.flatMap((r) => (r.status === 'not_assessed' ? [r.reason] : []));
     return {
       modality,

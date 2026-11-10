@@ -15,6 +15,11 @@ export interface SniffResult {
   c2pa: boolean;
   /** IPTC digital source type codes that indicate generative AI, found anywhere in the file (XMP or C2PA). */
   aiSourceTypes: AiSourceType[];
+  /**
+   * The same codes, but only inside XMP metadata packets. Codes inside a C2PA manifest are left
+   * to the C2PA validator: an unvalidated or tampered manifest must not count as a declaration.
+   */
+  xmpAiSourceTypes: AiSourceType[];
   /** Generator traces such as Stable Diffusion "parameters" or ComfyUI "workflow" text chunks. */
   generatorHints: string[];
 }
@@ -72,15 +77,41 @@ export function sniffImage(bytes: Uint8Array): SniffResult {
     generatorHints.push('stable-diffusion-webui:exif');
   }
 
+  const aiSourceTypes = findAiSourceTypes(text);
+  const xmpAiSourceTypes = findAiSourceTypes(xmpPackets(text).join('\n'));
+
+  return {
+    format,
+    c2pa,
+    aiSourceTypes,
+    xmpAiSourceTypes,
+    generatorHints: [...new Set(generatorHints)],
+  };
+}
+
+function findAiSourceTypes(text: string): AiSourceType[] {
   const lower = text.toLowerCase();
-  const aiSourceTypes = AI_SOURCE_TYPES.filter(
+  return AI_SOURCE_TYPES.filter(
     (code) =>
       lower.includes((IPTC_DST_PREFIX + code).toLowerCase()) ||
-      // XMP/C2PA may also carry the bare code next to a digitalSourceType key.
+      // The bare code may also sit next to a digitalSourceType key.
       (lower.includes('digitalsourcetype') && hasWord(text, code)),
   );
+}
 
-  return { format, c2pa, aiSourceTypes, generatorHints: [...new Set(generatorHints)] };
+/** XMP packets embedded in the file: `<x:xmpmeta ...> ... </x:xmpmeta>`. */
+function xmpPackets(text: string): string[] {
+  const packets: string[] = [];
+  let from = 0;
+  for (;;) {
+    const start = text.indexOf('<x:xmpmeta', from);
+    if (start === -1) break;
+    const end = text.indexOf('</x:xmpmeta>', start);
+    if (end === -1) break;
+    packets.push(text.slice(start, end));
+    from = end + 1;
+  }
+  return packets;
 }
 
 interface PngChunk {

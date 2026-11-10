@@ -10,7 +10,13 @@ import {
   summary,
 } from '../src/tally.js';
 
-const clean = { format: 'jpeg' as const, c2pa: false, aiSourceTypes: [], generatorHints: [] };
+const clean = {
+  format: 'jpeg' as const,
+  c2pa: false,
+  aiSourceTypes: [],
+  xmpAiSourceTypes: [],
+  generatorHints: [],
+};
 
 describe('census tally', () => {
   it('counts pages, images and hits per site', () => {

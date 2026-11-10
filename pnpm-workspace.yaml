@@ -5,3 +5,4 @@ packages:
 onlyBuiltDependencies:
   - esbuild
   - onnxruntime-node
+  - '@contentauth/c2pa-node'

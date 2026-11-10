@@ -16,3 +16,4 @@ export * from './page.js';
 export * from './text/lm.js';
 export * from './logistic.js';
 export * from './text/ensemble.js';
+export * from './image/provenance.js';

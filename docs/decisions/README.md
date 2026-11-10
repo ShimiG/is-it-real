@@ -13,3 +13,4 @@ Short records of the main design decisions (format: context, decision, consequen
 | [0007](0007-scam-risk-first.md)                     | Scam risk is shown before AI signals                                | Accepted |
 | [0008](0008-dom-first-and-video-capture.md)         | Read the DOM first; video capture strategy per host                 | Accepted |
 | [0009](0009-language-model-as-probability-meter.md) | A small local language model as a probability meter (GPT-2 for now) | Accepted |
+| [0010](0010-image-provenance-declarations.md)       | Which image provenance claims count as "Made with AI"               | Accepted |

@@ -1,0 +1,18 @@
+{
+  "name": "@isitreal/c2pa-node",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Reads and validates C2PA Content Credentials in Node with the official library.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@contentauth/c2pa-node": "0.10.0",
+    "@isitreal/core": "workspace:*"
+  }
+}

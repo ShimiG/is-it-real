@@ -41,6 +41,7 @@ describe('sniffImage', () => {
       format: 'png',
       c2pa: false,
       aiSourceTypes: [],
+      xmpAiSourceTypes: [],
       generatorHints: [],
     });
   });
@@ -85,5 +86,21 @@ describe('sniffImage', () => {
     expect(sniffImage(concat(JPEG_SOI, enc('UNICODE\0'), utf16)).generatorHints).toEqual([
       'stable-diffusion-webui:exif',
     ]);
+  });
+
+  it('separates codes inside XMP from codes elsewhere in the file (e.g. inside a C2PA manifest)', () => {
+    const code = 'http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia';
+    const inManifest = sniffImage(
+      concat(JPEG_SOI, enc(`jumb c2pa {"digitalSourceType":"${code}"}`)),
+    );
+    expect(inManifest.aiSourceTypes).toEqual(['trainedAlgorithmicMedia']);
+    expect(inManifest.xmpAiSourceTypes).toEqual([]);
+    const inXmp = sniffImage(
+      concat(
+        JPEG_SOI,
+        enc(`<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:li>${code}</rdf:li></x:xmpmeta>`),
+      ),
+    );
+    expect(inXmp.xmpAiSourceTypes).toEqual(['trainedAlgorithmicMedia']);
   });
 });
