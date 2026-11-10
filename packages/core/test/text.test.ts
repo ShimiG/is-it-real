@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ENGINE_VERSION,
   TEXT_STATS_MODEL,
   checkText,
   conformalScore,
@@ -99,6 +100,6 @@ describe('checkText', () => {
     });
     expect(r.scamRisk).toBe('high');
     expect(r.items[0]!.outcome).toBe('not_assessed');
-    expect(r.engine).toMatch(/m1/);
+    expect(r.engine).toBe(ENGINE_VERSION);
   });
 });
