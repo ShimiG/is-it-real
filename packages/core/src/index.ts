@@ -17,3 +17,5 @@ export * from './text/lm.js';
 export * from './logistic.js';
 export * from './text/ensemble.js';
 export * from './image/provenance.js';
+export * from './image/fft.js';
+export * from './image/spectral.js';

@@ -1,1 +1,1 @@
-export const ENGINE_VERSION = '0.2.0-m2';
+export const ENGINE_VERSION = '0.3.0-m3-partial';

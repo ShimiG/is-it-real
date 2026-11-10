@@ -18,13 +18,15 @@ pnpm check
 
 ## Layout
 
-| Path               | What                                                                                                                |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `packages/core`    | Detection core: shared types, outcome rules, reason text, detectors                                                 |
-| `packages/lm-node` | Node runner for the local language model                                                                            |
-| `eval`             | Evaluation harness (`pnpm eval`), datasets, feature table (`eval/features`), Python parity check (`eval/reference`) |
-| `spikes/*`         | Throwaway experiments that answer one question each (see `docs/spikes`)                                             |
-| `docs/decisions`   | Decision records (ADRs)                                                                                             |
+| Path                  | What                                                                                                                |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `packages/core`       | Detection core: shared types, outcome rules, reason text, detectors                                                 |
+| `packages/lm-node`    | Node runner for the local language model                                                                            |
+| `packages/c2pa-node`  | Content Credentials (C2PA) reader for Node, with the bundled trust list                                             |
+| `packages/image-node` | Image decoding for Node                                                                                             |
+| `eval`                | Evaluation harness (`pnpm eval`), datasets, feature table (`eval/features`), Python parity check (`eval/reference`) |
+| `spikes/*`            | Throwaway experiments that answer one question each (see `docs/spikes`)                                             |
+| `docs/decisions`      | Decision records (ADRs)                                                                                             |
 
 ## Rules that reviews enforce
 

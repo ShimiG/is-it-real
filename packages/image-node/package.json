@@ -1,0 +1,18 @@
+{
+  "name": "@isitreal/image-node",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Decodes images to raw pixels in Node (sharp) for the detection core.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@isitreal/core": "workspace:*",
+    "sharp": "^0.35.5"
+  }
+}
