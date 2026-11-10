@@ -1,63 +1,62 @@
 /**
- * Trains the Tier 0 text-statistics model and writes packages/core/src/text/text-stats.model.json.
- * Train split -> logistic weights; calib split (human only) -> conformal calibration scores.
- * The test split is never touched here; `pnpm eval` reports on it.
+ * Trains the shipped text models from the feature table and writes them into packages/core:
+ *   text-stats.model.json     Tier 0 (no model needed at run time)
+ *   text-ensemble.model.json  Tier 0 + language-model features (needs the local model)
+ * The test split is never read here; `pnpm eval` reports on it.
  */
-import { writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TEXT_FEATURES, isLikelyEnglish, textFeatures, words } from '@isitreal/core';
-import { loadJsonl } from './dataset.js';
-import { fitLogReg, predict } from './logreg.js';
-import { splitOf } from './split.js';
+import { GPT2_ZOO } from '@isitreal/lm-node';
+import { MAX_LM_TOKENS, MIN_WORDS, loadFeatureRows } from './features.js';
+import { fitAll, usable } from './text-models.js';
 
-const MIN_WORDS = 110;
-const here = dirname(fileURLToPath(import.meta.url));
-const items = await loadJsonl(join(here, '..', 'datasets', '.cache', 'fdgpt', 'text.jsonl'));
-const usable = items.filter((i) => words(i.text).length >= MIN_WORDS && isLikelyEnglish(i.text));
-const vec = (t: string) => {
-  const f = textFeatures(t);
-  return TEXT_FEATURES.map((k) => f[k]);
-};
-
-const train = usable.filter((i) => splitOf(i.group ?? i.id) === 'train');
-const calibHuman = usable.filter(
-  (i) => splitOf(i.group ?? i.id) === 'calib' && i.truth === 'human',
+const rows = loadFeatureRows();
+const coreDir = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  'packages',
+  'core',
+  'src',
+  'text',
 );
+const round = (x: number) => Number(x.toFixed(6));
+const ok = rows.filter(usable);
+const nTrain = ok.filter((r) => r.split === 'train').length;
+const data = `Ghostbuster data@86ebd72 (student essays, Reuters news, WritingPrompts stories; ChatGPT and Claude; plus non-native English writing: ETS essays, PELIC, Lang-8, and BAWE student writing). English, >= ${MIN_WORDS} words. Train ${nTrain} texts`;
 
-// Balance classes: there are two AI continuations per human passage.
-const wHuman =
-  train.filter((i) => i.truth === 'ai').length / train.filter((i) => i.truth === 'human').length;
-const X: number[][] = [];
-const y: number[] = [];
-for (const i of train) {
-  const reps = i.truth === 'human' ? Math.round(wHuman) : 1;
-  for (let r = 0; r < reps; r++) {
-    X.push(vec(i.text));
-    y.push(i.truth === 'ai' ? 1 : 0);
+for (const f of fitAll(rows)) {
+  if (f.logreg === null) continue;
+  const base = {
+    id: f.spec.id,
+    features: f.spec.features,
+    mean: f.logreg.mean.map(round),
+    std: f.logreg.std.map(round),
+    weights: f.logreg.weights.map(round),
+    bias: round(f.logreg.bias),
+    minWords: MIN_WORDS,
+    calibration: f.calibration.map(round),
+    trainedOn: `${data}, calibration ${f.calibration.length} human texts. Not calibrated for other kinds of text.`,
+  };
+  if (f.spec.id.startsWith('text.stats')) {
+    const model = { ...base, features: f.spec.features.map((n) => n.slice(3)) };
+    writeFileSync(resolve(coreDir, 'text-stats.model.json'), JSON.stringify(model, null, 2) + '\n');
+    console.log(`wrote text-stats.model.json (${f.calibration.length} calibration scores)`);
+  } else if (f.spec.id.startsWith('text.ensemble')) {
+    const model = { ...base, lmId: GPT2_ZOO.id, maxTokens: MAX_LM_TOKENS };
+    writeFileSync(
+      resolve(coreDir, 'text-ensemble.model.json'),
+      JSON.stringify(model, null, 2) + '\n',
+    );
+    console.log(`wrote text-ensemble.model.json (${f.calibration.length} calibration scores)`);
+    console.log(
+      f.spec.features
+        .map((n, j) => ({ n, w: f.logreg!.weights[j]! }))
+        .sort((a, b) => Math.abs(b.w) - Math.abs(a.w))
+        .slice(0, 12)
+        .map((x) => `  ${x.n.padEnd(24)} ${x.w.toFixed(3)}`)
+        .join('\n'),
+    );
   }
 }
-const m = fitLogReg(X, y);
-const round = (x: number) => Number(x.toFixed(6));
-const calibration = calibHuman.map((i) => round(predict(m, vec(i.text)))).sort((a, b) => a - b);
-
-const model = {
-  id: 'text.stats@0.1.0',
-  features: [...TEXT_FEATURES],
-  mean: m.mean.map(round),
-  std: m.std.map(round),
-  weights: m.weights.map(round),
-  bias: round(m.bias),
-  minWords: MIN_WORDS,
-  calibration,
-  trainedOn: `fast-detect-gpt@971b052 gpt3to4 (XSum news, WritingPrompts stories; GPT-3.5-turbo and GPT-4 continuations), English, >= ${MIN_WORDS} words. Train ${train.length} items, calibration ${calibHuman.length} human items. Not calibrated for other kinds of text.`,
-};
-const out = resolve(here, '..', '..', 'packages', 'core', 'src', 'text', 'text-stats.model.json');
-await writeFile(out, JSON.stringify(model, null, 2) + '\n');
-console.log(`train=${train.length} calibHuman=${calibHuman.length}`);
-console.log(
-  TEXT_FEATURES.map((k, j) => `${k.padEnd(22)} ${m.weights[j]!.toFixed(3)}`)
-    .sort()
-    .join('\n'),
-);
-console.log(`wrote ${out}`);

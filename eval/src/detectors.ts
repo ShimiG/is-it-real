@@ -1,4 +1,4 @@
-import { detectTextStats, TEXT_STATS_MODEL, type DetectorResult } from '@isitreal/core';
+import type { DetectorResult } from '@isitreal/core';
 import type { TextItem } from './dataset.js';
 
 export interface EvalDetector {
@@ -40,15 +40,7 @@ export const randomBaseline: EvalDetector = {
   },
 };
 
-export const textStats: EvalDetector = {
-  id: TEXT_STATS_MODEL.id,
-  description:
-    'Tier 0 text statistics (sentence rhythm, vocabulary, punctuation, AI-typical phrases) combined by a small logistic model; conformal scores.',
-  calibrated: true,
-  run: (item) => detectTextStats(item.text),
-};
-
-export const DETECTORS: readonly EvalDetector[] = [randomBaseline, textStats];
+export const DETECTORS: readonly EvalDetector[] = [randomBaseline];
 
 /** FNV-1a hash mapped to [0, 1). */
 function hashToUnit(s: string): number {
