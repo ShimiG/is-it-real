@@ -7,7 +7,9 @@
   "type": "module",
   "scripts": {
     "eval": "tsx src/cli.ts",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "fetch": "tsx src/fetch.ts",
+    "train:text": "tsx src/train-text.ts"
   },
   "dependencies": {
     "@isitreal/core": "workspace:*",

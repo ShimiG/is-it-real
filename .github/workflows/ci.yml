@@ -23,7 +23,10 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test
-      - name: Evaluate (toy set)
+      - name: Download public eval datasets
+        run: pnpm eval:fetch
+        continue-on-error: true
+      - name: Evaluate
         run: pnpm eval
       - name: Build spikes
         run: pnpm build

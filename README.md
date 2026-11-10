@@ -2,7 +2,7 @@
 
 A free, open-source, on-device detector for AI-generated text, images and video, built to help people (especially older adults) spot AI-driven scams.
 
-**Status:** M0 (foundations) done. See [PLAN.md](PLAN.md) for the roadmap. No user-facing detector yet.
+**Status:** M1 done: scam-pattern rules and basic text statistics, with [measured results](docs/eval/m1-results.md). See [PLAN.md](PLAN.md) for the roadmap. No user-facing app yet.
 
 - **Algorithms first:** provenance (C2PA), metadata, statistics and signal processing. LLMs are used only to explain results, never to decide them.
 - **Private:** everything runs locally. No accounts, no uploads, no tracking.

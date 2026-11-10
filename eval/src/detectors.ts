@@ -1,9 +1,14 @@
-import type { DetectorResult } from '@isitreal/core';
+import { detectTextStats, TEXT_STATS_MODEL, type DetectorResult } from '@isitreal/core';
 import type { TextItem } from './dataset.js';
 
 export interface EvalDetector {
   id: string;
   description: string;
+  /**
+   * True when scores are already conformal (score >= 1 - alpha flags at most alpha of human
+   * calibration-like text). Such detectors are measured on the held-out test split only.
+   */
+  calibrated: boolean;
   run(item: TextItem): DetectorResult;
 }
 
@@ -17,6 +22,7 @@ export const MIN_WORDS = 30;
 export const randomBaseline: EvalDetector = {
   id: 'baseline.random@0',
   description: 'Deterministic pseudo-random score (harness sanity check; expect AUROC near 0.5).',
+  calibrated: false,
   run(item) {
     const words = item.text.trim().split(/\s+/).filter(Boolean).length;
     if (words < MIN_WORDS)
@@ -34,7 +40,15 @@ export const randomBaseline: EvalDetector = {
   },
 };
 
-export const DETECTORS: readonly EvalDetector[] = [randomBaseline];
+export const textStats: EvalDetector = {
+  id: TEXT_STATS_MODEL.id,
+  description:
+    'Tier 0 text statistics (sentence rhythm, vocabulary, punctuation, AI-typical phrases) combined by a small logistic model; conformal scores.',
+  calibrated: true,
+  run: (item) => detectTextStats(item.text),
+};
+
+export const DETECTORS: readonly EvalDetector[] = [randomBaseline, textStats];
 
 /** FNV-1a hash mapped to [0, 1). */
 function hashToUnit(s: string): number {

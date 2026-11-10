@@ -4,6 +4,8 @@ import type { Truth } from './metrics.js';
 
 export const TextItemSchema = z.object({
   id: z.string().min(1),
+  /** Items sharing a group (a passage and its AI continuation) always land in the same split. */
+  group: z.string().optional(),
   modality: z.literal('text'),
   truth: z.enum(['ai', 'human']),
   subgroup: z.string().min(1),

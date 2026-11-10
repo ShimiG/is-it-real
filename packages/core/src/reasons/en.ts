@@ -42,6 +42,8 @@ export const REASON_TEXT: Record<ReasonCode, string> = {
   text_low_burstiness: 'The sentences are unusually even in length and rhythm.',
   text_low_lexical_diversity: 'The wording is unusually repetitive and predictable.',
   text_probability_curvature: 'The words are the ones an AI model would most likely pick.',
+  text_ai_phrasing: 'It uses words and phrases that AI writing tools often overuse.',
+  text_uniform_style: 'The writing style is unusually even and predictable.',
   image_spectral_artifacts: 'The picture has hidden patterns that AI image tools often leave.',
   image_classifier_ai: 'A picture-checking model found features typical of AI images.',
   video_temporal_inconsistency:
@@ -54,6 +56,13 @@ export const REASON_TEXT: Record<ReasonCode, string> = {
   scam_link_mismatch: 'A link says one address but goes somewhere else.',
   scam_lookalike_domain: 'The web address imitates a well-known website.',
   scam_too_good_to_be_true: 'It promises money or prizes that sound too good to be true.',
+  scam_threat: 'It threatens arrest, legal trouble or a closed account.',
+  scam_code_request: 'It asks you to read out or send a security code.',
+  scam_personal_data_request: 'It asks for personal or bank details.',
+  scam_tech_support:
+    'It claims your computer has a virus or asks for remote access to your computer.',
+  scam_family_emergency: 'It claims a relative is in trouble and urgently needs money.',
+  scam_upfront_fee: 'It asks you to pay a fee before you can receive money, a prize or a package.',
   too_short: 'It is too short to check reliably.',
   unsupported_language: 'This language is not supported yet.',
   unreadable_media: 'We could not read this item.',

@@ -16,7 +16,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "eval": "pnpm --filter @isitreal/eval run eval",
-    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm eval"
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm eval",
+    "eval:fetch": "pnpm --filter @isitreal/eval run fetch"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
