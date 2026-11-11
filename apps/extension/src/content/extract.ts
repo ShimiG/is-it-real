@@ -1,4 +1,4 @@
-import type { PageData, PageVideo } from '../messages.js';
+import type { PageData, PageVideo, QuickPage } from '../messages.js';
 import { videoAddress, visibleVideos } from './videos.js';
 
 /**
@@ -56,7 +56,30 @@ export function listVideos(doc: Document = document): Omit<PageVideo, 'frameId'>
     });
 }
 
-export function extractPage(doc: Document = document): PageData {
+/** How many elements the label search looks at, at most (very long pages are cut off). */
+const MAX_LABEL_ELEMENTS = 20_000;
+
+/** Short texts anywhere on the page that could be the site's own AI label. */
+function labelLikeTexts(doc: Document): string[] {
+  const found = new Set<string>();
+  if (!doc.body) return [];
+  let seen = 0;
+  for (const el of doc.body.querySelectorAll('*')) {
+    if (++seen > MAX_LABEL_ELEMENTS || found.size >= 50) break;
+    for (const attr of ['aria-label', 'title', 'alt']) {
+      const v = clean(el.getAttribute(attr));
+      if (v !== '' && v.length <= SHORT && LABEL_WORDS.test(v)) found.add(v);
+    }
+    if (el.childElementCount === 0) {
+      const v = clean(el.textContent);
+      if (v !== '' && v.length <= SHORT && LABEL_WORDS.test(v)) found.add(v);
+    }
+  }
+  return [...found];
+}
+
+/** What the quiet check needs: the page's text, links and label-like short texts. Nothing else is read. */
+export function extractQuick(doc: Document = document): QuickPage {
   const main = doc.querySelector<HTMLElement>('article, main, [role="main"]') ?? doc.body;
   const text = clean(main?.innerText).slice(0, MAX_TEXT);
 
@@ -67,6 +90,11 @@ export function extractPage(doc: Document = document): PageData {
     const t = clean(a.innerText || a.getAttribute('aria-label')).slice(0, 200);
     if (t !== '') links.push({ text: t, href: a.href });
   }
+  return { url: doc.location.href, text, links, pageLabels: labelLikeTexts(doc) };
+}
+
+export function extractPage(doc: Document = document): PageData {
+  const quick = extractQuick(doc);
 
   let skippedImages = 0;
   const seen = new Set<string>();
@@ -94,20 +122,11 @@ export function extractPage(doc: Document = document): PageData {
   // on, because labels shown next to it count and its frames can be read while it plays.
   const videos = listVideos(doc).map((v) => ({ ...v, frameId: 0 }));
 
-  const pageLabels = doc.body ? shortTexts(doc.body).filter((s) => LABEL_WORDS.test(s)) : [];
-  for (const el of doc.querySelectorAll('[aria-label]')) {
-    const v = clean(el.getAttribute('aria-label'));
-    if (v.length <= SHORT && LABEL_WORDS.test(v) && !pageLabels.includes(v)) pageLabels.push(v);
-  }
-
   return {
-    url: doc.location.href,
+    ...quick,
     title: clean(doc.title).slice(0, 200),
-    text,
-    links,
     images,
     videos,
-    pageLabels: pageLabels.slice(0, 50),
     skippedImages,
   };
 }

@@ -6,7 +6,7 @@ import {
   type ContentRequest,
 } from '../messages.js';
 import { SETTING_BACKGROUND, type BackgroundRequest } from '../messages.js';
-import { extractPage, listVideos } from './extract.js';
+import { extractPage, extractQuick, listVideos } from './extract.js';
 import { captureFrames, visibleVideos } from './videos.js';
 
 /**
@@ -47,12 +47,8 @@ if (window.__isItRealContent !== true) {
     setTimeout(() => {
       void chrome.storage.local.get(SETTING_BACKGROUND).then((saved) => {
         if (saved[SETTING_BACKGROUND] === false) return;
-        const { url, text, links, pageLabels } = extractPage();
         void chrome.runtime
-          .sendMessage({
-            type: 'quick-scan',
-            page: { url, text, links, pageLabels },
-          } satisfies BackgroundRequest)
+          .sendMessage({ type: 'quick-scan', page: extractQuick() } satisfies BackgroundRequest)
           .catch(() => {
             // The extension was reloaded while this page stayed open.
           });

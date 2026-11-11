@@ -24,3 +24,13 @@ The plan puts video in the first version. Training a video detector is out of re
 - Streamed video (most video on the web) cannot be fetched as a file by the plugin. Only labels count there, unless screenshots of the playing video are passed in. The browser extension can read frames from the page itself; that is where this check becomes useful for everyday browsing.
 - First use downloads about 80 MB more when the computer has no ffmpeg.
 - The calibration set is small (164 videos). More real video of more kinds (phone clips, screen recordings, video calls) is the first thing to add.
+
+## Amendment (2026-11-11): one colour conversion for every host
+
+Building the browser extension showed that a video frame is not one thing. A decoder produces raw planes (YUV); a program then turns them into RGB, and each program does that its own way (which colour matrix, how the half-size colour planes are stretched). The picture model reacts to it: the same frames scored 1 to 2 points apart between ffmpeg's default conversion, used so far, and a browser's, on a scale where the cut-off is below 5. A graphics card adds its own variant.
+
+- **Rule:** frames are taken as the decoder's raw 8-bit 4:2:0 planes and converted to RGB by one fixed, integer-only rule in the core (`packages/core/src/video/yuv.ts`; Python copy `eval/reference/yuv.py`; a test checks that both give the same bytes). The plugin gets the planes from ffmpeg, the extension from the browser's decoder (WebCodecs), the evaluation from ffmpeg. The raw planes were checked to be identical between Chromium and ffmpeg.
+- The rule: BT.709 for HD sizes (width at least 1280 or height above 576), BT.601 otherwise; limited range unless the stream says full range; colour planes stretched with 9:3:3:1 weights. Tags in the file are not used, because a browser cannot tell a real tag from its own guess.
+- **Other layouts are not checked** (10-bit, 4:2:2, 4:4:4): they are rare on the web, and a second conversion rule would be a second instrument to calibrate.
+- The evaluation was scored again with this rule and the frame check recalibrated (`video.frames@0.2.0`). The calibration also covers the way the extension sees a playing video (frames about a second apart from one place), so one cut-off holds for files and for watched video.
+- Consequence for ADR-0011's rule ("same numbers in the evaluation and in the shipped path"): for video it now holds across the plugin and the extension, checked on real clips in both.

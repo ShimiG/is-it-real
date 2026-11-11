@@ -1,7 +1,8 @@
 /**
  * Loads an image for the checks: the same address the page already showed, fetched again by the
  * extension so the checks see the ORIGINAL file (its labels and signature), not a screenshot
- * (ADR-0008). The browser's cache is used when it has the file. Only the verdict is kept; the
+ * (ADR-0008). This is a second download: Chrome keeps an extension's cache apart from the page's.
+ * Only the verdict is kept; the
  * bytes are dropped after the check.
  */
 export const MAX_IMAGE_BYTES = 20 * 1024 * 1024;

@@ -72,11 +72,21 @@
     });
 
   const labelWords = /\b(ai|a\.i\.|synthetic|generated|imagined|content credentials|altered)\b/i;
-  const pageLabels = shortTexts(document.body).filter((s) => labelWords.test(s));
-  for (const el of document.querySelectorAll('[aria-label]')) {
-    const v = clean(el.getAttribute('aria-label'));
-    if (v.length <= SHORT && labelWords.test(v) && !pageLabels.includes(v)) pageLabels.push(v);
+  // Label-like short texts anywhere on the page (long feeds put them far down).
+  const labelSet = new Set();
+  let seen = 0;
+  for (const el of document.body.querySelectorAll('*')) {
+    if (++seen > 20000 || labelSet.size >= 50) break;
+    for (const attr of ['aria-label', 'title', 'alt']) {
+      const v = clean(el.getAttribute(attr));
+      if (v && v.length <= SHORT && labelWords.test(v)) labelSet.add(v);
+    }
+    if (el.childElementCount === 0) {
+      const v = clean(el.textContent);
+      if (v && v.length <= SHORT && labelWords.test(v)) labelSet.add(v);
+    }
   }
+  const pageLabels = [...labelSet];
 
   return JSON.stringify({
     page_url: location.href,

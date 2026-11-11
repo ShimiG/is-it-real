@@ -49,7 +49,7 @@ Other buttons in the panel:
 | Storage, unlimited storage       | To keep your settings and the two model files                                                                  |
 | Offscreen page, scripting        | To run the checks in a hidden page of the extension, and to reach pages that were open before it was installed |
 
-Network use: the pictures and video files of the page being checked (fetched again, without cookies, usually from the browser's cache), and once, if you switch on the picture check, the two model files from their authors' pages (checked against a checksum). Nothing else. No accounts, no statistics, no remote code.
+Network use: the pictures and video files of the page being checked (fetched again from the same addresses, without cookies; the site sees one more request for a file it already sent you), and once, if you switch on the picture check, the two model files from their authors' pages (checked against a checksum). Nothing else. No accounts, no statistics, no remote code.
 
 ## For developers
 

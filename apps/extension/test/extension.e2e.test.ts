@@ -239,6 +239,21 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     );
   }, 60_000);
 
+  it('finds a site label far down a long page', async () => {
+    // The label matcher only knows real platforms, so the page is read as if it were one: the
+    // page reader is asked directly what it found.
+    const { panel } = await loaded.openPanelFor(`${base}/label-page.html`);
+    const tabId = Number(new URL(panel.url()).searchParams.get('tabId'));
+    const answer = await panel.evaluate(
+      (tab) =>
+        chrome.tabs.sendMessage(tab, { type: 'extract-page' }, { frameId: 0 }) as Promise<{
+          page: { pageLabels: string[] };
+        }>,
+      tabId,
+    );
+    expect(answer.page.pageLabels).toEqual(['AI info']);
+  }, 60_000);
+
   it('refuses model files that are not the genuine ones', async () => {
     // A folder with files of the right names and the wrong content.
     await loaded.worker.evaluate(
