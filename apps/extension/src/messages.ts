@@ -18,7 +18,7 @@ export interface PageData {
 
 /** One checked item as the side panel shows it. */
 export interface PanelItem extends ItemResult {
-  /** Address of the picture, for a small preview next to the result. */
+  /** A small copy of the picture (a data: address) to show next to the result. */
   preview?: string;
 }
 
@@ -33,11 +33,35 @@ export interface PanelResult {
   engine: string;
 }
 
+/** The picture check's model files: not downloaded, on their way, ready to use, or the download failed. */
+export type ModelsState =
+  | { state: 'absent' }
+  | { state: 'downloading'; done: number; total: number }
+  | { state: 'ready' }
+  | { state: 'failed'; detail?: string };
+
+/** The numbers behind one picture's verdict (for tests and for people who want the details). */
+export interface PictureScore {
+  width: number;
+  height: number;
+  /** Photo-gate score: near 1 for plain photos. */
+  gate: number;
+  /** Raw picture-model score: higher is more AI-like. */
+  raw: number;
+}
+
 /** Side panel or background -> engine (the hidden extension page), over a port named ENGINE_PORT. */
-export type EngineRequest = { type: 'check-page'; page: PageData };
+export type EngineRequest =
+  | { type: 'check-page'; page: PageData }
+  | { type: 'models-status' }
+  /** `baseUrl` (developers and tests): fetch the files from this folder; the checksum still applies. */
+  | { type: 'install-models'; baseUrl?: string }
+  | { type: 'score-picture'; url: string };
 export type EngineEvent =
   | { type: 'progress'; done: number; total: number }
   | { type: 'result'; result: PanelResult }
+  | { type: 'models'; models: ModelsState }
+  | { type: 'score'; score: PictureScore | null }
   | { type: 'error'; message: string };
 
 export const ENGINE_PORT = 'isitreal-engine';

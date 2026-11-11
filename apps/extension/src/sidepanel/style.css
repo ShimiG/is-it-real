@@ -201,6 +201,9 @@ summary {
   padding: 0.5rem 0;
   text-decoration: underline;
 }
+#setup {
+  margin-top: 1.5rem;
+}
 .reminder {
   font-weight: 700;
 }

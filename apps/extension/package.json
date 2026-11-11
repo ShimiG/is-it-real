@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@isitreal/c2pa-node": "workspace:*",
+    "@isitreal/image-node": "workspace:*",
     "@types/chrome": "^0.3.7",
     "esbuild": "^0.28.2",
     "playwright": "1.63.0"

@@ -1,7 +1,10 @@
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import type { Server } from 'node:http';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { IMAGE_CLASSIFIER_MODEL, PHOTO_GATE_MODEL } from '@isitreal/core';
 import {
   browserAvailable,
   launchWithExtension,
@@ -24,7 +27,10 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
       encoding: 'utf8',
     });
     if (built.status !== 0) throw new Error(built.stderr);
-    ({ server, base } = await startServer());
+    const fake = mkdtempSync(join(tmpdir(), 'isitreal-fake-'));
+    for (const model of [IMAGE_CLASSIFIER_MODEL, PHOTO_GATE_MODEL])
+      writeFileSync(join(fake, model.file), 'not a model');
+    ({ server, base } = await startServer({ '/fake-models/': fake }));
     loaded = await launchWithExtension();
   }, 120_000);
 
@@ -85,6 +91,27 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     );
     expect(await scam.locator('.advice').count()).toBe(0);
   }, 60_000);
+
+  it('refuses model files that are not the genuine ones', async () => {
+    // A folder with files of the right names and the wrong content.
+    await loaded.worker.evaluate(
+      (url) => chrome.storage.local.set({ modelBaseUrl: url }),
+      `${base}/fake-models`,
+    );
+    const { panel } = await loaded.openPanelFor(`${base}/calm-page.html`);
+    await expect
+      .poll(() => panel.locator('#setup-text').innerText(), { timeout: 15_000 })
+      .toContain('Not set up yet');
+    await panel.getByRole('button', { name: 'Set up the picture check' }).click();
+    await expect
+      .poll(() => panel.locator('#setup-text').innerText(), { timeout: 30_000 })
+      .toContain('The download did not finish');
+    expect(await panel.getByRole('button', { name: 'Try again' }).isVisible()).toBe(true);
+    // Nothing was kept: a check still runs, without the picture model.
+    await panel.getByRole('button', { name: 'Check this page' }).click();
+    await expect.poll(() => panel.locator('.scam').count(), { timeout: 30_000 }).toBe(1);
+    await loaded.worker.evaluate(() => chrome.storage.local.remove('modelBaseUrl'));
+  }, 90_000);
 
   it('explains when a page cannot be checked', async () => {
     const panel = await loaded.context.newPage();

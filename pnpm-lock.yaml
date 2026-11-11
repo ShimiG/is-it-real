@@ -51,6 +51,9 @@ importers:
       '@isitreal/c2pa-node':
         specifier: workspace:*
         version: link:../../packages/c2pa-node
+      '@isitreal/image-node':
+        specifier: workspace:*
+        version: link:../../packages/image-node
       '@types/chrome':
         specifier: ^0.3.7
         version: 0.3.7

@@ -5,6 +5,7 @@ import {
   type ContentRequest,
   type EngineEvent,
   type EngineRequest,
+  type ModelsState,
   type PageData,
   type PanelResult,
 } from '../messages.js';
@@ -18,6 +19,9 @@ const progress = byId<HTMLProgressElement>('progress');
 const results = byId<HTMLDivElement>('results');
 const readAloud = byId<HTMLButtonElement>('read-aloud');
 const largeText = byId<HTMLButtonElement>('large-text');
+const setupText = byId<HTMLParagraphElement>('setup-text');
+const setupProgress = byId<HTMLProgressElement>('setup-progress');
+const setupButton = byId<HTMLButtonElement>('setup-button');
 
 let lastResult: PanelResult | null = null;
 
@@ -61,28 +65,97 @@ async function extract(tabId: number): Promise<PageData> {
   return answer.page;
 }
 
-function runEngine(page: PageData): Promise<PanelResult> {
-  return new Promise((resolve, reject) => {
-    const port = chrome.runtime.connect({ name: ENGINE_PORT });
-    let settled = false;
-    const finish = (fn: () => void) => {
-      if (settled) return;
-      settled = true;
-      fn();
-      port.disconnect();
-    };
-    port.onMessage.addListener((event: EngineEvent) => {
-      if (event.type === 'progress') {
-        progress.max = event.total;
-        progress.value = event.done;
-        progress.hidden = false;
-        status.textContent = STRINGS.progress(event.done, event.total);
-      } else if (event.type === 'result') finish(() => resolve(event.result));
-      else finish(() => reject(new Error(event.message)));
-    });
-    port.onDisconnect.addListener(() => finish(() => reject(new Error('engine closed'))));
-    port.postMessage({ type: 'check-page', page } satisfies EngineRequest);
+/** Starts the hidden engine page if needed and opens a line to it. */
+async function connectEngine(onEvent: (event: EngineEvent, close: () => void) => void): Promise<{
+  send: (request: EngineRequest) => void;
+  closed: Promise<void>;
+}> {
+  const ready = (await chrome.runtime.sendMessage({
+    type: 'ensure-engine',
+  } satisfies BackgroundRequest)) as { ok: boolean; error?: string };
+  if (!ready.ok) throw new Error(ready.error);
+  const port = chrome.runtime.connect({ name: ENGINE_PORT });
+  let finish: () => void = () => {};
+  const closed = new Promise<void>((resolve) => {
+    finish = resolve;
   });
+  const close = () => {
+    port.disconnect();
+    finish();
+  };
+  port.onMessage.addListener((event: EngineEvent) => onEvent(event, close));
+  port.onDisconnect.addListener(() => finish());
+  return { send: (request) => port.postMessage(request), closed };
+}
+
+async function runEngine(page: PageData): Promise<PanelResult> {
+  let result: PanelResult | null = null;
+  let failure: string | null = null;
+  const engine = await connectEngine((event, close) => {
+    if (event.type === 'progress') {
+      progress.max = event.total;
+      progress.value = event.done;
+      progress.hidden = false;
+      status.textContent = STRINGS.progress(event.done, event.total);
+    } else if (event.type === 'result') {
+      result = event.result;
+      close();
+    } else if (event.type === 'error') {
+      failure = event.message;
+      close();
+    }
+  });
+  engine.send({ type: 'check-page', page });
+  await engine.closed;
+  if (result === null) throw new Error(failure ?? 'engine closed');
+  return result;
+}
+
+const MB = 1024 * 1024;
+
+function showModels(models: ModelsState): void {
+  setupProgress.hidden = models.state !== 'downloading';
+  setupButton.hidden = models.state === 'downloading' || models.state === 'ready';
+  if (models.state === 'absent') {
+    setupText.textContent = STRINGS.setupAbsent;
+    setupButton.textContent = STRINGS.setupButton;
+  } else if (models.state === 'downloading') {
+    setupProgress.max = models.total;
+    setupProgress.value = models.done;
+    setupText.textContent = STRINGS.setupDownloading(
+      Math.round(models.done / MB),
+      Math.round(models.total / MB),
+    );
+  } else if (models.state === 'ready') setupText.textContent = STRINGS.setupReady;
+  else {
+    setupText.textContent = STRINGS.setupFailed;
+    setupButton.textContent = STRINGS.setupRetry;
+  }
+}
+
+/** Asks the engine about the picture check's files; with `install`, downloads them first. */
+async function models(install: boolean): Promise<void> {
+  try {
+    const engine = await connectEngine((event, close) => {
+      if (event.type === 'error') close();
+      if (event.type !== 'models') return;
+      showModels(event.models);
+      if (event.models.state !== 'downloading') close();
+    });
+    if (install) {
+      // Developers and tests can point the download at their own copy of the files.
+      const saved = await chrome.storage.local.get('modelBaseUrl');
+      const baseUrl = saved['modelBaseUrl'];
+      engine.send({
+        type: 'install-models',
+        ...(typeof baseUrl === 'string' ? { baseUrl } : {}),
+      });
+    } else engine.send({ type: 'models-status' });
+    await engine.closed;
+  } catch (err) {
+    console.error(err);
+    if (install) showModels({ state: 'failed' });
+  }
 }
 
 async function check(): Promise<void> {
@@ -94,10 +167,6 @@ async function check(): Promise<void> {
   try {
     const tab = await targetTab();
     const page = await extract(tab.id!);
-    const ready = (await chrome.runtime.sendMessage({
-      type: 'ensure-engine',
-    } satisfies BackgroundRequest)) as { ok: boolean; error?: string };
-    if (!ready.ok) throw new Error(ready.error);
     lastResult = await runEngine(page);
     results.replaceChildren(renderResult(lastResult));
     status.textContent = '';
@@ -144,6 +213,9 @@ byId('version').textContent = STRINGS.version(chrome.runtime.getManifest().versi
 checkButton.textContent = STRINGS.checkButton;
 readAloud.textContent = STRINGS.readAloud;
 largeText.textContent = STRINGS.largeText;
+byId('setup-title').textContent = STRINGS.setupHeading;
+setupButton.addEventListener('click', () => void models(true));
+void models(false);
 checkButton.addEventListener('click', () => void check());
 readAloud.addEventListener('click', toggleReading);
 largeText.addEventListener(

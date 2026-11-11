@@ -26,6 +26,8 @@ export interface EngineCapabilities {
   c2pa: () => Promise<C2paReader | null>;
   /** Picture model and photo gate, or null when not downloaded yet. */
   imageCheck: () => Promise<ImageStatisticalCheck | null>;
+  /** A small copy of the picture to show next to its result. */
+  thumbnail?: (bytes: Uint8Array) => Promise<string | null>;
   onProgress?: (done: number, total: number) => void;
 }
 
@@ -53,10 +55,7 @@ async function checkOneImage(
       { bytes: new Uint8Array(0), nearbyLabels: ref.labels },
       where,
     );
-    return {
-      ...itemFromVerdict(fromLabels, ref.url, STRINGS.noteImageUnreadable),
-      preview: ref.url,
-    };
+    return itemFromVerdict(fromLabels, ref.url, STRINGS.noteImageUnreadable);
   }
   const c2pa = await caps.c2pa();
   const statistical = await caps.imageCheck();
@@ -68,7 +67,8 @@ async function checkOneImage(
       ...(statistical === null ? {} : { statistical }),
     },
   );
-  return { ...itemFromVerdict(verdict, ref.url), preview: ref.url };
+  const preview = (await caps.thumbnail?.(bytes)) ?? null;
+  return { ...itemFromVerdict(verdict, ref.url), ...(preview === null ? {} : { preview }) };
 }
 
 /**

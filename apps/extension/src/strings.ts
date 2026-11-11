@@ -35,6 +35,15 @@ export const STRINGS = {
     'The picture check is not set up yet, so pictures were only checked for labels and signatures.',
   reminder:
     '"No clear signs" only means we found nothing. It does not prove that something is real or safe.',
+  setupHeading: 'Picture check',
+  setupAbsent:
+    'Not set up yet. The picture check can spot some AI-made photos that carry no label. It needs one download of about 220 MB. After that it works without the internet, and your pictures still never leave this computer.',
+  setupButton: 'Set up the picture check',
+  setupDownloading: (doneMb: number, totalMb: number) =>
+    `Downloading: ${doneMb} of ${totalMb} MB. You can keep using the browser.`,
+  setupReady: 'Ready. Pictures without a label are checked on this computer.',
+  setupFailed: 'The download did not finish. Check your internet connection and try again.',
+  setupRetry: 'Try again',
   largeText: 'Larger text',
   readAloud: 'Read the result aloud',
   stopReading: 'Stop reading',

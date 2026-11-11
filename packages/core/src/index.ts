@@ -27,3 +27,4 @@ export * from './video/container.js';
 export * from './video/provenance.js';
 export * from './video/frames.js';
 export * from './present.js';
+export * from './image/orientation.js';

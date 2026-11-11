@@ -18,6 +18,9 @@ await mkdir(out, { recursive: true });
 
 const common = {
   bundle: true,
+  // ONNX Runtime Web: load its WebAssembly glue from files in the package instead of code
+  // generated at run time, which Chrome does not allow in extensions.
+  conditions: ['onnxruntime-web-use-extern-wasm'],
   target: 'chrome120',
   legalComments: 'none',
   logLevel: 'warning',
@@ -52,6 +55,11 @@ await cp(join(here, 'src/offscreen/index.html'), join(out, 'offscreen.html'));
 // (the same file the plugin ships; see packages/c2pa-node/trust/README.md).
 const require = createRequire(import.meta.url);
 await cp(require.resolve('@contentauth/c2pa-wasm/c2pa.wasm'), join(out, 'c2pa.wasm'));
+// The model runtime (ONNX Runtime Web, CPU build). The model files themselves are not part of
+// the extension: they are downloaded once when the person switches the picture check on.
+await mkdir(join(out, 'ort'), { recursive: true });
+for (const file of ['ort-wasm-simd-threaded.wasm', 'ort-wasm-simd-threaded.mjs'])
+  await cp(require.resolve(`onnxruntime-web/${file}`), join(out, 'ort', file));
 await mkdir(join(out, 'trust'), { recursive: true });
 await cp(
   join(here, '..', '..', 'packages', 'c2pa-node', 'trust', 'C2PA-TRUST-LIST.pem'),

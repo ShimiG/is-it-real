@@ -5,15 +5,32 @@
   "description": "Checks the page you are looking at for scam warning signs and AI-made content. Free, open source, and everything stays on your computer.",
   "version": "0.0.0",
   "minimum_chrome_version": "120",
-  "action": { "default_title": "Is It Real? Check this page" },
-  "side_panel": { "default_path": "sidepanel.html" },
-  "background": { "service_worker": "background.js", "type": "module" },
+  "action": {
+    "default_title": "Is It Real? Check this page"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
   "content_scripts": [
-    { "matches": ["http://*/*", "https://*/*"], "js": ["content.js"], "run_at": "document_idle" }
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
   ],
-  "permissions": ["sidePanel", "offscreen", "scripting", "storage"],
+  "permissions": ["sidePanel", "offscreen", "scripting", "storage", "unlimitedStorage"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "cross_origin_embedder_policy": {
+    "value": "require-corp"
+  },
+  "cross_origin_opener_policy": {
+    "value": "same-origin"
   }
 }
