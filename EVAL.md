@@ -33,15 +33,16 @@ Honest summary: useful against older or unedited AI text, weak against current m
 
 ## AI images: labels and signatures
 
-| Source                                        | What the file carries                                                        | Result                                                                                                      |
-| --------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| ChatGPT original                              | Signed by OpenAI, trusted                                                    | Made with AI                                                                                                |
-| Gemini originals (2)                          | Signed by Google; AI claim in the image's signed history                     | Made with AI                                                                                                |
-| Copilot original                              | Signed by Microsoft; signature not fully up to the standard, image untouched | Made with AI (with a note)                                                                                  |
-| Meta AI original                              | Unsigned "made by AI" label                                                  | Made with AI                                                                                                |
-| Perchance original (free, open-source models) | Nothing                                                                      | **No clear signs (miss)**                                                                                   |
-| Gemini images pasted into a chat              | Nothing left after re-encoding                                               | **No clear signs (miss)**                                                                                   |
-| 26 official C2PA test images                  | Good, broken and unsigned                                                    | All classified as expected, except 3 that the current official library reports as broken (on the safe side) |
+| Source                                          | What the file carries                                                                    | Result                                                                                                      |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| ChatGPT original                                | Signed by OpenAI, trusted                                                                | Made with AI                                                                                                |
+| Gemini originals (2)                            | Signed by Google; AI claim in the image's signed history                                 | Made with AI                                                                                                |
+| Copilot original                                | Signed by Microsoft; signature not fully up to the standard, image untouched             | Made with AI (with a note)                                                                                  |
+| Lovable original (made with OpenAI's image API) | Signed by OpenAI; the API's certificate is not fully up to the standard, image untouched | Made with AI (with a note)                                                                                  |
+| Meta AI original                                | Unsigned "made by AI" label                                                              | Made with AI                                                                                                |
+| Perchance original (free, open-source models)   | Nothing                                                                                  | **No clear signs (miss)**                                                                                   |
+| Gemini images pasted into a chat                | Nothing left after re-encoding                                                           | **No clear signs (miss)**                                                                                   |
+| 26 official C2PA test images                    | Good, broken and unsigned                                                                | All classified as expected, except 3 that the current official library reports as broken (on the safe side) |
 
 Two real-file bugs were found and fixed on the way (an AI claim hidden one step back in Google's history; Microsoft's non-standard signature treated as tampering).
 

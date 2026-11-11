@@ -254,3 +254,35 @@ describe.skipIf(!existsSync(perchance))('real Perchance download (local only, kn
     });
   });
 });
+
+/** A real image generated in Lovable (which calls OpenAI's image API), fetched unchanged from Google Drive. Local only. */
+const lovable = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  '..',
+  'eval',
+  'datasets',
+  '.cache',
+  'private',
+  'lovable-originals',
+  'lovable-1.jpg',
+);
+describe.skipIf(!existsSync(lovable))(
+  'real Lovable download (OpenAI image API, local only)',
+  () => {
+    it('is "Made with AI"; the API certificate does not meet the standard, unlike the ChatGPT app\'s', async () => {
+      const verdict = await checkImageProvenance(await readFile(lovable), reader);
+      expect(verdict).toMatchObject({
+        outcome: 'verified_ai',
+        reasons: ['c2pa_declares_ai', 'c2pa_signature_not_standard'],
+      });
+      const c2pa = verdict.signals.find((s) => s.detector.startsWith('image.c2pa'))!;
+      expect(c2pa.details).toMatchObject({
+        state: 'unverified',
+        issuer: 'OpenAI OpCo, LLC',
+        failures: 'signingCredential.invalid',
+      });
+    });
+  },
+);

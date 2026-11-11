@@ -116,17 +116,18 @@ Fix: validation failures are split into tampering (claims ignored) and signer co
 
 **All seven real files so far:**
 
-| File                                           | Signer state                                                       | Outcome                     |
-| ---------------------------------------------- | ------------------------------------------------------------------ | --------------------------- |
-| ChatGPT original                               | trusted (OpenAI)                                                   | Made with AI                |
-| Gemini original 2                              | trusted (Google), claim in history                                 | Made with AI                |
-| Gemini original 1                              | intact, signer not recognised (Google), claim in history, plus XMP | Made with AI                |
-| Copilot original                               | content intact, signer not up to the standard (Microsoft)          | Made with AI                |
-| Meta AI original                               | **no Content Credentials**; unsigned IPTC label in XMP             | Made with AI                |
-| Perchance original (free, open-source models)  | **nothing at all**                                                 | No clear signs (**a miss**) |
-| Five Gemini images re-encoded by a chat upload | no manifest left                                                   | No clear signs              |
+| File                                           | Signer state                                                           | Outcome                     |
+| ---------------------------------------------- | ---------------------------------------------------------------------- | --------------------------- |
+| ChatGPT original                               | trusted (OpenAI)                                                       | Made with AI                |
+| Gemini original 2                              | trusted (Google), claim in history                                     | Made with AI                |
+| Gemini original 1                              | intact, signer not recognised (Google), claim in history, plus XMP     | Made with AI                |
+| Copilot original                               | content intact, signer not up to the standard (Microsoft)              | Made with AI                |
+| Lovable original (OpenAI image API)            | content intact, signer not up to the standard (OpenAI API certificate) | Made with AI                |
+| Meta AI original                               | **no Content Credentials**; unsigned IPTC label in XMP                 | Made with AI                |
+| Perchance original (free, open-source models)  | **nothing at all**                                                     | No clear signs (**a miss**) |
+| Five Gemini images re-encoded by a chat upload | no manifest left                                                       | No clear signs              |
 
-Five generators: four label their images in four different ways, and one labels nothing. Each original needed the checks to read it the way that company writes it. That is the main lesson: test against real files from every major generator, and keep doing so as they change.
+Six sources: five label their images (in four different ways, plus Lovable passing OpenAI's label through), and one labels nothing. Each original needed the checks to read it the way that company writes it. That is the main lesson: test against real files from every major generator, and keep doing so as they change.
 
 ### Real-world check: an ORIGINAL Meta AI download (2026-11-11)
 
@@ -151,6 +152,19 @@ One JPEG from Perchance, a free generator built on open-source image models, sha
 | Size                                               | 768 x 512, a common size for open-source diffusion models (also common elsewhere, so not evidence) |
 
 This is the most important gap so far. The big commercial generators label their images; free tools on open-source models often label nothing, and those are easy for anyone, including scammers, to use. Provenance cannot help with them. Only the statistical image detection (blocked below) can, and even that will be imperfect. A local-only test records this file as a known miss so it can be revisited when statistical detection exists.
+
+### Real-world check: an ORIGINAL Lovable download (2026-11-11)
+
+One JPEG generated inside Lovable, shared unchanged through Google Drive. Lovable does not make its own images: the file carries **OpenAI's** Content Credentials, created through OpenAI's image API. Result: **Made with AI**, with the "cannot confirm who signed it" note. No code changes.
+
+|                              | ChatGPT app                               | OpenAI image API (via Lovable)                                                               |
+| ---------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Signer                       | OpenAI OpCo, LLC ("OpenAI Media Service") | Same name, **different certificate** (ES256 instead of PS256)                                |
+| Validator                    | Trusted                                   | `signingCredential.invalid`: "certificate missing required EKU", the same gap as Microsoft's |
+| Created by                   | "ChatGPT", `gpt-image`                    | "API", `gpt-image`                                                                           |
+| Invisible watermark declared | Yes (`c2pa.watermarked.unbound`)          | **No**                                                                                       |
+
+Lessons: one company can sign with different certificates in different products, so trust state is per product, not per company. And apps built on another company's model (Lovable here) pass the model maker's label through, so "who made it" in the evidence names the model maker, not the app.
 
 ## Blocked: statistical image detection
 
