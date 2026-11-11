@@ -1,0 +1,21 @@
+{
+  "name": "@isitreal/video-node",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Reads frames from video files in Node with ffmpeg, for the detection core.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ffmpeg": "./src/ffmpeg.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@isitreal/core": "workspace:*"
+  },
+  "devDependencies": {
+    "ffmpeg-static": "5.3.0"
+  }
+}

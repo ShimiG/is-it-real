@@ -1,6 +1,6 @@
 import { resolveOutcome } from '../outcome.js';
 import { detectFormat, sniffImage, type ImageFormat } from '../provenance/sniff.js';
-import type { DetectorResult, ReasonCode, Verdict } from '../types.js';
+import type { DetectorResult, Modality, ReasonCode, Verdict } from '../types.js';
 
 /**
  * Image provenance: what the file itself says about where it came from.
@@ -203,7 +203,11 @@ export function summarizeManifestStore(store: unknown): C2paSummary | null {
 export const C2PA_DETECTOR = 'image.c2pa@0.1.0';
 export const METADATA_DETECTOR = 'image.metadata@0.1.0';
 
-export function c2paResult(summary: C2paSummary): DetectorResult {
+export function c2paResult(
+  summary: C2paSummary,
+  modality: Modality = 'image',
+  detector: string = C2PA_DETECTOR,
+): DetectorResult {
   const details: Record<string, string | number | boolean> = { state: summary.state };
   if (summary.issuer !== null) details['issuer'] = summary.issuer;
   if (summary.generators.length > 0) details['generators'] = summary.generators.join(', ');
@@ -235,8 +239,8 @@ export function c2paResult(summary: C2paSummary): DetectorResult {
   return {
     status: 'assessed',
     signal: {
-      detector: C2PA_DETECTOR,
-      modality: 'image',
+      detector,
+      modality,
       kind: 'provenance',
       score,
       reasons,

@@ -18,7 +18,8 @@
     "@isitreal/lm-node": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "zod": "^4.6.7",
-    "@isitreal/image-node": "workspace:*"
+    "@isitreal/image-node": "workspace:*",
+    "@isitreal/video-node": "workspace:*"
   },
   "devDependencies": {
     "esbuild": "^0.28.2"

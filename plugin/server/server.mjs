@@ -7256,7 +7256,7 @@ var require_dist = __commonJS({
 });
 
 // src/server.ts
-import { dirname, join as join2 } from "node:path";
+import { dirname, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // ../../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v3/helpers/util.js
@@ -27935,7 +27935,7 @@ function visit(schema, fnOrHandlers) {
     return h ? h(node2, rewritten) : node2;
   };
   const cache = /* @__PURE__ */ new Map();
-  function run(s) {
+  function run2(s) {
     const cached2 = cache.get(s);
     if (cached2 === RESOLVING) {
       return new $ZodLazy({
@@ -27961,21 +27961,21 @@ function visit(schema, fnOrHandlers) {
         let changed = false;
         const newShape = {};
         for (const k of keys) {
-          const mapped = run(oldShape[k]);
+          const mapped = run2(oldShape[k]);
           if (mapped !== oldShape[k])
             changed = true;
           newShape[k] = mapped;
         }
         let newCatchall = def.catchall;
         if (def.catchall) {
-          newCatchall = run(def.catchall);
+          newCatchall = run2(def.catchall);
           if (newCatchall !== def.catchall)
             changed = true;
         }
         return changed ? clone(s, { ...def, shape: newShape, catchall: newCatchall }) : s;
       }
       case "array": {
-        const mapped = run(def.element);
+        const mapped = run2(def.element);
         return mapped === def.element ? s : clone(s, { ...def, element: mapped });
       }
       case "tuple": {
@@ -27983,14 +27983,14 @@ function visit(schema, fnOrHandlers) {
         let changed = false;
         const newItems = [];
         for (const item of oldItems) {
-          const mapped = run(item);
+          const mapped = run2(item);
           if (mapped !== item)
             changed = true;
           newItems.push(mapped);
         }
         let newRest = def.rest;
         if (def.rest) {
-          newRest = run(def.rest);
+          newRest = run2(def.rest);
           if (newRest !== def.rest)
             changed = true;
         }
@@ -27998,12 +27998,12 @@ function visit(schema, fnOrHandlers) {
       }
       case "record":
       case "map": {
-        const newKey = run(def.keyType);
-        const newVal = run(def.valueType);
+        const newKey = run2(def.keyType);
+        const newVal = run2(def.valueType);
         return newKey === def.keyType && newVal === def.valueType ? s : clone(s, { ...def, keyType: newKey, valueType: newVal });
       }
       case "set": {
-        const newVal = run(def.valueType);
+        const newVal = run2(def.valueType);
         return newVal === def.valueType ? s : clone(s, { ...def, valueType: newVal });
       }
       case "union": {
@@ -28011,7 +28011,7 @@ function visit(schema, fnOrHandlers) {
         let changed = false;
         const newOptions = [];
         for (const opt of oldOptions) {
-          const mapped = run(opt);
+          const mapped = run2(opt);
           if (mapped !== opt)
             changed = true;
           newOptions.push(mapped);
@@ -28019,8 +28019,8 @@ function visit(schema, fnOrHandlers) {
         return changed ? clone(s, { ...def, options: newOptions }) : s;
       }
       case "intersection": {
-        const newLeft = run(def.left);
-        const newRight = run(def.right);
+        const newLeft = run2(def.left);
+        const newRight = run2(def.right);
         return newLeft === def.left && newRight === def.right ? s : clone(s, { ...def, left: newLeft, right: newRight });
       }
       case "optional":
@@ -28032,23 +28032,23 @@ function visit(schema, fnOrHandlers) {
       case "nonoptional":
       case "promise":
       case "success": {
-        const newInner = run(def.innerType);
+        const newInner = run2(def.innerType);
         return newInner === def.innerType ? s : clone(s, { ...def, innerType: newInner });
       }
       case "pipe": {
-        const newIn = run(def.in);
-        const newOut = run(def.out);
+        const newIn = run2(def.in);
+        const newOut = run2(def.out);
         return newIn === def.in && newOut === def.out ? s : clone(s, { ...def, in: newIn, out: newOut });
       }
       case "function": {
-        const newInput = run(def.input);
-        const newOutput = run(def.output);
+        const newInput = run2(def.input);
+        const newOutput = run2(def.output);
         return newInput === def.input && newOutput === def.output ? s : clone(s, { ...def, input: newInput, output: newOutput });
       }
       case "lazy": {
         const original = def.getter;
         const { _cachedInner, ...rest } = def;
-        return clone(s, { ...rest, getter: () => run(original()) });
+        return clone(s, { ...rest, getter: () => run2(original()) });
       }
       // A leaf by choice: `parts` are regex fragments, not data positions.
       case "template_literal":
@@ -28079,7 +28079,7 @@ function visit(schema, fnOrHandlers) {
       }
     }
   }
-  return run(schema);
+  return run2(schema);
 }
 
 // ../../node_modules/.pnpm/@modelcontextprotocol+sdk@1.32.2_zod@4.6.7/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js
@@ -36755,6 +36755,7 @@ var REASON_TEXT = {
   text_uniform_style: "The writing style is unusually even and predictable.",
   image_spectral_artifacts: "The picture has hidden patterns that AI image tools often leave.",
   image_classifier_ai: "A picture-checking model found features typical of AI images.",
+  video_frames_ai: "A picture-checking model found features typical of AI images in most of the frames we looked at.",
   video_temporal_inconsistency: "The video flickers or changes in ways real cameras usually do not.",
   scam_urgency: "It pressures you to act fast or threatens you.",
   scam_unusual_payment: "It asks for payment by gift cards, crypto or wire transfer.",
@@ -36773,7 +36774,8 @@ var REASON_TEXT = {
   unsupported_language: "This language is not supported yet.",
   unreadable_media: "We could not read this item.",
   uncalibrated_bucket: "We have not tested this kind of content enough to judge it.",
-  not_a_photo: "This looks like a drawing, a screenshot or a picture with added text. Our picture check only works on plain photos."
+  not_a_photo: "This looks like a drawing, a screenshot or a picture with added text. Our picture check only works on plain photos.",
+  video_not_plain_footage: "This video looks animated, or has text or graphics over the picture. Our frame check only works on plain camera-style video."
 };
 var SCAM_ADVICE = [
   "Do not pay, and do not share codes or passwords.",
@@ -36833,6 +36835,9 @@ function sniffImage(bytes) {
     xmpAiSourceTypes,
     generatorHints: [...new Set(generatorHints)]
   };
+}
+function xmpAiSourceTypesIn(bytes) {
+  return findAiSourceTypes(xmpPackets(latin1(bytes)).join("\n"));
 }
 function findAiSourceTypes(text) {
   const lower = text.toLowerCase();
@@ -41144,7 +41149,7 @@ function summarizeManifestStore(store) {
 }
 var C2PA_DETECTOR = "image.c2pa@0.1.0";
 var METADATA_DETECTOR = "image.metadata@0.1.0";
-function c2paResult(summary) {
+function c2paResult(summary, modality = "image", detector = C2PA_DETECTOR) {
   const details = { state: summary.state };
   if (summary.issuer !== null) details["issuer"] = summary.issuer;
   if (summary.generators.length > 0) details["generators"] = summary.generators.join(", ");
@@ -41166,8 +41171,8 @@ function c2paResult(summary) {
   return {
     status: "assessed",
     signal: {
-      detector: C2PA_DETECTOR,
-      modality: "image",
+      detector,
+      modality,
       kind: "provenance",
       score,
       reasons,
@@ -42611,6 +42616,118 @@ var ENSEMBLE_FEATURE_NAMES = [
   ...LM_FEATURES.map((f) => `lm.${f}`)
 ];
 
+// ../core/src/video/video-frames.model.json
+var video_frames_model_default = {
+  id: "video.frames@untrained",
+  imageModelId: "image.classifier.commfor-lq@0.1.0",
+  gateId: "image.photo-gate@0.1.0",
+  frames: 6,
+  minChecked: 4,
+  calibration: [],
+  calibratedOn: ""
+};
+
+// ../core/src/video/frames.ts
+var VIDEO_FRAMES_MODEL = video_frames_model_default;
+function median(values) {
+  const s = [...values].sort((a, b) => a - b);
+  const mid = s.length >> 1;
+  return s.length % 2 === 1 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+async function detectVideoFrames(frames, check2) {
+  const { gate, runner, imageModel, model: m } = check2;
+  if (imageModel.id !== m.imageModelId || gate.model.id !== m.gateId)
+    throw new Error(
+      `Calibration ${m.id} belongs to ${m.imageModelId} and ${m.gateId}, not ${imageModel.id} and ${gate.model.id}`
+    );
+  if (runner.id !== imageModel.runnerId)
+    throw new Error(`Model ${imageModel.id} belongs to ${imageModel.runnerId}, not ${runner.id}`);
+  if (frames.length === 0)
+    return { status: "not_assessed", detector: m.id, reason: "unreadable_media" };
+  const usable2 = frames.filter((f) => Math.min(f.width, f.height) >= imageModel.minSide);
+  if (usable2.length === 0) return { status: "not_assessed", detector: m.id, reason: "too_short" };
+  const scores = [];
+  for (const frame of usable2) {
+    if (!await isPhotoLike(frame, gate)) continue;
+    scores.push(await runner.run(preprocessForClassifier(frame, imageModel), imageModel.cropSize));
+  }
+  if (scores.length < m.minChecked)
+    return { status: "not_assessed", detector: m.id, reason: "video_not_plain_footage" };
+  const raw = median(scores);
+  return {
+    status: "assessed",
+    signal: {
+      detector: m.id,
+      modality: "video",
+      kind: "statistical",
+      score: conformalScore(raw, m.calibration),
+      reasons: ["video_frames_ai"],
+      details: {
+        raw: Number(raw.toFixed(4)),
+        frames: frames.length,
+        framesChecked: scores.length,
+        calibrationSize: m.calibration.length
+      }
+    }
+  };
+}
+
+// ../core/src/video/container.ts
+var IMAGE_BRANDS = /* @__PURE__ */ new Set(["avif", "avis", "heic", "heix", "hevc", "hevx", "mif1", "msf1"]);
+function detectVideoFormat(b) {
+  if (b.length >= 12 && String.fromCharCode(b[4], b[5], b[6], b[7]) === "ftyp") {
+    const brand = String.fromCharCode(b[8], b[9], b[10], b[11]);
+    if (IMAGE_BRANDS.has(brand)) return "unknown";
+    return brand === "qt  " ? "mov" : "mp4";
+  }
+  if (b.length >= 4 && b[0] === 26 && b[1] === 69 && b[2] === 223 && b[3] === 163)
+    return "webm";
+  return "unknown";
+}
+var VIDEO_MIME = {
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  webm: null,
+  unknown: null
+};
+
+// ../core/src/video/provenance.ts
+var VIDEO_C2PA_DETECTOR = "video.c2pa@0.1.0";
+var VIDEO_METADATA_DETECTOR = "video.metadata@0.1.0";
+function videoMetadataResult(bytes) {
+  const declared = xmpAiSourceTypesIn(bytes).length > 0;
+  return {
+    status: "assessed",
+    signal: {
+      detector: VIDEO_METADATA_DETECTOR,
+      modality: "video",
+      kind: "provenance",
+      score: declared ? 1 : 0,
+      reasons: declared ? ["iptc_trained_algorithmic_media"] : [],
+      details: { format: detectVideoFormat(bytes) }
+    }
+  };
+}
+async function checkVideoProvenance(bytes, reader) {
+  const format = detectVideoFormat(bytes);
+  if (format === "unknown")
+    return resolveOutcome("video", [
+      { status: "not_assessed", detector: VIDEO_METADATA_DETECTOR, reason: "unreadable_media" }
+    ]);
+  const results = [videoMetadataResult(bytes)];
+  const mime = VIDEO_MIME[format];
+  if (reader !== void 0 && mime !== null) {
+    let store = null;
+    try {
+      store = await reader.read(bytes, mime);
+    } catch {
+    }
+    const summary = summarizeManifestStore(store);
+    if (summary !== null) results.push(c2paResult(summary, "video", VIDEO_C2PA_DETECTOR));
+  }
+  return resolveOutcome("video", results);
+}
+
 // ../core/src/page.ts
 var LABEL_DETECTOR = `page.platform-label@${PLATFORM_LABELS_VERSION}`;
 function labelResult(hostname3, labels2) {
@@ -42637,6 +42754,26 @@ async function checkImage(image, context = {}) {
   if (label === null && statistical === null) return provenance;
   const fileResults = provenance.outcome === "not_assessed" ? [] : provenance.signals.map((signal) => ({ status: "assessed", signal }));
   return resolveOutcome("image", [
+    ...fileResults,
+    ...label === null ? [] : [label],
+    ...statistical === null ? [] : [statistical]
+  ]);
+}
+async function checkVideo(video, context = {}) {
+  const provenance = video.bytes === void 0 ? null : await checkVideoProvenance(video.bytes, context.c2pa);
+  const label = labelResult(context.hostname, video.nearbyLabels);
+  const declared = provenance?.outcome === "verified_ai" || label !== null;
+  let statistical = null;
+  if (context.frameCheck !== void 0 && video.frames !== void 0 && !declared) {
+    const frames = await video.frames();
+    statistical = frames === null ? {
+      status: "not_assessed",
+      detector: context.frameCheck.model.id,
+      reason: "unreadable_media"
+    } : await detectVideoFrames(frames, context.frameCheck);
+  }
+  const fileResults = provenance === null || provenance.outcome === "not_assessed" ? [] : provenance.signals.map((signal) => ({ status: "assessed", signal }));
+  return resolveOutcome("video", [
     ...fileResults,
     ...label === null ? [] : [label],
     ...statistical === null ? [] : [statistical]
@@ -43312,7 +43449,7 @@ var commfor_low_quality_model_default = {
 var IMAGE_CLASSIFIER_MODEL = commfor_low_quality_model_default;
 
 // src/load.ts
-import { spawn } from "node:child_process";
+import { spawn as spawn2, spawnSync } from "node:child_process";
 import { createHash as createHash2 } from "node:crypto";
 import { createWriteStream, renameSync, rmSync } from "node:fs";
 import { existsSync as existsSync3, mkdirSync, readFileSync } from "node:fs";
@@ -95599,6 +95736,141 @@ async function loadGpt2With(ort, modelPath, opts = {}) {
   };
 }
 
+// ../video-node/src/ffmpeg.ts
+import { spawn } from "node:child_process";
+import { open as open2 } from "node:fs/promises";
+var MAX_FRAME_PIXELS = 4e7;
+var DEMUXER = {
+  mp4: "mov",
+  mov: "mov",
+  webm: "matroska"
+};
+function run(ffmpeg, args, maxStdout, timeoutMs) {
+  return new Promise((resolve) => {
+    const child = spawn(ffmpeg, args, { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+    const chunks = [];
+    let size = 0;
+    let stderr = "";
+    const timer = setTimeout(() => child.kill("SIGKILL"), timeoutMs);
+    child.stdout.on("data", (d) => {
+      size += d.length;
+      if (size > maxStdout) child.kill("SIGKILL");
+      else chunks.push(d);
+    });
+    child.stderr.on("data", (d) => {
+      if (stderr.length < 65536) stderr += d.toString("latin1");
+    });
+    const done = (code) => {
+      clearTimeout(timer);
+      resolve({ code, stdout: size > maxStdout ? Buffer.alloc(0) : Buffer.concat(chunks), stderr });
+    };
+    child.on("error", () => done(null));
+    child.on("close", done);
+  });
+}
+async function ffmpegWorks(ffmpeg) {
+  const r = await run(ffmpeg, ["-hide_banner", "-version"], 65536, 1e4);
+  return r.code === 0 && /^ffmpeg version/m.test(r.stdout.toString("latin1"));
+}
+async function videoFormatOf(file2) {
+  try {
+    const handle = await open2(file2, "r");
+    try {
+      const head = new Uint8Array(16);
+      const { bytesRead } = await handle.read(head, 0, 16, 0);
+      return detectVideoFormat(head.subarray(0, bytesRead));
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    return "unknown";
+  }
+}
+var inputArgs = (file2, format) => [
+  "-protocol_whitelist",
+  "file",
+  "-f",
+  DEMUXER[format],
+  "-i",
+  file2
+];
+async function videoDuration(ffmpeg, file2, opts = {}) {
+  const format = await videoFormatOf(file2);
+  if (format === "unknown") return null;
+  const r = await run(
+    ffmpeg,
+    ["-hide_banner", "-nostdin", ...inputArgs(file2, format)],
+    1024,
+    opts.timeoutMs ?? 2e4
+  );
+  if (!/Stream #\d+:\d+.*: Video:/.test(r.stderr)) return null;
+  const m = /Duration: (\d+):(\d\d):(\d\d(?:\.\d+)?)/.exec(r.stderr);
+  if (m === null) return null;
+  const seconds = Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]);
+  return seconds > 0 ? seconds : null;
+}
+function decodeBmp(buf) {
+  if (buf.length < 54 || buf[0] !== 66 || buf[1] !== 77) return null;
+  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const offset = view.getUint32(10, true);
+  const width = view.getInt32(18, true);
+  const rawHeight = view.getInt32(22, true);
+  const height = Math.abs(rawHeight);
+  if (view.getUint16(28, true) !== 24 || view.getUint32(30, true) !== 0) return null;
+  if (width <= 0 || height <= 0 || width * height > MAX_FRAME_PIXELS) return null;
+  const stride = width * 3 + 3 & ~3;
+  if (offset + stride * height > buf.length) return null;
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    let src = offset + (rawHeight > 0 ? height - 1 - y : y) * stride;
+    let dst = y * width * 4;
+    for (let x = 0; x < width; x++, src += 3, dst += 4) {
+      data[dst] = buf[src + 2];
+      data[dst + 1] = buf[src + 1];
+      data[dst + 2] = buf[src];
+      data[dst + 3] = 255;
+    }
+  }
+  return { width, height, data };
+}
+async function frameAt(ffmpeg, file2, seconds, opts = {}) {
+  const format = await videoFormatOf(file2);
+  if (format === "unknown") return null;
+  const r = await run(
+    ffmpeg,
+    [
+      "-v",
+      "error",
+      "-nostdin",
+      "-ss",
+      seconds.toFixed(3),
+      ...inputArgs(file2, format),
+      "-frames:v",
+      "1",
+      "-f",
+      "image2pipe",
+      "-vcodec",
+      "bmp",
+      "-pix_fmt",
+      "bgr24",
+      "-"
+    ],
+    MAX_FRAME_PIXELS * 3 + 4096,
+    opts.timeoutMs ?? 3e4
+  );
+  return r.stdout.length === 0 ? null : decodeBmp(r.stdout);
+}
+async function extractFrames(ffmpeg, file2, count2, opts = {}) {
+  const duration3 = await videoDuration(ffmpeg, file2, opts);
+  if (duration3 === null) return [];
+  const frames = [];
+  for (let k = 0; k < count2; k++) {
+    const frame = await frameAt(ffmpeg, file2, duration3 * (k + 0.5) / count2, opts);
+    if (frame !== null) frames.push(frame);
+  }
+  return frames;
+}
+
 // src/load.ts
 var C2PA_PACKAGE = "@contentauth/c2pa-node";
 var C2PA_VERSION = "0.10.0";
@@ -95606,6 +95878,8 @@ var ORT_PACKAGE = "onnxruntime-node";
 var ORT_VERSION = "1.31.1";
 var SHARP_PACKAGE = "sharp";
 var SHARP_VERSION = "0.35.5";
+var FFMPEG_PACKAGE = "ffmpeg-static";
+var FFMPEG_VERSION = "5.3.0";
 var log = (msg) => process.stderr.write(`[is-it-real] ${msg}
 `);
 var usable = (v) => v !== void 0 && v !== "" && !v.includes("${") && isAbsolute(v);
@@ -95628,7 +95902,7 @@ function npmInstall(dir, specs) {
   mkdirSync(dir, { recursive: true });
   return new Promise((resolve) => {
     log(`installing ${specs.join(", ")} into ${dir} (first use only)...`);
-    const child = spawn(
+    const child = spawn2(
       process.platform === "win32" ? "npm.cmd" : "npm",
       ["install", "--no-audit", "--no-fund", "--omit=dev", "--prefix", dir, ...specs],
       { stdio: ["ignore", "pipe", "pipe"], shell: process.platform === "win32" }
@@ -95659,6 +95933,8 @@ function wantedPackages(settings) {
   if (needsOrt) want.push([ORT_PACKAGE, ORT_VERSION]);
   if (settings.imageModel && settings.nativeFrom === void 0)
     want.push([SHARP_PACKAGE, SHARP_VERSION]);
+  if (settings.video && settings.imageModel && settings.ffmpegPath === void 0)
+    want.push([FFMPEG_PACKAGE, FFMPEG_VERSION]);
   return want;
 }
 var installs = /* @__PURE__ */ new Map();
@@ -95681,6 +95957,14 @@ function ensureInstalled(settings) {
     installs.set(key, pending);
   }
   return pending;
+}
+function systemFfmpeg() {
+  try {
+    const r = spawnSync("ffmpeg", ["-hide_banner", "-version"], { timeout: 1e4 });
+    return r.status === 0 ? "ffmpeg" : void 0;
+  } catch {
+    return void 0;
+  }
 }
 function lazyC2pa(settings) {
   let pending = null;
@@ -95797,6 +96081,39 @@ function lazyImageCheck(settings, model = IMAGE_CLASSIFIER_MODEL, gateModel = PH
     }
   })();
 }
+function lazyVideoCheck(settings, imageCheck, model = VIDEO_FRAMES_MODEL) {
+  let pending = null;
+  return () => pending ??= (async () => {
+    if (!settings.video || model.calibration.length === 0) return null;
+    const image = await imageCheck();
+    if (image === null) return null;
+    if (image.model.id !== model.imageModelId || image.gate.model.id !== model.gateId) {
+      log(`the video calibration ${model.id} does not match the picture model; video check off`);
+      return null;
+    }
+    let ffmpeg = settings.ffmpegPath;
+    if (ffmpeg === void 0) {
+      await ensureInstalled(settings);
+      const pkg = await loadPackage(settings.dataDir, FFMPEG_PACKAGE, FFMPEG_VERSION);
+      ffmpeg = pkg?.default ?? void 0;
+    }
+    if (ffmpeg === void 0 || !await ffmpegWorks(ffmpeg)) {
+      log("no working ffmpeg found; video frames will not be checked");
+      return null;
+    }
+    const program = ffmpeg;
+    return {
+      frameCheck: {
+        gate: image.gate,
+        runner: image.runner,
+        imageModel: image.model,
+        model
+      },
+      extractFrames: (file2, count2) => extractFrames(program, file2, count2),
+      decodeImage: image.decode
+    };
+  })();
+}
 
 // src/format.ts
 var HOW_TO_REPORT = 'Report the scam result first, then each item, using the titles and reason texts given here. Do not add your own opinion about whether something is AI-made, and do not change any outcome. Never say content is "real", "human", "genuine" or "safe": "No clear signs" only means nothing was found. Use plain, calm language. If there is a scam warning, repeat the advice.';
@@ -95812,7 +96129,7 @@ function itemFromVerdict(v, source, note) {
   }
   const text = OUTCOME_TEXT[v.outcome];
   return {
-    kind: v.modality === "video" ? "image" : v.modality,
+    kind: v.modality,
     source,
     outcome: v.outcome,
     title: text.title,
@@ -95842,8 +96159,9 @@ function summaryLines(scam, items) {
     for (const a of scam.advice) lines.push(`  * ${a}`);
   }
   let image = 0;
+  let video = 0;
   items.forEach((item) => {
-    const label = item.kind === "text" ? "Text" : item.kind === "image" ? `Image ${++image}` : "Page label";
+    const label = item.kind === "text" ? "Text" : item.kind === "image" ? `Image ${++image}` : item.kind === "video" ? `Video ${++video}` : "Page label";
     lines.push(`${label}: ${item.title}. ${item.explanation}`);
     for (const r of item.reasons) lines.push(`  - ${r.text}`);
     if (item.note !== void 0) lines.push(`  (${item.note})`);
@@ -95853,12 +96171,30 @@ function summaryLines(scam, items) {
 
 // src/media.ts
 import { lookup } from "node:dns/promises";
-import { readFile, stat } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { isIP } from "node:net";
-import { extname, isAbsolute as isAbsolute2 } from "node:path";
+import { tmpdir } from "node:os";
+import { extname, isAbsolute as isAbsolute2, join as join2 } from "node:path";
 var MAX_MEDIA_BYTES = 20 * 1024 * 1024;
 var FETCH_TIMEOUT_MS = 15e3;
+var MAX_VIDEO_URL_BYTES = 100 * 1024 * 1024;
+var MAX_VIDEO_FILE_BYTES = 200 * 1024 * 1024;
+var VIDEO_FETCH_TIMEOUT_MS = 6e4;
+var IMAGE_LIMITS = {
+  what: "image",
+  maxBytes: MAX_MEDIA_BYTES,
+  timeoutMs: FETCH_TIMEOUT_MS,
+  accept: "image/*"
+};
+var VIDEO_LIMITS = {
+  what: "video",
+  maxBytes: MAX_VIDEO_URL_BYTES,
+  timeoutMs: VIDEO_FETCH_TIMEOUT_MS,
+  accept: "video/*"
+};
+var mb = (bytes) => `${Math.round(bytes / (1024 * 1024))} MB`;
 var MAX_REDIRECTS = 5;
+var VIDEO_EXTENSIONS = /* @__PURE__ */ new Set([".mp4", ".m4v", ".mov", ".webm", ".mkv"]);
 var IMAGE_EXTENSIONS = /* @__PURE__ */ new Set([
   ".jpg",
   ".jpeg",
@@ -95910,10 +96246,10 @@ async function assertPublicHost(url2, opts) {
       "blocked"
     );
 }
-async function readCapped(res) {
+async function readCapped(res, limits) {
+  const tooLarge = () => new MediaError(`The ${limits.what} is larger than ${mb(limits.maxBytes)}.`, "too_large");
   const declared = Number(res.headers.get("content-length") ?? "0");
-  if (declared > MAX_MEDIA_BYTES)
-    throw new MediaError("The image is larger than 20 MB.", "too_large");
+  if (declared > limits.maxBytes) throw tooLarge();
   if (res.body === null) return new Uint8Array(0);
   const chunks = [];
   let total = 0;
@@ -95922,9 +96258,9 @@ async function readCapped(res) {
     const { done, value } = await reader.read();
     if (done) break;
     total += value.length;
-    if (total > MAX_MEDIA_BYTES) {
+    if (total > limits.maxBytes) {
       await reader.cancel();
-      throw new MediaError("The image is larger than 20 MB.", "too_large");
+      throw tooLarge();
     }
     chunks.push(value);
   }
@@ -95936,17 +96272,7 @@ async function readCapped(res) {
   }
   return out;
 }
-async function loadFromUrl(raw, opts = {}) {
-  if (raw.startsWith("data:image/")) {
-    const comma = raw.indexOf(",");
-    const meta3 = raw.slice(0, comma);
-    const body = raw.slice(comma + 1);
-    if (comma < 0 || !meta3.endsWith(";base64"))
-      throw new MediaError("Unsupported data link.", "unreadable");
-    if (body.length > MAX_MEDIA_BYTES * 4 / 3)
-      throw new MediaError("The image is larger than 20 MB.", "too_large");
-    return new Uint8Array(Buffer.from(body, "base64"));
-  }
+async function fetchGuarded(raw, opts, limits) {
   let url2;
   try {
     url2 = new URL(raw);
@@ -95959,8 +96285,8 @@ async function loadFromUrl(raw, opts = {}) {
     const res = await doFetch(url2, {
       redirect: "manual",
       credentials: "omit",
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      headers: { accept: "image/*" }
+      signal: AbortSignal.timeout(limits.timeoutMs),
+      headers: { accept: limits.accept }
     });
     if (res.status >= 300 && res.status < 400) {
       const next = res.headers.get("location");
@@ -95969,9 +96295,22 @@ async function loadFromUrl(raw, opts = {}) {
       continue;
     }
     if (!res.ok) throw new MediaError(`The site answered ${res.status}.`, "unreadable");
-    return readCapped(res);
+    return readCapped(res, limits);
   }
   throw new MediaError("Too many redirects.", "unreadable");
+}
+async function loadFromUrl(raw, opts = {}) {
+  if (raw.startsWith("data:image/")) {
+    const comma = raw.indexOf(",");
+    const meta3 = raw.slice(0, comma);
+    const body = raw.slice(comma + 1);
+    if (comma < 0 || !meta3.endsWith(";base64"))
+      throw new MediaError("Unsupported data link.", "unreadable");
+    if (body.length > MAX_MEDIA_BYTES * 4 / 3)
+      throw new MediaError("The image is larger than 20 MB.", "too_large");
+    return new Uint8Array(Buffer.from(body, "base64"));
+  }
+  return fetchGuarded(raw, opts, IMAGE_LIMITS);
 }
 async function loadFromPath(path) {
   if (!isAbsolute2(path))
@@ -95992,13 +96331,52 @@ async function loadFromPath(path) {
   if (size > MAX_MEDIA_BYTES) throw new MediaError("The image is larger than 20 MB.", "too_large");
   return new Uint8Array(await readFile(path));
 }
+async function loadVideo(ref, opts = {}) {
+  if (ref.url !== void 0) {
+    if (/^(blob|data|mediastream):/i.test(ref.url) || /\.(m3u8|mpd)(\?|#|$)/i.test(ref.url))
+      throw new MediaError(
+        "This video is streamed in pieces by the page, so there is no single file to fetch.",
+        "blocked"
+      );
+    const bytes = await fetchGuarded(ref.url, opts, VIDEO_LIMITS);
+    const dir = await mkdtemp(join2(tmpdir(), "isitreal-video-"));
+    const file2 = join2(dir, "video");
+    await writeFile(file2, bytes);
+    return { bytes, file: file2, cleanup: () => rm(dir, { recursive: true, force: true }) };
+  }
+  if (ref.path === void 0)
+    throw new MediaError("Give a video link or a file path.", "unreadable");
+  if (!isAbsolute2(ref.path))
+    throw new MediaError("Give the full path to the video file.", "unreadable");
+  if (!VIDEO_EXTENSIONS.has(extname(ref.path).toLowerCase()))
+    throw new MediaError("Only video files (mp4, m4v, mov, webm, mkv) can be checked.", "blocked");
+  let size;
+  try {
+    const st = await stat(ref.path);
+    if (!st.isFile()) throw new Error("not a file");
+    size = st.size;
+  } catch {
+    throw new MediaError("That file could not be opened.", "unreadable");
+  }
+  if (size > MAX_VIDEO_FILE_BYTES)
+    throw new MediaError(`The video is larger than ${mb(MAX_VIDEO_FILE_BYTES)}.`, "too_large");
+  return {
+    bytes: new Uint8Array(await readFile(ref.path)),
+    file: ref.path,
+    cleanup: async () => {
+    }
+  };
+}
 
 // src/tools.ts
 var MAX_IMAGES = 12;
+var MAX_VIDEOS = 2;
+var MAX_FRAME_SCREENSHOTS = 12;
 async function available(caps) {
   return {
     content_credentials: await caps.c2pa() !== null,
     picture_model: (await caps.imageCheck?.() ?? null) !== null,
+    video_frames: (await caps.videoCheck?.() ?? null) !== null,
     deep_text_check: caps.lm !== null
   };
 }
@@ -96044,6 +96422,74 @@ async function checkOneImage(ref, hostname3, caps) {
   ];
   return itemFromVerdict(verdict, source, notes.length > 0 ? notes.join(" ") : void 0);
 }
+var EXPERIMENTAL_NOTE = "The frame check for video is experimental: it looks at a few still frames and catches only some AI video.";
+async function checkOneVideo(ref, hostname3, caps) {
+  const source = ref.url ?? ref.path ?? (ref.frame_paths?.length ? "screenshots" : "(no source)");
+  const labels2 = ref.nearby_labels ?? [];
+  const notes = [];
+  let loaded = null;
+  if (ref.url !== void 0 || ref.path !== void 0) {
+    try {
+      loaded = await loadVideo(ref, caps.media);
+    } catch (err) {
+      const why = err instanceof MediaError ? err.message : "The video could not be loaded.";
+      notes.push(`Could not read the video file: ${why}`);
+    }
+  }
+  try {
+    const c2pa = await caps.c2pa();
+    const video = await caps.videoCheck?.() ?? null;
+    const shots = (ref.frame_paths ?? []).slice(0, MAX_FRAME_SCREENSHOTS);
+    let frames;
+    if (video !== null && loaded !== null) {
+      const file2 = loaded.file;
+      frames = async () => {
+        const got = await video.extractFrames(file2, video.frameCheck.model.frames);
+        return got.length > 0 ? got : null;
+      };
+    } else if (video !== null && shots.length > 0) {
+      frames = async () => {
+        const got = [];
+        for (const path of shots) {
+          try {
+            const px = await video.decodeImage(await loadFromPath(path));
+            if (px !== null) got.push(px);
+          } catch {
+          }
+        }
+        return got.length > 0 ? got : null;
+      };
+      notes.push(
+        "Frames came from screenshots, which lose detail and any labels in the file; treat the result with extra care."
+      );
+    }
+    const verdict = await checkVideo(
+      {
+        ...loaded === null ? {} : { bytes: loaded.bytes },
+        ...frames === void 0 ? {} : { frames },
+        nearbyLabels: labels2
+      },
+      {
+        ...hostname3 === void 0 ? {} : { hostname: hostname3 },
+        ...c2pa === null ? {} : { c2pa },
+        ...video === null ? {} : { frameCheck: video.frameCheck }
+      }
+    );
+    if (loaded !== null && c2pa === null)
+      notes.push(
+        "Content Credentials could not be checked on this computer; metadata was checked."
+      );
+    if (video === null)
+      notes.push(
+        "The frames of the video were not checked (this needs the picture model and ffmpeg); only labels and signatures were."
+      );
+    else if (verdict.signals.some((sig) => sig.kind === "statistical") || frames !== void 0)
+      notes.push(EXPERIMENTAL_NOTE);
+    return itemFromVerdict(verdict, source, notes.length > 0 ? notes.join(" ") : void 0);
+  } finally {
+    await loaded?.cleanup();
+  }
+}
 async function textVerdict(text, caps) {
   if (caps.lm !== null) {
     try {
@@ -96075,6 +96521,8 @@ async function checkPageTool(args, caps) {
     items.push(itemFromVerdict(await textVerdict(text, caps), "page text"));
   for (const ref of (args.images ?? []).slice(0, MAX_IMAGES))
     items.push(await checkOneImage(ref, hostname3, caps));
+  for (const ref of (args.videos ?? []).slice(0, MAX_VIDEOS))
+    items.push(await checkOneVideo(ref, hostname3, caps));
   if (hostname3 !== void 0 && (args.page_labels?.length ?? 0) > 0) {
     const hits = matchPlatformLabels(hostname3, args.page_labels);
     if (hits.length > 0) {
@@ -96099,6 +96547,11 @@ async function checkPageTool(args, caps) {
   const summary = summaryLines(scam, items);
   if (skipped > 0)
     summary.push(`(${skipped} more images were not checked; at most ${MAX_IMAGES} per call.)`);
+  const skippedVideos = (args.videos?.length ?? 0) - MAX_VIDEOS;
+  if (skippedVideos > 0)
+    summary.push(
+      `(${skippedVideos} more videos were not checked; at most ${MAX_VIDEOS} per call.)`
+    );
   return {
     summary,
     scam,
@@ -96123,6 +96576,18 @@ async function checkImageTool(args, caps) {
     engine: ENGINE_VERSION
   };
 }
+async function checkVideoTool(args, caps) {
+  const hostname3 = hostOf(args.page_url);
+  const item = await checkOneVideo(args, hostname3, caps);
+  return {
+    summary: summaryLines(null, [item]),
+    scam: null,
+    items: [item],
+    checks_available: await available(caps),
+    how_to_report: HOW_TO_REPORT,
+    engine: ENGINE_VERSION
+  };
+}
 
 // src/server.ts
 var SERVER_NAME = "is-it-real";
@@ -96134,6 +96599,16 @@ var labels = external_exports.array(external_exports.string().max(200)).max(50).
 var imageRef = external_exports.object({
   url: external_exports.string().max(1e5).optional().describe("Image address as used on the page (http, https or data:image)."),
   path: external_exports.string().max(4e3).optional().describe("Full path of a local image file, e.g. a saved screenshot."),
+  nearby_labels: labels
+});
+var videoRef = external_exports.object({
+  url: external_exports.string().max(4e3).optional().describe(
+    "Direct address of the video file (http or https, a plain .mp4 or .webm). Streamed video (blob: or playlist addresses) cannot be fetched."
+  ),
+  path: external_exports.string().max(4e3).optional().describe("Full path of a local video file."),
+  frame_paths: external_exports.array(external_exports.string().max(4e3)).max(12).optional().describe(
+    "Fallback for streamed video: full paths of saved screenshots that show only the video picture, taken a second or more apart."
+  ),
   nearby_labels: labels
 });
 var json2 = (result) => ({
@@ -96152,6 +96627,7 @@ function createServer(caps) {
         text: external_exports.string().max(2e5).optional().describe("The main visible text of the page or message."),
         links: external_exports.array(link).max(300).optional().describe("Links on the page: visible text and real destination."),
         images: external_exports.array(imageRef).max(50).optional().describe("Main images on the page, largest first."),
+        videos: external_exports.array(videoRef).max(10).optional().describe(`Main videos on the page (up to ${MAX_VIDEOS} are checked).`),
         page_labels: labels
       },
       annotations: { readOnlyHint: true, openWorldHint: true }
@@ -96187,32 +96663,53 @@ function createServer(caps) {
     },
     async (args) => json2(await checkImageTool(args, caps))
   );
+  server.registerTool(
+    "check_video",
+    {
+      title: "Check a video",
+      description: "Checks one video for AI labels: Content Credentials (signed records from the maker, e.g. Sora), file metadata, and an AI label shown next to it. When there is no label, a few still frames are measured with the picture model (experimental: catches only some AI video, and no face-swap deepfakes). Give the direct video file link or a file path; a re-uploaded copy has usually lost its labels. " + REPORT_RULE,
+      inputSchema: {
+        url: videoRef.shape.url,
+        path: videoRef.shape.path,
+        frame_paths: videoRef.shape.frame_paths,
+        nearby_labels: labels,
+        page_url: external_exports.string().max(4e3).optional().describe("Page the video is on, so the site's own AI labels can be recognised.")
+      },
+      annotations: { readOnlyHint: true, openWorldHint: true }
+    },
+    async (args) => json2(await checkVideoTool(args, caps))
+  );
   return server;
 }
 function settingsFromEnv(env = process.env) {
   const here = dirname(fileURLToPath(import.meta.url));
   return {
     dataDir: dataDir(env),
-    trustDir: env["ISITREAL_TRUST_DIR"] ?? join2(here, "trust"),
+    trustDir: env["ISITREAL_TRUST_DIR"] ?? join3(here, "trust"),
     autoInstall: env["ISITREAL_NO_INSTALL"] !== "1",
     gpt2ModelPath: env["ISITREAL_GPT2_MODEL"],
     c2paFrom: env["ISITREAL_C2PA_FROM"],
     imageModel: env["ISITREAL_NO_IMAGE_MODEL"] !== "1",
     nativeFrom: env["ISITREAL_NATIVE_FROM"],
     imageModelPath: env["ISITREAL_IMAGE_MODEL_PATH"],
-    gateModelPath: env["ISITREAL_GATE_MODEL_PATH"]
+    gateModelPath: env["ISITREAL_GATE_MODEL_PATH"],
+    video: env["ISITREAL_NO_VIDEO"] !== "1",
+    ffmpegPath: env["ISITREAL_FFMPEG"] ?? systemFfmpeg()
   };
 }
 async function main() {
   const settings = settingsFromEnv();
+  const imageCheck = lazyImageCheck(settings);
   const caps = {
     c2pa: lazyC2pa(settings),
     lm: await loadLanguageModel(settings),
-    imageCheck: lazyImageCheck(settings),
+    imageCheck,
+    videoCheck: lazyVideoCheck(settings, imageCheck),
     ...process.env["ISITREAL_ALLOW_PRIVATE_NETWORK"] === "1" ? { media: { allowPrivateNetwork: true } } : {}
   };
   void caps.c2pa();
   void caps.imageCheck?.();
+  void caps.videoCheck?.();
   await createServer(caps).connect(new StdioServerTransport());
   process.stderr.write(`[is-it-real] server ${SERVER_VERSION} (engine ${ENGINE_VERSION}) ready
 `);

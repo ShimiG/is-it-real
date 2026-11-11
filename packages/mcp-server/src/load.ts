@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createWriteStream, renameSync, rmSync } from 'node:fs';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
@@ -9,17 +9,21 @@ import { pathToFileURL } from 'node:url';
 import {
   IMAGE_CLASSIFIER_MODEL,
   PHOTO_GATE_MODEL,
+  VIDEO_FRAMES_MODEL,
   photoLikeScore,
   type C2paReader,
   type ImageClassifierModel,
   type ImageStatisticalCheck,
   type LanguageModel,
   type PhotoGateModel,
+  type VideoFramesModel,
 } from '@isitreal/core';
 import { createC2paReaderWith, type C2paLibrary } from '@isitreal/c2pa-node/reader';
 import { loadImageClassifierWith, loadImageEmbedderWith } from '@isitreal/image-node/classifier';
 import { decodeImageWith, type SharpLibrary } from '@isitreal/image-node/decode';
 import { GPT2_ZOO, loadGpt2With, type OrtLibrary } from '@isitreal/lm-node/gpt2';
+import { extractFrames, ffmpegWorks } from '@isitreal/video-node/ffmpeg';
+import type { VideoCheck } from './tools.js';
 
 /**
  * Loads the optional native parts at run time, from the plugin's data folder, so the plugin
@@ -37,6 +41,8 @@ export const ORT_PACKAGE = 'onnxruntime-node';
 export const ORT_VERSION = '1.31.1';
 export const SHARP_PACKAGE = 'sharp';
 export const SHARP_VERSION = '0.35.5';
+export const FFMPEG_PACKAGE = 'ffmpeg-static';
+export const FFMPEG_VERSION = '5.3.0';
 
 const log = (msg: string) => process.stderr.write(`[is-it-real] ${msg}\n`);
 
@@ -108,6 +114,9 @@ function wantedPackages(settings: LoadSettings): [string, string][] {
   if (needsOrt) want.push([ORT_PACKAGE, ORT_VERSION]);
   if (settings.imageModel && settings.nativeFrom === undefined)
     want.push([SHARP_PACKAGE, SHARP_VERSION]);
+  // ffmpeg reads video frames. One already on the computer is used; otherwise a packaged one.
+  if (settings.video && settings.imageModel && settings.ffmpegPath === undefined)
+    want.push([FFMPEG_PACKAGE, FFMPEG_VERSION]);
   return want;
 }
 
@@ -154,6 +163,20 @@ export interface LoadSettings {
   imageModelPath?: string | undefined;
   /** Tests: use this photo-gate encoder file instead of downloading. */
   gateModelPath?: string | undefined;
+  /** Video frame check (experimental). On unless switched off; needs the picture check. */
+  video: boolean;
+  /** An ffmpeg program to use; when unset, a packaged one is installed into the data folder. */
+  ffmpegPath?: string | undefined;
+}
+
+/** `ffmpeg` already on this computer (on the PATH), if it runs. */
+export function systemFfmpeg(): string | undefined {
+  try {
+    const r = spawnSync('ffmpeg', ['-hide_banner', '-version'], { timeout: 10_000 });
+    return r.status === 0 ? 'ffmpeg' : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export function lazyC2pa(settings: LoadSettings): () => Promise<C2paReader | null> {
@@ -305,5 +328,52 @@ export function lazyImageCheck(
         log(`could not load the picture-checking models: ${String(err)}`);
         return null;
       }
+    })());
+}
+
+/**
+ * The experimental video frame check: the picture check (gate and model) plus ffmpeg to read
+ * frames. Null when switched off, when the picture check is unavailable, when no ffmpeg can be
+ * found or installed, or when the frame calibration is missing; videos then get the provenance
+ * checks only.
+ */
+export function lazyVideoCheck(
+  settings: LoadSettings,
+  imageCheck: () => Promise<ImageStatisticalCheck | null>,
+  model: VideoFramesModel = VIDEO_FRAMES_MODEL,
+): () => Promise<VideoCheck | null> {
+  let pending: Promise<VideoCheck | null> | null = null;
+  return () =>
+    (pending ??= (async () => {
+      if (!settings.video || model.calibration.length === 0) return null;
+      const image = await imageCheck();
+      if (image === null) return null;
+      if (image.model.id !== model.imageModelId || image.gate.model.id !== model.gateId) {
+        log(`the video calibration ${model.id} does not match the picture model; video check off`);
+        return null;
+      }
+      let ffmpeg = settings.ffmpegPath;
+      if (ffmpeg === undefined) {
+        await ensureInstalled(settings);
+        const pkg = (await loadPackage(settings.dataDir, FFMPEG_PACKAGE, FFMPEG_VERSION)) as {
+          default?: string | null;
+        } | null;
+        ffmpeg = pkg?.default ?? undefined;
+      }
+      if (ffmpeg === undefined || !(await ffmpegWorks(ffmpeg))) {
+        log('no working ffmpeg found; video frames will not be checked');
+        return null;
+      }
+      const program = ffmpeg;
+      return {
+        frameCheck: {
+          gate: image.gate,
+          runner: image.runner,
+          imageModel: image.model,
+          model,
+        },
+        extractFrames: (file, count) => extractFrames(program, file, count),
+        decodeImage: image.decode,
+      };
     })());
 }

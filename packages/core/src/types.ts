@@ -45,6 +45,7 @@ export const REASON_CODES = [
   'text_uniform_style',
   'image_spectral_artifacts',
   'image_classifier_ai',
+  'video_frames_ai',
   'video_temporal_inconsistency',
   // scam
   'scam_urgency',
@@ -66,6 +67,7 @@ export const REASON_CODES = [
   'unreadable_media',
   'uncalibrated_bucket',
   'not_a_photo',
+  'video_not_plain_footage',
 ] as const;
 export type ReasonCode = (typeof REASON_CODES)[number];
 
@@ -75,6 +77,7 @@ export const NOT_ASSESSED_REASONS = [
   'unreadable_media',
   'uncalibrated_bucket',
   'not_a_photo',
+  'video_not_plain_footage',
 ] as const satisfies readonly ReasonCode[];
 export type NotAssessedReason = (typeof NOT_ASSESSED_REASONS)[number];
 

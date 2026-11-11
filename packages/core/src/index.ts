@@ -23,3 +23,6 @@ export * from './image/preprocess.js';
 export * from './image/classifier.js';
 export * from './image/models/index.js';
 export * from './image/photo-gate.js';
+export * from './video/container.js';
+export * from './video/provenance.js';
+export * from './video/frames.js';

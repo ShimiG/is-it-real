@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { mkdtempSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { createServer as createHttp, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -51,7 +52,11 @@ beforeAll(async () => {
       res.writeHead(404).end();
       return;
     }
-    res.writeHead(200, { 'content-type': 'image/jpeg' }).end(body);
+    res
+      .writeHead(200, {
+        'content-type': name.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg',
+      })
+      .end(body);
   });
   await new Promise<void>((r) => http.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${(http.address() as { port: number }).port}`;
@@ -76,6 +81,10 @@ beforeAll(async () => {
           'fixtures',
           'standin-classifier.onnx',
         ),
+        // Video frames: the packaged ffmpeg from the workspace.
+        ISITREAL_FFMPEG: createRequire(join(root, 'packages', 'video-node', 'package.json'))(
+          'ffmpeg-static',
+        ) as string,
         ISITREAL_GATE_MODEL_PATH: join(
           root,
           'packages',
@@ -96,9 +105,14 @@ afterAll(async () => {
 });
 
 describe('plugin MCP server (built bundle, stdio)', () => {
-  it('offers the three tools', async () => {
+  it('offers the four tools', async () => {
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name).sort()).toEqual(['check_image', 'check_page', 'check_text']);
+    expect(tools.map((t) => t.name).sort()).toEqual([
+      'check_image',
+      'check_page',
+      'check_text',
+      'check_video',
+    ]);
     for (const t of tools) expect(t.description).toMatch(/never call content real, human or safe/);
   });
 
@@ -113,7 +127,7 @@ describe('plugin MCP server (built bundle, stdio)', () => {
       ],
     });
     expect(r.scam?.risk).toBe('high');
-    expect(r.checks_available).toEqual({
+    expect(r.checks_available).toMatchObject({
       content_credentials: true,
       picture_model: true,
       deep_text_check: false,
@@ -130,6 +144,25 @@ describe('plugin MCP server (built bundle, stdio)', () => {
     ]);
     expect(r.items[3]!.reasons.map((x) => x.code)).toEqual(['platform_label_ai']);
   }, 30_000);
+
+  it('checks a signed AI video by link and an unsigned local one', async () => {
+    const signed = await call('check_video', { url: `${base}/ai-declared.mp4` });
+    expect(signed.items[0]).toMatchObject({ kind: 'video', outcome: 'verified_ai' });
+    expect(signed.items[0]!.reasons.map((x) => x.code)).toEqual([
+      'c2pa_declares_ai',
+      'c2pa_signer_unrecognised',
+    ]);
+    const changed = await call('check_video', { url: `${base}/ai-declared-cut.mp4` });
+    expect(changed.items[0]!.reasons.map((x) => x.code)).toContain('c2pa_invalid_signature');
+    expect(changed.items[0]!.outcome).not.toBe('verified_ai');
+    const plain = await call('check_video', {
+      path: join(root, 'packages', 'video-node', 'test', 'fixtures', 'testsrc.mp4'),
+    });
+    expect(plain.items[0]).toMatchObject({ kind: 'video' });
+    expect(['no_clear_signs', 'likely_ai']).toContain(plain.items[0]!.outcome);
+    const stream = await call('check_video', { url: 'blob:https://example.com/1' });
+    expect(stream.items[0]).toMatchObject({ kind: 'video', outcome: 'not_assessed' });
+  }, 60_000);
 
   it('rejects bad input instead of guessing', async () => {
     const res = (await client.callTool({ name: 'check_text', arguments: { text: '' } })) as {

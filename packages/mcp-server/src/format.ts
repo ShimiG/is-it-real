@@ -11,7 +11,7 @@ import {
 
 /** One checked item, as shown to Claude. Plain words first; codes for anyone who needs them. */
 export interface ItemResult {
-  kind: 'text' | 'image' | 'page';
+  kind: 'text' | 'image' | 'video' | 'page';
   source: string;
   outcome: Verdict['outcome'];
   title: string;
@@ -35,6 +35,8 @@ export interface ToolResult {
   checks_available: {
     content_credentials: boolean;
     picture_model: boolean;
+    /** Experimental frame check for video files (needs the picture model and ffmpeg). */
+    video_frames: boolean;
     deep_text_check: boolean;
   };
   how_to_report: string;
@@ -61,7 +63,7 @@ export function itemFromVerdict(v: Verdict, source: string, note?: string): Item
   }
   const text = OUTCOME_TEXT[v.outcome];
   return {
-    kind: v.modality === 'video' ? 'image' : v.modality,
+    kind: v.modality,
     source,
     outcome: v.outcome,
     title: text.title,
@@ -96,9 +98,16 @@ export function summaryLines(scam: ToolResult['scam'], items: readonly ItemResul
     for (const a of scam.advice) lines.push(`  * ${a}`);
   }
   let image = 0;
+  let video = 0;
   items.forEach((item) => {
     const label =
-      item.kind === 'text' ? 'Text' : item.kind === 'image' ? `Image ${++image}` : 'Page label';
+      item.kind === 'text'
+        ? 'Text'
+        : item.kind === 'image'
+          ? `Image ${++image}`
+          : item.kind === 'video'
+            ? `Video ${++video}`
+            : 'Page label';
     lines.push(`${label}: ${item.title}. ${item.explanation}`);
     for (const r of item.reasons) lines.push(`  - ${r.text}`);
     if (item.note !== undefined) lines.push(`  (${item.note})`);

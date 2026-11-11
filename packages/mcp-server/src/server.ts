@@ -4,12 +4,22 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ENGINE_VERSION } from '@isitreal/core';
 import { z } from 'zod';
-import { dataDir, lazyC2pa, lazyImageCheck, loadLanguageModel, type LoadSettings } from './load.js';
+import {
+  dataDir,
+  lazyC2pa,
+  lazyImageCheck,
+  lazyVideoCheck,
+  loadLanguageModel,
+  systemFfmpeg,
+  type LoadSettings,
+} from './load.js';
 import {
   MAX_IMAGES,
+  MAX_VIDEOS,
   checkImageTool,
   checkPageTool,
   checkTextTool,
+  checkVideoTool,
   type Capabilities,
 } from './tools.js';
 
@@ -35,6 +45,25 @@ const imageRef = z.object({
     .max(4000)
     .optional()
     .describe('Full path of a local image file, e.g. a saved screenshot.'),
+  nearby_labels: labels,
+});
+
+const videoRef = z.object({
+  url: z
+    .string()
+    .max(4000)
+    .optional()
+    .describe(
+      'Direct address of the video file (http or https, a plain .mp4 or .webm). Streamed video (blob: or playlist addresses) cannot be fetched.',
+    ),
+  path: z.string().max(4000).optional().describe('Full path of a local video file.'),
+  frame_paths: z
+    .array(z.string().max(4000))
+    .max(12)
+    .optional()
+    .describe(
+      'Fallback for streamed video: full paths of saved screenshots that show only the video picture, taken a second or more apart.',
+    ),
   nearby_labels: labels,
 });
 
@@ -74,6 +103,11 @@ export function createServer(caps: Capabilities): McpServer {
           .max(50)
           .optional()
           .describe('Main images on the page, largest first.'),
+        videos: z
+          .array(videoRef)
+          .max(10)
+          .optional()
+          .describe(`Main videos on the page (up to ${MAX_VIDEOS} are checked).`),
         page_labels: labels,
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
@@ -121,6 +155,31 @@ export function createServer(caps: Capabilities): McpServer {
     async (args) => json(await checkImageTool(args, caps)),
   );
 
+  server.registerTool(
+    'check_video',
+    {
+      title: 'Check a video',
+      description:
+        'Checks one video for AI labels: Content Credentials (signed records from the maker, e.g. Sora), file metadata, and an AI label shown next to it. ' +
+        'When there is no label, a few still frames are measured with the picture model (experimental: catches only some AI video, and no face-swap deepfakes). ' +
+        'Give the direct video file link or a file path; a re-uploaded copy has usually lost its labels. ' +
+        REPORT_RULE,
+      inputSchema: {
+        url: videoRef.shape.url,
+        path: videoRef.shape.path,
+        frame_paths: videoRef.shape.frame_paths,
+        nearby_labels: labels,
+        page_url: z
+          .string()
+          .max(4000)
+          .optional()
+          .describe("Page the video is on, so the site's own AI labels can be recognised."),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    async (args) => json(await checkVideoTool(args, caps)),
+  );
+
   return server;
 }
 
@@ -136,15 +195,19 @@ export function settingsFromEnv(env: NodeJS.ProcessEnv = process.env): LoadSetti
     nativeFrom: env['ISITREAL_NATIVE_FROM'],
     imageModelPath: env['ISITREAL_IMAGE_MODEL_PATH'],
     gateModelPath: env['ISITREAL_GATE_MODEL_PATH'],
+    video: env['ISITREAL_NO_VIDEO'] !== '1',
+    ffmpegPath: env['ISITREAL_FFMPEG'] ?? systemFfmpeg(),
   };
 }
 
 export async function main(): Promise<void> {
   const settings = settingsFromEnv();
+  const imageCheck = lazyImageCheck(settings);
   const caps: Capabilities = {
     c2pa: lazyC2pa(settings),
     lm: await loadLanguageModel(settings),
-    imageCheck: lazyImageCheck(settings),
+    imageCheck,
+    videoCheck: lazyVideoCheck(settings, imageCheck),
     ...(process.env['ISITREAL_ALLOW_PRIVATE_NETWORK'] === '1'
       ? { media: { allowPrivateNetwork: true } }
       : {}),
@@ -152,6 +215,7 @@ export async function main(): Promise<void> {
   // Start installing Content Credentials support in the background, so the first image check is quick.
   void caps.c2pa();
   void caps.imageCheck?.();
+  void caps.videoCheck?.();
   await createServer(caps).connect(new StdioServerTransport());
   process.stderr.write(`[is-it-real] server ${SERVER_VERSION} (engine ${ENGINE_VERSION}) ready\n`);
 }

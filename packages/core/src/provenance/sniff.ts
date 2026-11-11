@@ -89,6 +89,14 @@ export function sniffImage(bytes: Uint8Array): SniffResult {
   };
 }
 
+/**
+ * IPTC "made by AI" source types inside XMP packets, for any kind of file (used for video).
+ * Codes inside a C2PA manifest do not count here: those are left to the C2PA validator.
+ */
+export function xmpAiSourceTypesIn(bytes: Uint8Array): AiSourceType[] {
+  return findAiSourceTypes(xmpPackets(latin1(bytes)).join('\n'));
+}
+
 function findAiSourceTypes(text: string): AiSourceType[] {
   const lower = text.toLowerCase();
   return AI_SOURCE_TYPES.filter(

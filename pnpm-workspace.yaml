@@ -7,3 +7,4 @@ onlyBuiltDependencies:
   - onnxruntime-node
   - sharp
   - '@contentauth/c2pa-node'
+  - ffmpeg-static

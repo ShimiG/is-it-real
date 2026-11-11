@@ -1,5 +1,6 @@
 import { runImageStatisticalCheck, type ImageStatisticalCheck } from './image/classifier.js';
 import { checkImageProvenance, type C2paReader } from './image/provenance.js';
+import type { Pixels } from './image/spectral.js';
 import { resolveOutcome } from './outcome.js';
 import { matchPlatformLabels, PLATFORM_LABELS_VERSION } from './platform-labels.js';
 import { analyzeScam, type ScamInput } from './scam/engine.js';
@@ -8,6 +9,8 @@ import { detectTextDeep } from './text/ensemble.js';
 import type { LanguageModel } from './text/lm.js';
 import type { DetectorResult, PageReport, Verdict } from './types.js';
 import { ENGINE_VERSION } from './version.js';
+import { detectVideoFrames, type VideoFrameCheck } from './video/frames.js';
+import { checkVideoProvenance } from './video/provenance.js';
 
 /** Optional host-provided capabilities. Without them the checks that need them are skipped. */
 export interface Capabilities {
@@ -105,6 +108,53 @@ export async function checkImage(
       ? []
       : provenance.signals.map((signal) => ({ status: 'assessed' as const, signal }));
   return resolveOutcome('image', [
+    ...fileResults,
+    ...(label === null ? [] : [label]),
+    ...(statistical === null ? [] : [statistical]),
+  ]);
+}
+
+export interface VideoInput {
+  /** The ORIGINAL video file, when the host could get it (not a screen recording). */
+  bytes?: Uint8Array;
+  /**
+   * Frames for the statistical check, fetched only when needed: evenly spaced frames decoded from
+   * the file, or saved screenshots of the playing video. Null when no frames could be read.
+   */
+  frames?: () => Promise<readonly Pixels[] | null>;
+  /** Short strings shown next to the video on the page: badges, captions. */
+  nearbyLabels?: string[];
+}
+
+/**
+ * Checks one video: labels and signatures first (file and site), and only when those declare
+ * nothing, the experimental frame check.
+ */
+export async function checkVideo(
+  video: VideoInput,
+  context: { hostname?: string; c2pa?: C2paReader; frameCheck?: VideoFrameCheck } = {},
+): Promise<Verdict> {
+  const provenance =
+    video.bytes === undefined ? null : await checkVideoProvenance(video.bytes, context.c2pa);
+  const label = labelResult(context.hostname, video.nearbyLabels);
+  const declared = provenance?.outcome === 'verified_ai' || label !== null;
+  let statistical: DetectorResult | null = null;
+  if (context.frameCheck !== undefined && video.frames !== undefined && !declared) {
+    const frames = await video.frames();
+    statistical =
+      frames === null
+        ? {
+            status: 'not_assessed',
+            detector: context.frameCheck.model.id,
+            reason: 'unreadable_media',
+          }
+        : await detectVideoFrames(frames, context.frameCheck);
+  }
+  const fileResults: DetectorResult[] =
+    provenance === null || provenance.outcome === 'not_assessed'
+      ? []
+      : provenance.signals.map((signal) => ({ status: 'assessed' as const, signal }));
+  return resolveOutcome('video', [
     ...fileResults,
     ...(label === null ? [] : [label]),
     ...(statistical === null ? [] : [statistical]),

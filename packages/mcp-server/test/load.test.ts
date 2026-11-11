@@ -1,10 +1,11 @@
 import { mkdtempSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { IMAGE_CLASSIFIER_MODEL, PHOTO_GATE_MODEL } from '@isitreal/core';
-import { dataDir, lazyImageCheck, type LoadSettings } from '../src/load.js';
+import { IMAGE_CLASSIFIER_MODEL, PHOTO_GATE_MODEL, type VideoFramesModel } from '@isitreal/core';
+import { dataDir, lazyImageCheck, lazyVideoCheck, type LoadSettings } from '../src/load.js';
 
 describe('dataDir', () => {
   it('prefers ISITREAL_DATA, then the plugin data folder', () => {
@@ -24,6 +25,19 @@ describe('dataDir', () => {
 describe('lazyImageCheck', () => {
   const imageNode = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'image-node');
   const fixtures = join(imageNode, 'test', 'fixtures');
+  const videoNode = join(imageNode, '..', 'video-node');
+  /** The packaged ffmpeg from the workspace (a development dependency of video-node). */
+  const ffmpeg = createRequire(join(videoNode, 'package.json'))('ffmpeg-static') as string;
+  const clip = join(videoNode, 'test', 'fixtures', 'testsrc.mp4');
+  const videoModel: VideoFramesModel = {
+    id: 'video.frames.test@1',
+    imageModelId: IMAGE_CLASSIFIER_MODEL.id,
+    gateId: PHOTO_GATE_MODEL.id,
+    frames: 6,
+    minChecked: 4,
+    calibration: [0, 1, 2],
+    calibratedOn: 'synthetic',
+  };
   const settings = (over: Partial<LoadSettings> = {}): LoadSettings => ({
     dataDir: mkdtempSync(join(tmpdir(), 'isitreal-load-')),
     trustDir: '',
@@ -32,6 +46,8 @@ describe('lazyImageCheck', () => {
     nativeFrom: imageNode,
     imageModelPath: join(fixtures, 'standin-classifier.onnx'),
     gateModelPath: join(fixtures, 'standin-gate.onnx'),
+    video: true,
+    ffmpegPath: ffmpeg,
     ...over,
   });
 
@@ -61,5 +77,28 @@ describe('lazyImageCheck', () => {
 
   it('can be switched off', async () => {
     expect(await lazyImageCheck(settings({ imageModel: false }))()).toBeNull();
+  });
+
+  it('adds the video frame check when ffmpeg works', async () => {
+    const st = settings();
+    const video = await lazyVideoCheck(st, lazyImageCheck(st), videoModel)();
+    expect(video?.frameCheck.model.id).toBe('video.frames.test@1');
+    expect(video?.frameCheck.imageModel.id).toBe(IMAGE_CLASSIFIER_MODEL.id);
+    const frames = await video!.extractFrames(clip, 6);
+    expect(frames).toHaveLength(6);
+    expect([frames[0]!.width, frames[0]!.height]).toEqual([320, 240]);
+  }, 60_000);
+
+  it('gives no video frame check without ffmpeg, the picture check or a calibration', async () => {
+    const broken = settings({ ffmpegPath: '/no/such/ffmpeg' });
+    expect(await lazyVideoCheck(broken, lazyImageCheck(broken), videoModel)()).toBeNull();
+    const off = settings({ video: false });
+    expect(await lazyVideoCheck(off, lazyImageCheck(off), videoModel)()).toBeNull();
+    const noPictures = settings({ imageModel: false });
+    expect(await lazyVideoCheck(noPictures, lazyImageCheck(noPictures), videoModel)()).toBeNull();
+    const st = settings();
+    const image = lazyImageCheck(st);
+    expect(await lazyVideoCheck(st, image, { ...videoModel, calibration: [] })()).toBeNull();
+    expect(await lazyVideoCheck(st, image, { ...videoModel, gateId: 'other@1' })()).toBeNull();
   });
 });

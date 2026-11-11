@@ -1,10 +1,15 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   MAX_MEDIA_BYTES,
+  MAX_VIDEO_URL_BYTES,
   MediaError,
   isPrivateAddress,
   loadFromPath,
   loadFromUrl,
+  loadVideo,
 } from '../src/media.js';
 
 describe('isPrivateAddress', () => {
@@ -100,5 +105,64 @@ describe('loadFromPath', () => {
     await expect(loadFromPath('relative/a.jpg')).rejects.toMatchObject({ kind: 'unreadable' });
     await expect(loadFromPath('/etc/passwd')).rejects.toMatchObject({ kind: 'blocked' });
     await expect(loadFromPath('/no/such/file.png')).rejects.toMatchObject({ kind: 'unreadable' });
+  });
+});
+
+describe('loadVideo', () => {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const clip = join(here, '..', '..', 'video-node', 'test', 'fixtures', 'testsrc.mp4');
+
+  it('explains that streamed video has no file to fetch', async () => {
+    for (const url of [
+      'blob:https://www.youtube.com/0a1b2c3d',
+      'https://cdn.example.com/live/master.m3u8?token=1',
+      'https://cdn.example.com/v/manifest.mpd',
+      'data:video/mp4;base64,AAAA',
+    ])
+      await expect(loadVideo({ url })).rejects.toMatchObject({
+        kind: 'blocked',
+        message: expect.stringMatching(/streamed/),
+      });
+  });
+
+  it('applies the same network rules as images', async () => {
+    await expect(loadVideo({ url: 'http://127.0.0.1/a.mp4' })).rejects.toMatchObject({
+      kind: 'blocked',
+    });
+    await expect(loadVideo({ url: 'file:///home/user/a.mp4' })).rejects.toMatchObject({
+      kind: 'blocked',
+    });
+    const big = async () =>
+      ok(new Uint8Array(8), { 'content-length': String(MAX_VIDEO_URL_BYTES + 1) });
+    await expect(
+      loadVideo({ url: 'http://8.8.8.8/a.mp4' }, { fetchImpl: big as typeof fetch }),
+    ).rejects.toMatchObject({ kind: 'too_large', message: expect.stringMatching(/100 MB/) });
+  });
+
+  it('keeps a downloaded video in a temporary file only until cleanup', async () => {
+    const body = new Uint8Array(readFileSync(clip));
+    const v = await loadVideo(
+      { url: 'http://8.8.8.8/a.mp4' },
+      { fetchImpl: (async () => ok(body)) as typeof fetch },
+    );
+    expect(v.bytes).toEqual(body);
+    expect(new Uint8Array(readFileSync(v.file))).toEqual(body);
+    await v.cleanup();
+    expect(existsSync(v.file)).toBe(false);
+    await v.cleanup(); // harmless twice
+  });
+
+  it('only opens video files given by full path, and leaves them in place', async () => {
+    await expect(loadVideo({ path: 'clip.mp4' })).rejects.toMatchObject({ kind: 'unreadable' });
+    await expect(loadVideo({ path: '/etc/passwd' })).rejects.toMatchObject({ kind: 'blocked' });
+    await expect(loadVideo({ path: '/no/such/clip.mp4' })).rejects.toMatchObject({
+      kind: 'unreadable',
+    });
+    await expect(loadVideo({})).rejects.toBeInstanceOf(MediaError);
+    const v = await loadVideo({ path: clip });
+    expect(v.file).toBe(clip);
+    expect(v.bytes.length).toBeGreaterThan(1000);
+    await v.cleanup();
+    expect(existsSync(clip)).toBe(true);
   });
 });

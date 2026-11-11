@@ -52,6 +52,8 @@ export const REASON_TEXT: Record<ReasonCode, string> = {
   text_uniform_style: 'The writing style is unusually even and predictable.',
   image_spectral_artifacts: 'The picture has hidden patterns that AI image tools often leave.',
   image_classifier_ai: 'A picture-checking model found features typical of AI images.',
+  video_frames_ai:
+    'A picture-checking model found features typical of AI images in most of the frames we looked at.',
   video_temporal_inconsistency:
     'The video flickers or changes in ways real cameras usually do not.',
   scam_urgency: 'It pressures you to act fast or threatens you.',
@@ -75,6 +77,8 @@ export const REASON_TEXT: Record<ReasonCode, string> = {
   uncalibrated_bucket: 'We have not tested this kind of content enough to judge it.',
   not_a_photo:
     'This looks like a drawing, a screenshot or a picture with added text. Our picture check only works on plain photos.',
+  video_not_plain_footage:
+    'This video looks animated, or has text or graphics over the picture. Our frame check only works on plain camera-style video.',
 };
 
 export const SCAM_ADVICE: readonly string[] = [
