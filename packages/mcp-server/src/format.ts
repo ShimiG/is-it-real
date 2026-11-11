@@ -1,36 +1,11 @@
-import {
-  OUTCOME_TEXT,
-  REASON_TEXT,
-  SCAM_ADVICE,
-  SCAM_TEXT,
-  type PageReport,
-  type ReasonCode,
-  type ScamRisk,
-  type Verdict,
-} from '@isitreal/core';
+import type { ItemResult, ScamSummary } from '@isitreal/core';
 
-/** One checked item, as shown to Claude. Plain words first; codes for anyone who needs them. */
-export interface ItemResult {
-  kind: 'text' | 'image' | 'video' | 'page';
-  source: string;
-  outcome: Verdict['outcome'];
-  title: string;
-  explanation: string;
-  reasons: { code: ReasonCode; text: string }[];
-  /** Facts from the checks (signer, generator, platform label...). No page content beyond short labels. */
-  evidence?: Record<string, string | number | boolean>;
-  note?: string;
-}
+export { itemFromVerdict, scamFromReport, type ItemResult } from '@isitreal/core';
 
 export interface ToolResult {
   /** Ready-to-read lines, scam risk first. */
   summary: string[];
-  scam: {
-    risk: ScamRisk;
-    headline: string;
-    reasons: { code: ReasonCode; text: string; evidence?: string }[];
-    advice: readonly string[];
-  } | null;
+  scam: ScamSummary | null;
   items: ItemResult[];
   checks_available: {
     content_credentials: boolean;
@@ -48,47 +23,6 @@ export const HOW_TO_REPORT =
   'Do not add your own opinion about whether something is AI-made, and do not change any outcome. ' +
   'Never say content is "real", "human", "genuine" or "safe": "No clear signs" only means nothing was found. ' +
   'Use plain, calm language. If there is a scam warning, repeat the advice.';
-
-const reasonList = (codes: readonly ReasonCode[]) =>
-  codes.map((code) => ({ code, text: REASON_TEXT[code] }));
-
-export function itemFromVerdict(v: Verdict, source: string, note?: string): ItemResult {
-  const evidence: Record<string, string | number | boolean> = {};
-  for (const s of v.signals) {
-    if (s.kind === 'scam_rule' || s.details === undefined) continue;
-    for (const [k, val] of Object.entries(s.details)) {
-      if (['raw', 'calibrationSize', 'format', 'fdCriterion'].includes(k)) continue;
-      evidence[k] = val;
-    }
-  }
-  const text = OUTCOME_TEXT[v.outcome];
-  return {
-    kind: v.modality,
-    source,
-    outcome: v.outcome,
-    title: text.title,
-    explanation: text.body,
-    reasons: reasonList(v.reasons),
-    ...(Object.keys(evidence).length > 0 ? { evidence } : {}),
-    ...(note === undefined ? {} : { note }),
-  };
-}
-
-export function scamFromReport(
-  report: PageReport,
-  evidence: Map<ReasonCode, string>,
-): ToolResult['scam'] {
-  return {
-    risk: report.scamRisk,
-    headline: SCAM_TEXT[report.scamRisk],
-    reasons: report.scamReasons.map((code) => ({
-      code,
-      text: REASON_TEXT[code],
-      ...(evidence.has(code) ? { evidence: evidence.get(code)! } : {}),
-    })),
-    advice: report.scamRisk === 'high' || report.scamRisk === 'medium' ? SCAM_ADVICE : [],
-  };
-}
 
 export function summaryLines(scam: ToolResult['scam'], items: readonly ItemResult[]): string[] {
   const lines: string[] = [];

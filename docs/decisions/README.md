@@ -16,3 +16,4 @@ Short records of the main design decisions (format: context, decision, consequen
 | [0010](0010-image-provenance-declarations.md)       | Which image provenance claims count as "Made with AI"               | Accepted |
 | [0011](0011-picture-model.md)                       | A pretrained picture model, measured and calibrated by us           | Accepted |
 | [0012](0012-video-frame-check.md)                   | Video: labels first, then an experimental frame check               | Accepted |
+| [0013](0013-extension-architecture.md)              | How the browser extension is built                                  | Accepted |

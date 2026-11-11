@@ -43612,6 +43612,42 @@ var commfor_low_quality_model_default = {
 // ../core/src/image/models/index.ts
 var IMAGE_CLASSIFIER_MODEL = commfor_low_quality_model_default;
 
+// ../core/src/present.ts
+var HIDDEN_DETAILS = /* @__PURE__ */ new Set(["raw", "calibrationSize", "format", "fdCriterion"]);
+function itemFromVerdict(v, source, note) {
+  const evidence = {};
+  for (const s of v.signals) {
+    if (s.kind === "scam_rule" || s.details === void 0) continue;
+    for (const [k, val] of Object.entries(s.details)) {
+      if (HIDDEN_DETAILS.has(k)) continue;
+      evidence[k] = val;
+    }
+  }
+  const text = OUTCOME_TEXT[v.outcome];
+  return {
+    kind: v.modality,
+    source,
+    outcome: v.outcome,
+    title: text.title,
+    explanation: text.body,
+    reasons: v.reasons.map((code) => ({ code, text: REASON_TEXT[code] })),
+    ...Object.keys(evidence).length > 0 ? { evidence } : {},
+    ...note === void 0 ? {} : { note }
+  };
+}
+function scamFromReport(report, evidence) {
+  return {
+    risk: report.scamRisk,
+    headline: SCAM_TEXT[report.scamRisk],
+    reasons: report.scamReasons.map((code) => ({
+      code,
+      text: REASON_TEXT[code],
+      ...evidence.has(code) ? { evidence: evidence.get(code) } : {}
+    })),
+    advice: report.scamRisk === "high" || report.scamRisk === "medium" ? SCAM_ADVICE : []
+  };
+}
+
 // src/load.ts
 import { spawn as spawn2, spawnSync } from "node:child_process";
 import { createHash as createHash2 } from "node:crypto";
@@ -96281,40 +96317,6 @@ function lazyVideoCheck(settings, imageCheck, model = VIDEO_FRAMES_MODEL) {
 
 // src/format.ts
 var HOW_TO_REPORT = 'Report the scam result first, then each item, using the titles and reason texts given here. Do not add your own opinion about whether something is AI-made, and do not change any outcome. Never say content is "real", "human", "genuine" or "safe": "No clear signs" only means nothing was found. Use plain, calm language. If there is a scam warning, repeat the advice.';
-var reasonList = (codes) => codes.map((code) => ({ code, text: REASON_TEXT[code] }));
-function itemFromVerdict(v, source, note) {
-  const evidence = {};
-  for (const s of v.signals) {
-    if (s.kind === "scam_rule" || s.details === void 0) continue;
-    for (const [k, val] of Object.entries(s.details)) {
-      if (["raw", "calibrationSize", "format", "fdCriterion"].includes(k)) continue;
-      evidence[k] = val;
-    }
-  }
-  const text = OUTCOME_TEXT[v.outcome];
-  return {
-    kind: v.modality,
-    source,
-    outcome: v.outcome,
-    title: text.title,
-    explanation: text.body,
-    reasons: reasonList(v.reasons),
-    ...Object.keys(evidence).length > 0 ? { evidence } : {},
-    ...note === void 0 ? {} : { note }
-  };
-}
-function scamFromReport(report, evidence) {
-  return {
-    risk: report.scamRisk,
-    headline: SCAM_TEXT[report.scamRisk],
-    reasons: report.scamReasons.map((code) => ({
-      code,
-      text: REASON_TEXT[code],
-      ...evidence.has(code) ? { evidence: evidence.get(code) } : {}
-    })),
-    advice: report.scamRisk === "high" || report.scamRisk === "medium" ? SCAM_ADVICE : []
-  };
-}
 function summaryLines(scam, items) {
   const lines = [];
   if (scam !== null) {

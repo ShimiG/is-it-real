@@ -1,5 +1,6 @@
 packages:
   - packages/*
+  - apps/*
   - eval
   - spikes/*
 onlyBuiltDependencies:
@@ -8,3 +9,5 @@ onlyBuiltDependencies:
   - sharp
   - '@contentauth/c2pa-node'
   - ffmpeg-static
+ignoredBuiltDependencies:
+  - protobufjs

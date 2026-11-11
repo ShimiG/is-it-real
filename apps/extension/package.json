@@ -1,0 +1,22 @@
+{
+  "name": "@isitreal/extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Is It Real? browser extension: checks the page you are looking at for scam warning signs and AI-made content, on your computer.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@contentauth/c2pa-web": "0.16.1",
+    "@isitreal/core": "workspace:*",
+    "onnxruntime-web": "1.31.1"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.3.7",
+    "esbuild": "^0.28.2",
+    "playwright": "1.63.0"
+  }
+}

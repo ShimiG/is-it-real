@@ -1,0 +1,225 @@
+/*
+ * Side panel styles. Built for older eyes: 18 px text or larger, strong contrast (at least 7:1
+ * for text), large buttons, a visible focus ring, and no meaning carried by colour alone.
+ */
+:root {
+  --text: #111111;
+  --muted: #3d3d3d;
+  --page: #ffffff;
+  --card: #f4f4f4;
+  --line: #5c5c5c;
+  --accent: #0b4a8f;
+  --danger: #a30000;
+  --danger-bg: #fdeaea;
+  --warn: #7a4100;
+  --warn-bg: #fff3d6;
+  --ai: #5b1a8f;
+  --ai-bg: #f3e8fb;
+  --focus: #0b4a8f;
+  font-size: 18px;
+}
+:root.large {
+  font-size: 22px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #f5f5f5;
+    --muted: #d6d6d6;
+    --page: #121212;
+    --card: #232323;
+    --line: #a8a8a8;
+    --accent: #9cc8ff;
+    --danger: #ffb3b3;
+    --danger-bg: #4a1010;
+    --warn: #ffd591;
+    --warn-bg: #4a3200;
+    --ai: #dcb8ff;
+    --ai-bg: #35204a;
+    --focus: #9cc8ff;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  padding: 1rem;
+  background: var(--page);
+  color: var(--text);
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Chrome gives extension pages a small default text size; set ours explicitly. */
+  font-size: 1rem;
+  line-height: 1.5;
+}
+h1 {
+  font-size: 1.6rem;
+  margin: 0 0 0.25rem;
+}
+h2 {
+  font-size: 1.3rem;
+  margin: 0 0 0.5rem;
+}
+h3,
+h4 {
+  font-size: 1.05rem;
+  margin: 0.75rem 0 0.25rem;
+}
+p {
+  margin: 0.25rem 0 0.75rem;
+}
+#tagline,
+.note,
+#version {
+  color: var(--muted);
+}
+button {
+  font: inherit;
+  color: inherit;
+  min-height: 3rem;
+  padding: 0.6rem 1rem;
+  border: 2px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--page);
+  cursor: pointer;
+}
+button.primary {
+  width: 100%;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--page);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+button[disabled] {
+  opacity: 0.6;
+  cursor: progress;
+}
+button[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--page);
+}
+:focus-visible {
+  outline: 4px solid var(--focus);
+  outline-offset: 3px;
+}
+#results:focus {
+  outline: none;
+}
+progress {
+  width: 100%;
+  height: 1rem;
+}
+.card {
+  margin: 1rem 0;
+  padding: 0.9rem 1rem;
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-left-width: 0.6rem;
+  border-radius: 0.5rem;
+  overflow-wrap: anywhere;
+}
+.card-title,
+.headline {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  font-weight: 700;
+  margin-top: 0;
+}
+.headline {
+  font-size: 1.25rem;
+}
+.badge {
+  flex: none;
+  min-width: 2.2rem;
+  padding: 0 0.35rem;
+  text-align: center;
+  font-weight: 700;
+  border: 2px solid currentColor;
+  border-radius: 0.4rem;
+}
+.scam-high,
+.scam-medium,
+.scam-low {
+  border-color: var(--warn);
+  background: var(--warn-bg);
+}
+.scam-high {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+.scam-high .headline {
+  color: var(--danger);
+}
+.scam-medium .headline,
+.scam-low .headline {
+  color: var(--warn);
+}
+.outcome-verified_ai,
+.outcome-likely_ai {
+  border-color: var(--ai);
+  background: var(--ai-bg);
+}
+.outcome-verified_ai .card-title,
+.outcome-likely_ai .card-title {
+  color: var(--ai);
+}
+.outcome-likely_ai {
+  border-style: dashed;
+  border-left-style: solid;
+}
+ul {
+  margin: 0.25rem 0 0.75rem;
+  padding-left: 1.4rem;
+}
+li {
+  margin: 0.3rem 0;
+}
+.advice li {
+  font-weight: 700;
+}
+.quote {
+  display: block;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.thumb {
+  display: block;
+  max-width: 6rem;
+  max-height: 6rem;
+  margin: 0.5rem 0;
+  border: 1px solid var(--line);
+  border-radius: 0.3rem;
+}
+.thumbs .thumb {
+  display: inline-block;
+  margin-right: 0.4rem;
+}
+summary {
+  cursor: pointer;
+  padding: 0.5rem 0;
+  text-decoration: underline;
+}
+.reminder {
+  font-weight: 700;
+}
+footer {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 2px solid var(--line);
+}
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+#version {
+  font-size: 0.8rem;
+  margin-top: 0.75rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
+}
