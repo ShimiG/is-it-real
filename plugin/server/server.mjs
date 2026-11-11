@@ -38763,6 +38763,170 @@ function detectTextStats(text, m = TEXT_STATS_MODEL) {
 // ../core/src/version.ts
 var ENGINE_VERSION = "0.4.0-m4";
 
+// ../core/src/image/preprocess.ts
+var PRECISION_BITS = 32 - 8 - 2;
+var SCALE = 2 ** PRECISION_BITS;
+var HALF = 2 ** (PRECISION_BITS - 1);
+function bicubic(x) {
+  const a = -0.5;
+  const ax = Math.abs(x);
+  if (ax < 1) return ((a + 2) * ax - (a + 3)) * ax * ax + 1;
+  if (ax < 2) return (((ax - 5) * ax + 8) * ax - 4) * a;
+  return 0;
+}
+function coefficients(inSize, outSize) {
+  const scale = inSize / outSize;
+  const filterscale = scale < 1 ? 1 : scale;
+  const support = 2 * filterscale;
+  const ksize = Math.ceil(support) * 2 + 1;
+  const kk = new Int32Array(outSize * ksize);
+  const bounds = new Int32Array(outSize * 2);
+  const k = new Float64Array(ksize);
+  for (let xx = 0; xx < outSize; xx++) {
+    const center = (xx + 0.5) * scale;
+    const ss = 1 / filterscale;
+    let xmin = Math.trunc(center - support + 0.5);
+    if (xmin < 0) xmin = 0;
+    let xmax = Math.trunc(center + support + 0.5);
+    if (xmax > inSize) xmax = inSize;
+    xmax -= xmin;
+    let ww = 0;
+    for (let x = 0; x < xmax; x++) {
+      const w = bicubic((x + xmin - center + 0.5) * ss);
+      k[x] = w;
+      ww += w;
+    }
+    for (let x = 0; x < xmax; x++) {
+      const w = ww !== 0 ? k[x] / ww : k[x];
+      kk[xx * ksize + x] = Math.trunc(w * SCALE + (w < 0 ? -0.5 : 0.5));
+    }
+    bounds[xx * 2] = xmin;
+    bounds[xx * 2 + 1] = xmax;
+  }
+  return { bounds, kk, ksize };
+}
+var clip8 = (ss) => {
+  const v = Math.floor(ss / SCALE);
+  return v < 0 ? 0 : v > 255 ? 255 : v;
+};
+function resizeRgb(rgb, width, height, outW, outH) {
+  let src = rgb;
+  let w = width;
+  if (outW !== width) {
+    const { bounds, kk, ksize } = coefficients(width, outW);
+    const out = new Uint8Array(outW * height * 3);
+    for (let y = 0; y < height; y++) {
+      for (let xx = 0; xx < outW; xx++) {
+        const xmin = bounds[xx * 2];
+        const xmax = bounds[xx * 2 + 1];
+        let s0 = HALF;
+        let s1 = HALF;
+        let s2 = HALF;
+        for (let x = 0; x < xmax; x++) {
+          const kv = kk[xx * ksize + x];
+          const i = (y * width + x + xmin) * 3;
+          s0 += src[i] * kv;
+          s1 += src[i + 1] * kv;
+          s2 += src[i + 2] * kv;
+        }
+        const o = (y * outW + xx) * 3;
+        out[o] = clip8(s0);
+        out[o + 1] = clip8(s1);
+        out[o + 2] = clip8(s2);
+      }
+    }
+    src = out;
+    w = outW;
+  }
+  if (outH !== height) {
+    const { bounds, kk, ksize } = coefficients(height, outH);
+    const out = new Uint8Array(w * outH * 3);
+    for (let yy = 0; yy < outH; yy++) {
+      const ymin = bounds[yy * 2];
+      const ymax = bounds[yy * 2 + 1];
+      for (let x = 0; x < w; x++) {
+        let s0 = HALF;
+        let s1 = HALF;
+        let s2 = HALF;
+        for (let y = 0; y < ymax; y++) {
+          const kv = kk[yy * ksize + y];
+          const i = ((y + ymin) * w + x) * 3;
+          s0 += src[i] * kv;
+          s1 += src[i + 1] * kv;
+          s2 += src[i + 2] * kv;
+        }
+        const o = (yy * w + x) * 3;
+        out[o] = clip8(s0);
+        out[o + 1] = clip8(s1);
+        out[o + 2] = clip8(s2);
+      }
+    }
+    src = out;
+  }
+  return src;
+}
+function toRgb(p) {
+  const n = p.width * p.height;
+  const out = new Uint8Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    out[i * 3] = p.data[i * 4];
+    out[i * 3 + 1] = p.data[i * 4 + 1];
+    out[i * 3 + 2] = p.data[i * 4 + 2];
+  }
+  return out;
+}
+function shortEdgeSize(width, height, short) {
+  if (width <= height) return [short, Math.floor(short * height / width)];
+  return [Math.floor(short * width / height), short];
+}
+function preprocessForClassifier(p, spec) {
+  const [rw, rh] = shortEdgeSize(p.width, p.height, spec.resizeShortEdge);
+  const resized = resizeRgb(toRgb(p), p.width, p.height, rw, rh);
+  const c = spec.cropSize;
+  if (rw < c || rh < c) throw new RangeError("image too small for the crop");
+  const top = Math.floor((rh - c) / 2);
+  const left = Math.floor((rw - c) / 2);
+  const out = new Float32Array(3 * c * c);
+  for (let y = 0; y < c; y++) {
+    for (let x = 0; x < c; x++) {
+      const i = ((top + y) * rw + (left + x)) * 3;
+      for (let ch = 0; ch < 3; ch++) {
+        const v = resized[i + ch] * (1 / 255);
+        out[ch * c * c + y * c + x] = (v - spec.mean[ch]) / spec.std[ch];
+      }
+    }
+  }
+  return out;
+}
+
+// ../core/src/image/classifier.ts
+async function detectImageClassifier(pixels, runner, model) {
+  if (runner.id !== model.runnerId)
+    throw new Error(
+      `Calibration ${model.id} belongs to ${model.runnerId}, but the runner is ${runner.id}`
+    );
+  if (Math.min(pixels.width, pixels.height) < model.minSide)
+    return { status: "not_assessed", detector: model.id, reason: "too_short" };
+  const raw = await runner.run(preprocessForClassifier(pixels, model), model.cropSize);
+  return {
+    status: "assessed",
+    signal: {
+      detector: model.id,
+      modality: "image",
+      kind: "statistical",
+      score: conformalScore(raw, model.calibration),
+      reasons: ["image_classifier_ai"],
+      details: { raw: Number(raw.toFixed(4)), calibrationSize: model.calibration.length }
+    }
+  };
+}
+async function runImageStatisticalCheck(bytes, check2) {
+  const pixels = await check2.decode(bytes);
+  if (pixels === null)
+    return { status: "not_assessed", detector: check2.model.id, reason: "unreadable_media" };
+  return detectImageClassifier(pixels, check2.runner, check2.model);
+}
+
 // ../core/src/image/provenance.ts
 var AI_SOURCE_TYPES2 = /* @__PURE__ */ new Set([
   "trainedAlgorithmicMedia",
@@ -40356,9 +40520,15 @@ function labelResult(hostname3, labels2) {
 async function checkImage(image, context = {}) {
   const provenance = await checkImageProvenance(image.bytes, context.c2pa);
   const label = labelResult(context.hostname, image.nearbyLabels);
-  if (label === null) return provenance;
+  const declared = provenance.outcome === "verified_ai" || label !== null;
+  const statistical = context.statistical !== void 0 && !declared && image.bytes.length > 0 ? await runImageStatisticalCheck(image.bytes, context.statistical) : null;
+  if (label === null && statistical === null) return provenance;
   const fileResults = provenance.outcome === "not_assessed" ? [] : provenance.signals.map((signal) => ({ status: "assessed", signal }));
-  return resolveOutcome("image", [...fileResults, label]);
+  return resolveOutcome("image", [
+    ...fileResults,
+    ...label === null ? [] : [label],
+    ...statistical === null ? [] : [statistical]
+  ]);
 }
 
 // src/load.ts

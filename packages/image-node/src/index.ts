@@ -24,3 +24,5 @@ export async function decodeImage(bytes: Uint8Array): Promise<Pixels | null> {
     return null;
   }
 }
+
+export { loadImageClassifierWith, type OrtLibrary } from './classifier.js';

@@ -166,18 +166,38 @@ One JPEG generated inside Lovable, shared unchanged through Google Drive. Lovabl
 
 Lessons: one company can sign with different certificates in different products, so trust state is per product, not per company. And apps built on another company's model (Lovable here) pass the model maker's label through, so "who made it" in the evidence names the model maker, not the app.
 
-## Blocked: statistical image detection
+## Statistical image detection: built, waiting on one network host (2026-11-11)
 
-Training and measuring the frequency features, and adding a small image classifier, need two things this build environment cannot download:
+**Candidates** (ONNX, licences compatible with Apache-2.0), chosen from a Hugging Face survey:
 
-| Needed                                                                                                            | Where it lives               | Status here                   |
-| ----------------------------------------------------------------------------------------------------------------- | ---------------------------- | ----------------------------- |
-| AI-generated images with matching real photos (for example Community Forensics, GenImage, Defactify, Synthbuster) | Hugging Face, Zenodo, Kaggle | Blocked by the network policy |
-| A small pretrained image detector in ONNX format (for example the Community Forensics ViT)                        | Hugging Face                 | Blocked                       |
+| Candidate                                                       | Size                | Notes                                                                                                                                                                           |
+| --------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `buildborderless/CommunityForensics-DeepfakeDet-ViT`            | 87 MB (int8: 23 MB) | Community Forensics ViT-S/16, trained on 2.7M images from 4,803 generators. The `onnx-community` copy is a known-broken export (wrong weights before July 2026) and is not used |
+| `Thermostatic/community-forensics-frontier-detector-2026-08`    | 44 MB               | Fine-tuned in August 2026 with 40,000 recent-generator images                                                                                                                   |
+| `Thermostatic/community-forensics-low-quality-detector-2026-08` | 44 MB               | The same, further trained on downscaled and recompressed images                                                                                                                 |
 
-Real photos are reachable (Open Images), so the human side of a calibration set is not the problem. Nothing was mocked: no image statistical detector ships until it has been measured.
+Left out: SMOGY (non-commercial licence), and older single-dataset classifiers.
 
-To unblock: allow `huggingface.co` (and its file hosts) and `zenodo.org` in the environment's network settings, or run the evaluation on a machine with normal internet access.
+**Fair test data** (none used to train the candidates; all AI images made after August 2026):
+
+| Set                                                   | Source                                                         | Status     |
+| ----------------------------------------------------- | -------------------------------------------------------------- | ---------- |
+| Real photos                                           | 800 from Open Images (half calibration, half test)             | Downloaded |
+| GPT selfies and portraits                             | `winrisef/gpt-generated-image-collection` (MIT, Sep-Nov 2026)  | Waiting    |
+| OpenAI gpt-image-2.5                                  | `Isaacwang/blip3o-60k-gpt-image-2.5` (Oct 2026)                | Waiting    |
+| Z-Image-Turbo (open model, the "free generator" case) | `jiachengcui888/zimage-turbo-reference` (Apache-2.0, Oct 2026) | Waiting    |
+| The owner's real downloads                            | ChatGPT, Gemini, Copilot, Meta AI, Lovable, Perchance          | Local      |
+
+Every image is scored as the original, a "social copy" (long side 1080 px, JPEG quality 80) and a "copy of a copy" (512 px, quality 60). The social copy is the headline number: it is what people see, and it stops a model scoring well just by telling PNG from JPEG.
+
+**Built and tested:**
+
+- `packages/core/src/image/preprocess.ts`: the models' preprocessing in pure TypeScript. The bicubic resize is a port of Pillow's and matches it **byte for byte** on real photos (`eval/reference/image_parity.py` plus a local test).
+- `packages/core/src/image/classifier.ts`: the detector. Raw model output is turned into a conformal score from held-out real photos, so _Likely made with AI_ flags at most about 1 in 100 real photos like the calibration set. `checkImage` only runs it when the file and the site declare nothing.
+- `packages/image-node`: an ONNX Runtime runner, tested with a 336-byte stand-in model.
+- `eval/reference/image_data.py` (builds the test set), `eval/reference/image_eval.py` (scores every image, view and model into `eval/features/image-scores.v1.jsonl`), and `eval/src/image-models.ts` (the report in `pnpm eval`).
+
+**Blocked:** Hugging Face serves large files (model weights, dataset images) from `us.aws.cdn.hf.co`, which the build environment's network policy does not allow yet. Once it does: download the three models and the AI sets, run the scoring, and choose a model only if the numbers justify it.
 
 ## Still to do in M3
 

@@ -19,3 +19,5 @@ export * from './text/ensemble.js';
 export * from './image/provenance.js';
 export * from './image/fft.js';
 export * from './image/spectral.js';
+export * from './image/preprocess.js';
+export * from './image/classifier.js';

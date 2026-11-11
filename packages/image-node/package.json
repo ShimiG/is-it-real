@@ -6,13 +6,15 @@
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./classifier": "./src/classifier.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@isitreal/core": "workspace:*",
-    "sharp": "^0.35.5"
+    "sharp": "^0.35.5",
+    "onnxruntime-node": "^1.31.1"
   }
 }

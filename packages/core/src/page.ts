@@ -1,3 +1,4 @@
+import { runImageStatisticalCheck, type ImageStatisticalCheck } from './image/classifier.js';
 import { checkImageProvenance, type C2paReader } from './image/provenance.js';
 import { resolveOutcome } from './outcome.js';
 import { matchPlatformLabels, PLATFORM_LABELS_VERSION } from './platform-labels.js';
@@ -87,17 +88,27 @@ export async function checkTextDeep(input: ScamInput, lm: LanguageModel): Promis
  */
 export async function checkImage(
   image: ImageInput,
-  context: { hostname?: string; c2pa?: C2paReader } = {},
+  context: { hostname?: string; c2pa?: C2paReader; statistical?: ImageStatisticalCheck } = {},
 ): Promise<Verdict> {
   const provenance = await checkImageProvenance(image.bytes, context.c2pa);
   const label = labelResult(context.hostname, image.nearbyLabels);
-  if (label === null) return provenance;
-  // Re-resolve with the label added. A label counts even when the file itself could not be read.
+  // The statistical check only adds evidence when the file and the site declare nothing.
+  const declared = provenance.outcome === 'verified_ai' || label !== null;
+  const statistical =
+    context.statistical !== undefined && !declared && image.bytes.length > 0
+      ? await runImageStatisticalCheck(image.bytes, context.statistical)
+      : null;
+  if (label === null && statistical === null) return provenance;
+  // Re-resolve with everything. A label counts even when the file itself could not be read.
   const fileResults: DetectorResult[] =
     provenance.outcome === 'not_assessed'
       ? []
       : provenance.signals.map((signal) => ({ status: 'assessed' as const, signal }));
-  return resolveOutcome('image', [...fileResults, label]);
+  return resolveOutcome('image', [
+    ...fileResults,
+    ...(label === null ? [] : [label]),
+    ...(statistical === null ? [] : [statistical]),
+  ]);
 }
 
 /**

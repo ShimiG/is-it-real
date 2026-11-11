@@ -6,6 +6,12 @@ import { parseArgs } from 'node:util';
 import { ENGINE_VERSION, SCAM_ENGINE_VERSION } from '@isitreal/core';
 import { loadJsonl } from './dataset.js';
 import { randomBaseline } from './detectors.js';
+import {
+  evaluateImageModels,
+  imageReportMarkdown,
+  loadImageScores,
+  type ImageModelReport,
+} from './image-models.js';
 import { FEATURES_FILE, loadFeatureRows } from './features.js';
 import { evaluate, toMarkdown, type DetectorReport } from './run.js';
 import { evaluateScam, loadScamJsonl, scamToMarkdown, type ScamReport } from './scam.js';
@@ -35,6 +41,7 @@ const json: {
   scam: ScamReport[];
   textModels?: SpecReport[];
   leaveOneDomainOut?: LodoRow[];
+  imageModels?: ImageModelReport[];
 } = { text: [], scam: [] };
 
 // Harness sanity check on the toy set.
@@ -58,6 +65,16 @@ if (existsSync(FEATURES_FILE)) {
   json.textModels = reports;
   json.leaveOneDomainOut = lodo;
   sections.push(textReportMarkdown(reports, lodo, rows));
+}
+
+// Image classifiers, from the committed score table (numbers only).
+{
+  const rows = loadImageScores();
+  if (rows.length > 0) {
+    const reports = evaluateImageModels(rows, alpha);
+    json.imageModels = reports;
+    sections.push(imageReportMarkdown(reports, alpha));
+  }
 }
 
 // Scam rules.
