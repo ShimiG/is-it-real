@@ -207,6 +207,7 @@ const shippedModel = join(cache, 'models', 'image', 'tf-low-quality', 'model_fp1
 const shippedGate = join(cache, 'models', 'image', 'clip-b32', 'vision_model_quantized.onnx');
 const perchance = join(cache, 'private', 'perchance-originals', 'perchance-1.jpeg');
 const geminiCopy = join(cache, 'private', 'gemini-chat-upload', '4.webp');
+const phonePhoto = join(cache, 'images', 'phone', '00bc51498f245159.jpg');
 const shipped = async () => ({
   decode: decodeImage,
   gate: {
@@ -216,39 +217,49 @@ const shipped = async () => ({
   runner: await loadImageClassifierWith(ort, IMAGE_CLASSIFIER_MODEL.runnerId, shippedModel),
   model: IMAGE_CLASSIFIER_MODEL,
 });
-describe.skipIf(!existsSync(shippedModel) || !existsSync(shippedGate) || !existsSync(perchance))(
-  'shipped picture model and photo gate (local only)',
-  () => {
-    it('says "Likely made with AI" for an unlabelled, photo-like AI picture', async () => {
-      // A Gemini picture as re-saved by a chat app: no label left, so only the picture model can tell.
-      const statistical = await shipped();
-      const verdict = await checkImage(
-        { bytes: new Uint8Array(await readFile(geminiCopy)) },
-        { statistical },
-      );
-      expect(verdict.outcome).toBe('likely_ai');
-      expect(verdict.reasons).toEqual(['image_classifier_ai']);
-    }, 60_000);
+describe.skipIf(
+  ![shippedModel, shippedGate, perchance, geminiCopy, phonePhoto].every((f) => existsSync(f)),
+)('shipped picture model and photo gate (local only)', () => {
+  it('says "Likely made with AI" for an unlabelled, photo-like AI picture', async () => {
+    // A Gemini picture as re-saved by a chat app: no label left, so only the picture model can tell.
+    const statistical = await shipped();
+    const verdict = await checkImage(
+      { bytes: new Uint8Array(await readFile(geminiCopy)) },
+      { statistical },
+    );
+    expect(verdict.outcome).toBe('likely_ai');
+    expect(verdict.reasons).toEqual(['image_classifier_ai']);
+  }, 60_000);
 
-    it('does not judge the Perchance anime drawing: it is not a photo', async () => {
-      // The picture model alone calls this AI, but it says the same of a third of human-made
-      // drawings, so its opinion on drawings is worth nothing. The gate keeps it out.
-      const statistical = await shipped();
-      const verdict = await checkImage(
-        { bytes: new Uint8Array(await readFile(perchance)) },
-        { statistical },
-      );
-      expect(verdict.outcome).toBe('no_clear_signs');
-      expect(verdict.reasons).toContain('not_a_photo');
-    }, 60_000);
+  it('does not judge the Perchance anime drawing: it is not a photo', async () => {
+    // The picture model alone calls this AI, but it says the same of a third of human-made
+    // drawings, so its opinion on drawings is worth nothing. The gate keeps it out.
+    const statistical = await shipped();
+    const verdict = await checkImage(
+      { bytes: new Uint8Array(await readFile(perchance)) },
+      { statistical },
+    );
+    expect(verdict.outcome).toBe('no_clear_signs');
+    expect(verdict.reasons).toContain('not_a_photo');
+  }, 60_000);
 
-    it('leaves a real photo alone', async () => {
-      const statistical = await shipped();
-      const verdict = await checkImage(
-        { bytes: new Uint8Array(await fixture('plain.jpg')) },
-        { statistical },
-      );
-      expect(verdict.outcome).toBe('no_clear_signs');
-    }, 60_000);
-  },
-);
+  it('leaves a real phone photo alone, after really judging it', async () => {
+    const statistical = await shipped();
+    const verdict = await checkImage(
+      { bytes: new Uint8Array(await readFile(phonePhoto)) },
+      { statistical },
+    );
+    expect(verdict.outcome).toBe('no_clear_signs');
+    expect(verdict.signals.some((x) => x.kind === 'statistical')).toBe(true);
+  }, 60_000);
+
+  it('does not judge a synthetic test pattern', async () => {
+    const statistical = await shipped();
+    const verdict = await checkImage(
+      { bytes: new Uint8Array(await fixture('plain.jpg')) },
+      { statistical },
+    );
+    expect(verdict.outcome).toBe('no_clear_signs');
+    expect(verdict.reasons).toContain('not_a_photo');
+  }, 60_000);
+});

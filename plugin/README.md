@@ -1,6 +1,6 @@
 # Is It Real? (Claude plugin)
 
-Checks the page you are looking at, a message or an image for **scam warning signs** and for **AI-generated text and images**. Version 0.2.0.
+Checks the page you are looking at, a message or an image for **scam warning signs** and for **AI-generated text and images**. Version 0.3.0.
 
 - Runs on your computer. Nothing is uploaded; the only network use is downloading the page's own images (and, once, the Content Credentials library, see below).
 - The answers come from fixed rules and measurements, not from an AI opinion. Claude collects the page, calls the tools and explains the results.
@@ -28,11 +28,11 @@ Start Claude Code with Claude in Chrome (`claude --chrome`), open the page in Ch
 
 ## What it checks
 
-| Check              | How                                                                                                                                                                                                                                                                          |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Scam warning signs | Rules for pressure, threats, gift-card / crypto / wire payments, secrecy, requests for codes or personal details, fake support, family emergencies, look-alike web addresses, links that go somewhere else                                                                   |
-| AI images          | Content Credentials (signed records from ChatGPT, Gemini, Copilot and others), the "made by AI" metadata label, settings left by image generators, AI labels shown by Facebook, Instagram, YouTube and TikTok; when an image carries none of these, a picture-checking model |
-| AI text            | Writing statistics (text of about 110 words or more, English only)                                                                                                                                                                                                           |
+| Check              | How                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scam warning signs | Rules for pressure, threats, gift-card / crypto / wire payments, secrecy, requests for codes or personal details, fake support, family emergencies, look-alike web addresses, links that go somewhere else                                                                                                                                                            |
+| AI images          | Content Credentials (signed records from ChatGPT, Gemini, Copilot and others), the "made by AI" metadata label, settings left by image generators, AI labels shown by Facebook, Instagram, YouTube and TikTok; when an image carries none of these and is a plain photo, a picture-checking model (drawings, screenshots and pictures with added text are not judged) |
+| AI text            | Writing statistics (text of about 110 words or more, English only)                                                                                                                                                                                                                                                                                                    |
 
 Limits: images that were re-shared through chat or social apps usually lose their labels; free generators often add none; text written by current AI models is hard to tell apart statistically. Measured results are in [EVAL.md](https://github.com/ShimiG/is-it-real/blob/main/EVAL.md).
 
@@ -40,13 +40,14 @@ Limits: images that were re-shared through chat or social apps usually lose thei
 
 Everything runs on your computer. The first time an image is checked, the server sets up, in the plugin's data folder:
 
-| What                                                      | Size                   | Why                                                                                            |
-| --------------------------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------- |
-| `@contentauth/c2pa-node` (npm)                            | about 80 MB installed  | reads Content Credentials                                                                      |
-| `onnxruntime-node` and `sharp` (npm)                      | about 350 MB installed | runs the picture model, decodes images                                                         |
-| Picture model `community_forensics_low_quality_fp16.onnx` | 44 MB                  | downloaded from its author's Hugging Face page at a pinned version, checked against its sha256 |
+| What                                                      | Size                   | Why                                                                                                               |
+| --------------------------------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `@contentauth/c2pa-node` (npm)                            | about 80 MB installed  | reads Content Credentials                                                                                         |
+| `onnxruntime-node` and `sharp` (npm)                      | about 350 MB installed | runs the two models, decodes images                                                                               |
+| Picture model `community_forensics_low_quality_fp16.onnx` | 44 MB                  | downloaded from its author's Hugging Face page at a pinned version, checked against its sha256                    |
+| Photo gate encoder `clip-vit-b32-vision-quantized.onnx`   | 89 MB                  | decides whether a picture is a plain photo, so the picture model is not asked about drawings; same download rules |
 
-In total the data folder grows to about 720 MB; setup takes under a minute on a normal connection. Until it finishes, or if it is not possible, answers say which checks were skipped. Set `ISITREAL_NO_IMAGE_MODEL=1` to never download the picture model.
+In total the data folder grows to about 810 MB; setup takes about a minute on a normal connection. Until it finishes, or if it is not possible, answers say which checks were skipped. Set `ISITREAL_NO_IMAGE_MODEL=1` to never download the two models.
 
 ## Content Credentials support
 
@@ -60,7 +61,7 @@ The server is `server/server.mjs`, built from `packages/mcp-server` in the repos
 | --------------------------- | --------------------------------------------------------------------------- |
 | `ISITREAL_DATA`             | Data folder (set by the plugin to its data folder)                          |
 | `ISITREAL_NO_INSTALL=1`     | Never run npm or download; use only what is already set up                  |
-| `ISITREAL_NO_IMAGE_MODEL=1` | Skip the picture model                                                      |
+| `ISITREAL_NO_IMAGE_MODEL=1` | Skip the picture model and its photo gate                                   |
 | `ISITREAL_GPT2_MODEL`       | Path to `gpt2-lm-head-10.onnx` to enable the deep text check (experimental) |
 
 Licence: Apache-2.0. Bundled third-party code: [server/THIRD_PARTY_NOTICES.md](server/THIRD_PARTY_NOTICES.md).

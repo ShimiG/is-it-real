@@ -1,6 +1,6 @@
 # Evaluation
 
-What "Is It Real?" catches, what it misses, and how that was measured. Version: engine `0.5.0-m3`, plugin 0.2.0 (2026-11-11).
+What "Is It Real?" catches, what it misses, and how that was measured. Version: engine `0.6.0-m3`, plugin 0.3.0 (2026-11-11).
 
 Every number here can be reproduced: `pnpm eval:fetch` downloads the public datasets (pinned commits), `pnpm eval` prints the report. Details: [M1](docs/eval/m1-results.md), [M2](docs/eval/m2-results.md), [M3 labels](docs/eval/m3-progress.md), [M3 picture model](docs/eval/m3-results.md).
 
@@ -46,21 +46,27 @@ Honest summary: useful against older or unedited AI text, weak against current m
 
 Two real-file bugs were found and fixed on the way (an AI claim hidden one step back in Google's history; Microsoft's non-standard signature treated as tampering).
 
-Honest summary: original files from the big generators are recognised reliably. Re-shared copies and free generators usually carry nothing; for those, the picture model below helps.
+Honest summary: original files from the big generators are recognised reliably. Re-shared copies and free generators usually carry nothing; for those, the picture model below helps when the picture is a plain photo.
 
 ## AI images: the picture model (no label needed)
 
-A pretrained detector (MIT licence) measured on 600 AI images made **after** it was trained and 379 held-out real photos. Calibrated so that about 1 in 100 real photos or fewer would be flagged.
+A pretrained detector (MIT licence) that only judges **plain photos**. A second model, the photo gate, first decides whether a picture is a plain photo; drawings, paintings, screenshots and pictures with added text are **not checked**, because on those the detector cannot tell human work from AI (on its own it wrongly flagged a third of human-made cartoons and digital art). Measured on 600 AI images made **after** the detector was trained and 1,065 held-out non-AI images of eight kinds.
 
-|                                        | As published | Social-media copy | Copy of a copy |
-| -------------------------------------- | ------------ | ----------------- | -------------- |
-| Real photos wrongly flagged            | 2 of 379     | 1 of 379          | 1 of 379       |
-| GPT selfies and portraits caught       | 75%          | 30%               | 5%             |
-| OpenAI gpt-image-2.5 caught            | 53%          | 55%               | 36%            |
-| Z-Image-Turbo (free open model) caught | 62%          | 47%               | 34%            |
+| Not AI: wrongly flagged                        | As published | Social-media copy | Copy of a copy |
+| ---------------------------------------------- | ------------ | ----------------- | -------------- |
+| All 1,065 non-AI images                        | 6 (0.6%)     | 0                 | 2              |
+| of which stock, phone and stage photos (562)   | 4            | 0                 | 1              |
+| of which cartoons, digital art, sketches (295) | 0            | 0                 | 0              |
+| of which screenshots and memes (208)           | 2            | 0                 | 1              |
 
-On the owner's real downloads it catches the unlabelled Perchance image and 3 of 5 re-shared Gemini copies. Not yet measured: false alarms on art, screenshots, memes and modern phone photos (the calibration used older Flickr photos).
+| AI: caught (and share not checked) | As published | Social-media copy | Copy of a copy |
+| ---------------------------------- | ------------ | ----------------- | -------------- |
+| GPT selfies and portraits          | 61.5% (10%)  | 18.5%             | 3.5%           |
+| OpenAI gpt-image-2.5               | 22% (37%)    | 22.5%             | 10.5%          |
+| Z-Image-Turbo (free open model)    | 39% (26%)    | 27.5%             | 16.5%          |
+
+Honest summary: it catches a useful share of unlabelled AI photos as published, few after re-sharing, and it stays quiet on real pictures. AI-made drawings, posters and memes without a label are not judged at all. On the owner's real downloads it flags 1 of 5 re-shared Gemini copies; the Perchance anime image is "not checked". Details: [M3 picture model](docs/eval/m3-results.md).
 
 ## Not measured yet
 
-Video; false alarms of the picture model on art, screenshots and modern phone photos; text in languages other than English; current models from vendors other than the one used for the 2026 text set; real scam messages; speed in a browser extension.
+Video; the picture model on photos from current phones with heavy processing, and on Midjourney, Flux, Gemini and Grok output; text in languages other than English; current models from vendors other than the one used for the 2026 text set; real scam messages; speed in a browser extension.
