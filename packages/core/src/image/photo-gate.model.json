@@ -1,0 +1,24 @@
+{
+  "id": "image.photo-gate@untrained",
+  "runnerId": "clip-vit-b32-vision-quantized",
+  "file": "vision_model_quantized.onnx",
+  "url": "https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/6b7c523703ae26e39be4b03774966f8571c7f523/onnx/vision_model_quantized.onnx",
+  "sha256": "583fd1110a514667812fee7d684952aaf82a99b959760c8d7dca7e0ab9839299",
+  "bytes": 89117001,
+  "license": "MIT (OpenAI CLIP ViT-B/32; ONNX export by Xenova)",
+  "preprocess": {
+    "resizeShortEdge": 224,
+    "cropSize": 224,
+    "mean": [0.48145466, 0.4578275, 0.40821073],
+    "std": [0.26862954, 0.26130258, 0.27577711]
+  },
+  "logistic": {
+    "features": [],
+    "mean": [],
+    "std": [],
+    "weights": [],
+    "bias": 0
+  },
+  "threshold": 0.5,
+  "trainedOn": "untrained placeholder"
+}
