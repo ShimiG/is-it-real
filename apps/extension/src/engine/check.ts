@@ -1,7 +1,9 @@
 import {
   ENGINE_VERSION,
+  VIDEO_FRAMES_MODEL,
   analyzeScam,
   checkImage,
+  checkVideo,
   detectTextStats,
   itemFromVerdict,
   matchPlatformLabels,
@@ -10,13 +12,17 @@ import {
   type C2paReader,
   type ImageStatisticalCheck,
   type PageReport,
+  type Pixels,
   type ReasonCode,
+  type VideoFrameCheck,
 } from '@isitreal/core';
 import type { PageData, PanelItem, PanelResult } from '../messages.js';
 import { STRINGS } from '../strings.js';
 
 /** Images checked per page, largest first. */
 export const MAX_IMAGES = 12;
+/** Videos checked per page, largest first. */
+export const MAX_VIDEOS = 2;
 
 /** What the host (the hidden extension page) provides. Each check is skipped when its part is missing. */
 export interface EngineCapabilities {
@@ -28,6 +34,10 @@ export interface EngineCapabilities {
   imageCheck: () => Promise<ImageStatisticalCheck | null>;
   /** A small copy of the picture to show next to its result. */
   thumbnail?: (bytes: Uint8Array) => Promise<string | null>;
+  /** The video file as the site serves it, when it is one file. Throws when it cannot be loaded. */
+  fetchVideo?: (url: string) => Promise<Uint8Array>;
+  /** Still frames spread evenly over a video file; empty when the file cannot be played. */
+  videoFrames?: (bytes: Uint8Array, count: number) => Promise<Pixels[]>;
   onProgress?: (done: number, total: number) => void;
 }
 
@@ -72,6 +82,99 @@ async function checkOneImage(
 }
 
 /**
+ * The experimental video frame check: the picture check plus its calibration on real video.
+ * Null when the picture check is not set up, or when the calibration belongs to other models.
+ */
+export async function videoFrameCheck(caps: EngineCapabilities): Promise<VideoFrameCheck | null> {
+  const image = await caps.imageCheck();
+  const model = VIDEO_FRAMES_MODEL;
+  if (image === null || model.calibration.length === 0) return null;
+  if (image.model.id !== model.imageModelId || image.gate.model.id !== model.gateId) return null;
+  return { gate: image.gate, runner: image.runner, imageModel: image.model, model };
+}
+
+/** A video address that can be fetched as one file (not a stream delivered in pieces). */
+const isFileUrl = (url: string | undefined): url is string =>
+  url !== undefined && /^https?:/i.test(url) && !/\.(m3u8|mpd)(\?|#|$)/i.test(url);
+
+async function checkOneVideo(
+  ref: PageData['videos'][number],
+  hostname: string | undefined,
+  caps: EngineCapabilities,
+): Promise<PanelItem> {
+  const source = ref.url ?? STRINGS.sourceStream;
+  const notes: string[] = [];
+  let bytes: Uint8Array | null = null;
+  if (isFileUrl(ref.url) && caps.fetchVideo !== undefined) {
+    try {
+      bytes = await caps.fetchVideo(ref.url);
+    } catch {
+      notes.push(STRINGS.noteVideoUnreadable);
+    }
+  } else notes.push(STRINGS.noteVideoStreamed);
+  const c2pa = await caps.c2pa();
+  const frameCheck = await videoFrameCheck(caps);
+  const file = bytes;
+  const frames =
+    frameCheck !== null && file !== null && caps.videoFrames !== undefined
+      ? async () => {
+          const got = await caps.videoFrames!(file, frameCheck.model.frames);
+          return got.length > 0 ? got : null;
+        }
+      : undefined;
+  const verdict = await checkVideo(
+    {
+      ...(file === null ? {} : { bytes: file }),
+      ...(frames === undefined ? {} : { frames }),
+      nearbyLabels: ref.labels,
+    },
+    {
+      ...(hostname === undefined ? {} : { hostname }),
+      ...(c2pa === null ? {} : { c2pa }),
+      ...(frameCheck === null ? {} : { frameCheck }),
+    },
+  );
+  if (file !== null && frameCheck === null) notes.push(STRINGS.noteVideoNoFrames);
+  if (verdict.signals.some((s) => s.kind === 'statistical') || frames !== undefined)
+    notes.push(STRINGS.noteVideoExperimental);
+  // Frames not looked at, and nothing declared: the panel offers to watch the video as it plays.
+  const watch = frames === undefined && verdict.outcome !== 'verified_ai';
+  return {
+    ...itemFromVerdict(verdict, source, notes.length > 0 ? notes.join(' ') : undefined),
+    ...(watch ? { watch: { frameId: ref.frameId, index: ref.index, labels: ref.labels } } : {}),
+  };
+}
+
+/**
+ * Judges frames that were read from a video while it played in the page (streamed video has no
+ * file to fetch). Labels shown next to the video still count first.
+ */
+export async function checkVideoFrames(
+  frames: readonly Pixels[],
+  labels: string[],
+  pageUrl: string,
+  caps: EngineCapabilities,
+): Promise<PanelItem> {
+  const hostname = hostOf(pageUrl);
+  const frameCheck = await videoFrameCheck(caps);
+  const verdict = await checkVideo(
+    {
+      ...(frameCheck === null ? {} : { frames: async () => (frames.length > 0 ? frames : null) }),
+      nearbyLabels: labels,
+    },
+    {
+      ...(hostname === undefined ? {} : { hostname }),
+      ...(frameCheck === null ? {} : { frameCheck }),
+    },
+  );
+  const notes = [
+    frameCheck === null ? STRINGS.noteVideoNoFrames : STRINGS.noteVideoWatched,
+    ...(frameCheck === null ? [] : [STRINGS.noteVideoExperimental]),
+  ];
+  return itemFromVerdict(verdict, STRINGS.sourceStream, notes.join(' '));
+}
+
+/**
  * Checks one page: scam warning signs first (ADR-0007), then the text, each image and the site's
  * own AI labels. The same core and the same wording as the Claude plugin.
  */
@@ -96,7 +199,8 @@ export async function checkPageData(
   );
 
   const images = page.images.slice(0, MAX_IMAGES);
-  const total = images.length + 1;
+  const videos = page.videos.slice(0, MAX_VIDEOS);
+  const total = images.length + videos.length + 1;
   let done = 0;
   const step = () => caps.onProgress?.(++done, total);
 
@@ -108,6 +212,10 @@ export async function checkPageData(
   step();
   for (const ref of images) {
     items.push(await checkOneImage(ref, hostname, caps));
+    step();
+  }
+  for (const ref of videos) {
+    items.push(await checkOneVideo(ref, hostname, caps));
     step();
   }
   if (hostname !== undefined && page.pageLabels.length > 0) {

@@ -54,6 +54,9 @@ importers:
       '@isitreal/image-node':
         specifier: workspace:*
         version: link:../../packages/image-node
+      '@isitreal/video-node':
+        specifier: workspace:*
+        version: link:../../packages/video-node
       '@types/chrome':
         specifier: ^0.3.7
         version: 0.3.7

@@ -1,4 +1,5 @@
-import type { PageData } from '../messages.js';
+import type { PageData, PageVideo } from '../messages.js';
+import { videoAddress, visibleVideos } from './videos.js';
 
 /**
  * Collects what the checks need from the page in front of the user: its main text, links, the
@@ -39,6 +40,22 @@ function shortTexts(root: Element): string[] {
 const boxOf = (el: Element): Element =>
   el.closest('figure, article, [role="article"], div') ?? el.parentElement ?? el;
 
+/** The largest videos in this frame of the page, with the short texts shown next to each. */
+export function listVideos(doc: Document = document): Omit<PageVideo, 'frameId'>[] {
+  return visibleVideos(doc)
+    .slice(0, MAX_VIDEOS)
+    .map((v, index) => {
+      const url = videoAddress(v);
+      const rect = v.getBoundingClientRect();
+      return {
+        ...(url === undefined ? {} : { url }),
+        labels: shortTexts(boxOf(v)).slice(0, 12),
+        index,
+        area: Math.round(rect.width * rect.height),
+      };
+    });
+}
+
 export function extractPage(doc: Document = document): PageData {
   const main = doc.querySelector<HTMLElement>('article, main, [role="main"]') ?? doc.body;
   const text = clean(main?.innerText).slice(0, MAX_TEXT);
@@ -74,19 +91,8 @@ export function extractPage(doc: Document = document): PageData {
     }));
 
   // A streamed video has a blob: address that cannot be fetched as a file; it is still passed
-  // on, because labels shown next to it count.
-  const videos = [...doc.querySelectorAll('video')]
-    .map((v) => ({ v, r: v.getBoundingClientRect() }))
-    .filter(({ r }) => r.width >= MIN_SIDE && r.height >= MIN_SIDE)
-    .sort((a, b) => b.r.width * b.r.height - a.r.width * a.r.height)
-    .slice(0, MAX_VIDEOS)
-    .map(({ v }) => {
-      const url = v.currentSrc || v.src || v.querySelector<HTMLSourceElement>('source[src]')?.src;
-      return {
-        ...(url ? { url } : {}),
-        labels: shortTexts(boxOf(v)).slice(0, 12),
-      };
-    });
+  // on, because labels shown next to it count and its frames can be read while it plays.
+  const videos = listVideos(doc).map((v) => ({ ...v, frameId: 0 }));
 
   const pageLabels = doc.body ? shortTexts(doc.body).filter((s) => LABEL_WORDS.test(s)) : [];
   for (const el of doc.querySelectorAll('[aria-label]')) {

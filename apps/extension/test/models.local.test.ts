@@ -18,6 +18,7 @@ import {
   loadImageEmbedderWith,
   type OrtLibrary,
 } from '@isitreal/image-node';
+import { frameAt } from '@isitreal/video-node';
 import type { EngineEvent, EngineRequest, PictureScore } from '../src/messages.js';
 import {
   browserAvailable,
@@ -100,6 +101,7 @@ describe.skipIf(!ready)('picture check in Chromium with the shipped models (loca
     ({ server, base } = await startServer({
       '/local/': local,
       '/images/': join(cache, 'images'),
+      '/videos/': join(cache, 'videos'),
     }));
     loaded = await launchWithExtension();
     await loaded.worker.evaluate(
@@ -185,4 +187,105 @@ describe.skipIf(!ready)('picture check in Chromium with the shipped models (loca
     // Each result shows a small copy of its picture.
     expect(await panel.locator('.ai img.thumb').count()).toBe(3);
   }, 180_000);
+
+  it('reads video frames to the same numbers as the plugin', async () => {
+    // Both take the decoder's raw planes and convert them with the core's one rule: the plugin
+    // through ffmpeg, the extension through the browser's video player. Each frame the browser
+    // read is fetched again by the plugin's reader at the same moment and scored.
+    const clipsFile = join(cache, 'videos', 'manifest.jsonl');
+    if (!existsSync(clipsFile)) return;
+    const clips = readFileSync(clipsFile, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l) as { id: string; path: string; source: string });
+    const fromVideoNode = createRequire(join(root, 'packages', 'video-node', 'package.json'));
+    const ffmpeg = fromVideoNode('ffmpeg-static') as string;
+    const ort = createRequire(join(root, 'packages', 'image-node', 'package.json'))(
+      'onnxruntime-node',
+    ) as OrtLibrary;
+    const runner = await loadImageClassifierWith(
+      ort,
+      IMAGE_CLASSIFIER_MODEL.runnerId,
+      classifierFile,
+    );
+    const gate = {
+      runner: await loadImageEmbedderWith(ort, PHOTO_GATE_MODEL.runnerId, gateFile),
+      model: PHOTO_GATE_MODEL,
+    };
+    const report: string[] = [];
+    let compared = 0;
+    // OpenVid clips are left out: they use MPEG-4 Part 2, which browsers do not play.
+    for (const source of ['dfd_real', 'msrvtt', 'veo31', 'kling', 'sora2', 'wan21', 'seedance']) {
+      for (const clip of clips.filter((c) => c.source === source).slice(0, 2)) {
+        const answer = await ask(
+          { type: 'score-video', url: `${base}/videos/${clip.path}` },
+          'video-score',
+        );
+        expect(answer.type, `${clip.id} ${JSON.stringify(answer).slice(0, 300)}`).toBe(
+          'video-score',
+        );
+        const frames = (answer as { frames: PictureScore[] | null }).frames!;
+        expect(frames, clip.id).toHaveLength(6);
+        for (const [k, got] of frames.entries()) {
+          // The plugin's reader gives the first frame at or after the asked time.
+          const pixels = await frameAt(ffmpeg, join(cache, 'videos', clip.path), got.time! - 0.002);
+          expect(pixels, `${clip.id} frame ${k}`).not.toBeNull();
+          const want = {
+            gate: await photoLikeScore(pixels!, gate),
+            raw: await runner.run(
+              preprocessForClassifier(pixels!, IMAGE_CLASSIFIER_MODEL),
+              IMAGE_CLASSIFIER_MODEL.cropSize,
+            ),
+          };
+          report.push(
+            `${clip.id} frame ${k} at ${got.time!.toFixed(3)} s: gate ${got.gate.toFixed(4)}/${want.gate.toFixed(4)} raw ${got.raw.toFixed(4)}/${want.raw.toFixed(4)}`,
+          );
+          expect([got.width, got.height], `${clip.id} frame ${k}`).toEqual([
+            pixels!.width,
+            pixels!.height,
+          ]);
+          expect(Math.abs(got.gate - want.gate), report.at(-1)).toBeLessThan(0.01);
+          expect(Math.abs(got.raw - want.raw), report.at(-1)).toBeLessThan(0.02);
+          compared++;
+        }
+      }
+    }
+    writeFileSync(join(tmpdir(), 'isitreal-video-parity.txt'), report.join('\n') + '\n');
+    expect(compared).toBe(84);
+  }, 900_000);
+
+  it('checks a streamed video while it plays', async () => {
+    // The clip reaches the player as a blob, like video on a video site: no file to fetch.
+    const clipsFile = join(cache, 'videos', 'manifest.jsonl');
+    if (!existsSync(clipsFile)) return;
+    const pathOf = (id: string) =>
+      (
+        readFileSync(clipsFile, 'utf8')
+          .split('\n')
+          .filter(Boolean)
+          .map((l) => JSON.parse(l) as { id: string; path: string })
+          .find((c) => c.id === id) ?? { path: '' }
+      ).path;
+    const watchClip = async (id: string) => {
+      const opened = await loaded.openPanelFor(
+        `${base}/stream-page.html?src=${encodeURIComponent(`/videos/${pathOf(id)}`)}`,
+      );
+      await opened.page.waitForFunction(
+        () => (document.getElementById('player') as HTMLVideoElement).currentTime > 0.2,
+      );
+      await opened.panel.getByRole('button', { name: /Check/ }).click();
+      const button = opened.panel.getByRole('button', { name: 'Check this video while it plays' });
+      await expect.poll(() => button.count(), { timeout: 60_000 }).toBe(1);
+      await button.click();
+      // The card is replaced by the answer; the button goes away with it.
+      await expect.poll(() => button.count(), { timeout: 120_000 }).toBe(0);
+      return opened.panel.locator('.ai').innerText();
+    };
+    const ai = await watchClip('seedance:072bc6528b84e8ab');
+    expect(ai).toContain('Video 1: Likely made with AI');
+    expect(ai).toContain('We looked at a few frames while the video played.');
+    expect(ai).toContain('cannot detect a face swap');
+    const real = await watchClip('dfd_real:005b70c6935ad68b');
+    expect(real).toContain('Video 1: No clear signs');
+  }, 600_000);
 });

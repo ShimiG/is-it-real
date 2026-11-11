@@ -1,17 +1,22 @@
 import {
   IMAGE_CLASSIFIER_MODEL,
   PHOTO_GATE_MODEL,
+  VIDEO_FRAMES_MODEL,
   photoLikeScore,
   preprocessForClassifier,
+  yuv420ToPixels,
   type C2paReader,
   type ImageStatisticalCheck,
+  type Pixels,
 } from '@isitreal/core';
 import { createWasmC2paReader } from '../engine/c2pa.js';
-import { checkPageData, type EngineCapabilities } from '../engine/check.js';
+import { checkPageData, checkVideoFrames, type EngineCapabilities } from '../engine/check.js';
 import { decodeImage, thumbnail } from '../engine/decode.js';
 import { fetchImageBytes } from '../engine/media.js';
 import { ModelStore } from '../engine/models.js';
 import { configureRuntime, loadClassifier, loadEmbedder } from '../engine/ort.js';
+import { fetchVideoBytes, framesFromVideoFile } from '../engine/video.js';
+import { unpackFrame } from '../shared/raw-frame.js';
 import {
   ENGINE_PORT,
   type EngineEvent,
@@ -76,11 +81,17 @@ const loadImageCheck = () =>
     }
   })());
 
+/** More frames than the check uses are not kept. */
+const MAX_WATCHED_FRAMES = 12;
+
 const capabilities: Omit<EngineCapabilities, 'onProgress'> = {
   fetchBytes: fetchImageBytes,
   c2pa: loadC2pa,
   imageCheck: loadImageCheck,
   thumbnail,
+  fetchVideo: fetchVideoBytes,
+  videoFrames: async (bytes, count) =>
+    (await framesFromVideoFile(bytes, count)).map((f) => f.pixels),
 };
 
 /** The two numbers behind a picture's verdict, without the verdict. */
@@ -97,6 +108,32 @@ async function scorePicture(url: string): Promise<PictureScore | null> {
   };
 }
 
+/** The same two numbers for each sampled frame of a video file. */
+async function scoreVideo(url: string): Promise<PictureScore[] | null> {
+  const check = await loadImageCheck();
+  if (check === null) return null;
+  const problems: string[] = [];
+  const frames = await framesFromVideoFile(
+    await fetchVideoBytes(url),
+    VIDEO_FRAMES_MODEL.frames,
+    (what) => problems.push(what),
+  );
+  if (frames.length === 0) throw new Error(`no frames: ${problems.join('; ')}`);
+  const scores: PictureScore[] = [];
+  for (const { pixels, time } of frames)
+    scores.push({
+      width: pixels.width,
+      height: pixels.height,
+      gate: await photoLikeScore(pixels, check.gate),
+      raw: await check.runner.run(
+        preprocessForClassifier(pixels, check.model),
+        check.model.cropSize,
+      ),
+      time,
+    });
+  return scores;
+}
+
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== ENGINE_PORT) return;
   let open = true;
@@ -107,6 +144,8 @@ chrome.runtime.onConnect.addListener((port) => {
     if (open) port.postMessage(event);
   };
   const fail = (err: unknown) => send({ type: 'error', message: String(err) });
+  /** Frames of a playing video, sent one by one before they are judged together. */
+  let watched: Pixels[] = [];
   port.onMessage.addListener((request: EngineRequest) => {
     switch (request?.type) {
       case 'check-page':
@@ -129,6 +168,23 @@ chrome.runtime.onConnect.addListener((port) => {
         break;
       case 'score-picture':
         scorePicture(request.url).then((score) => send({ type: 'score', score }), fail);
+        break;
+      case 'video-frame': {
+        const raw = unpackFrame(request.frame);
+        if (raw !== null && watched.length < MAX_WATCHED_FRAMES) watched.push(yuv420ToPixels(raw));
+        break;
+      }
+      case 'check-video-frames': {
+        const frames = watched;
+        watched = [];
+        checkVideoFrames(frames, request.labels, request.pageUrl, capabilities).then(
+          (item) => send({ type: 'video-result', item }),
+          fail,
+        );
+        break;
+      }
+      case 'score-video':
+        scoreVideo(request.url).then((frames) => send({ type: 'video-score', frames }), fail);
         break;
     }
   });

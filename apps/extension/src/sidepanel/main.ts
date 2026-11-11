@@ -1,16 +1,26 @@
-import { ENGINE_VERSION } from '@isitreal/core';
+import { ENGINE_VERSION, VIDEO_FRAMES_MODEL } from '@isitreal/core';
+import type { CaptureProblem } from '../content/videos.js';
+import { MAX_VIDEOS } from '../engine/check.js';
+import type { PackedFrame } from '../shared/raw-frame.js';
 import {
+  CAPTURE_PORT,
   ENGINE_PORT,
+  SETTING_BACKGROUND,
   type BackgroundRequest,
+  type CaptureEvent,
+  type CaptureRequest,
+  type ContentAnswer,
   type ContentRequest,
   type EngineEvent,
   type EngineRequest,
   type ModelsState,
   type PageData,
+  type PageVideo,
+  type PanelItem,
   type PanelResult,
 } from '../messages.js';
 import { STRINGS } from '../strings.js';
-import { renderResult, resultToSpeech } from './render.js';
+import { renderItem, renderResult, resultToSpeech, type WatchTarget } from './render.js';
 
 const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const checkButton = byId<HTMLButtonElement>('check');
@@ -19,11 +29,13 @@ const progress = byId<HTMLProgressElement>('progress');
 const results = byId<HTMLDivElement>('results');
 const readAloud = byId<HTMLButtonElement>('read-aloud');
 const largeText = byId<HTMLButtonElement>('large-text');
+const quietChecks = byId<HTMLButtonElement>('quiet-checks');
 const setupText = byId<HTMLParagraphElement>('setup-text');
 const setupProgress = byId<HTMLProgressElement>('setup-progress');
 const setupButton = byId<HTMLButtonElement>('setup-button');
 
 let lastResult: PanelResult | null = null;
+let lastTabId: number | null = null;
 
 class UserMessage extends Error {}
 
@@ -45,24 +57,61 @@ async function targetTab(): Promise<chrome.tabs.Tab> {
 }
 
 async function extract(tabId: number): Promise<PageData> {
+  // Frame 0 is the page itself; embedded pages (players, adverts) are asked separately below.
   const ask = () =>
-    chrome.tabs.sendMessage(tabId, { type: 'extract-page' } satisfies ContentRequest) as Promise<
-      { ok: true; page: PageData } | { ok: false; error: string } | undefined
-    >;
+    chrome.tabs.sendMessage(tabId, { type: 'extract-page' } satisfies ContentRequest, {
+      frameId: 0,
+    }) as Promise<ContentAnswer | undefined>;
   let answer;
   try {
     answer = await ask();
   } catch {
     // The tab was open before the extension was installed: put the page reader in now.
     try {
-      await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+      await chrome.scripting.executeScript({
+        target: { tabId, allFrames: true },
+        files: ['content.js'],
+      });
       answer = await ask();
     } catch {
       throw new UserMessage(STRINGS.cannotCheckPage);
     }
   }
-  if (answer === undefined || !answer.ok) throw new UserMessage(STRINGS.pageNotReady);
-  return answer.page;
+  if (answer === undefined || !answer.ok || !('page' in answer))
+    throw new UserMessage(STRINGS.pageNotReady);
+  const page = answer.page;
+  page.videos = [...page.videos, ...(await embeddedVideos(tabId))]
+    .sort((a, b) => b.area - a.area)
+    .slice(0, MAX_VIDEOS);
+  return page;
+}
+
+/** Videos inside embedded pages (for example a YouTube player on a news site). */
+async function embeddedVideos(tabId: number): Promise<PageVideo[]> {
+  try {
+    const frames = await chrome.scripting.executeScript({
+      target: { tabId, allFrames: true },
+      func: () => true,
+    });
+    const found: PageVideo[] = [];
+    for (const { frameId } of frames) {
+      if (frameId === 0) continue;
+      try {
+        const answer = (await chrome.tabs.sendMessage(
+          tabId,
+          { type: 'list-videos' } satisfies ContentRequest,
+          { frameId },
+        )) as ContentAnswer | undefined;
+        if (answer?.ok === true && 'videos' in answer)
+          found.push(...answer.videos.map((v) => ({ ...v, frameId })));
+      } catch {
+        // A frame without the page reader (not a web page) has no videos we can read.
+      }
+    }
+    return found;
+  } catch {
+    return [];
+  }
 }
 
 /** Starts the hidden engine page if needed and opens a line to it. */
@@ -133,6 +182,70 @@ function showModels(models: ModelsState): void {
   }
 }
 
+const WATCH_PROBLEM: Record<CaptureProblem, string> = {
+  paused: STRINGS.watchPaused,
+  protected: STRINGS.watchProtected,
+  unsupported: STRINGS.watchUnsupported,
+  gone: STRINGS.watchGone,
+};
+
+/** Watches a video while it plays, has its frames judged, and replaces its card with the answer. */
+async function watch(target: WatchTarget): Promise<void> {
+  const where = target.item.watch;
+  if (where === undefined || lastTabId === null || lastResult === null) return;
+  const wanted = VIDEO_FRAMES_MODEL.frames;
+  target.button.disabled = true;
+  target.status.textContent = STRINGS.watchStarting;
+  const frames: PackedFrame[] = [];
+  let problem: CaptureProblem | undefined;
+  try {
+    problem = await new Promise<CaptureProblem | undefined>((resolve) => {
+      const port = chrome.tabs.connect(lastTabId!, { name: CAPTURE_PORT, frameId: where.frameId });
+      port.onMessage.addListener((event: CaptureEvent) => {
+        if (event.type === 'frame') {
+          frames.push(event.frame);
+          target.status.textContent = STRINGS.watchProgress(frames.length, wanted);
+        } else {
+          port.disconnect();
+          resolve(event.problem);
+        }
+      });
+      port.onDisconnect.addListener(() => resolve('gone'));
+      port.postMessage({
+        type: 'start',
+        index: where.index,
+        count: wanted,
+      } satisfies CaptureRequest);
+    });
+    if (frames.length < VIDEO_FRAMES_MODEL.minChecked) {
+      target.status.textContent = WATCH_PROBLEM[problem ?? 'paused'];
+      return;
+    }
+    let item: PanelItem | null = null;
+    const engine = await connectEngine((event, close) => {
+      if (event.type === 'video-result') {
+        item = event.item;
+        close();
+      } else if (event.type === 'error') close();
+    });
+    for (const frame of frames) engine.send({ type: 'video-frame', frame });
+    engine.send({ type: 'check-video-frames', pageUrl: lastResult.url, labels: where.labels });
+    await engine.closed;
+    if (item === null) throw new Error('no answer for the video');
+    const at = lastResult.items.indexOf(target.item);
+    if (at >= 0) lastResult.items[at] = item;
+    const card = renderItem(target.name, item);
+    target.card.replaceWith(card);
+    card.tabIndex = -1;
+    card.focus();
+  } catch (err) {
+    console.error(err);
+    target.status.textContent = STRINGS.failed;
+  } finally {
+    target.button.disabled = false;
+  }
+}
+
 /** Asks the engine about the picture check's files; with `install`, downloads them first. */
 async function models(install: boolean): Promise<void> {
   try {
@@ -166,9 +279,10 @@ async function check(): Promise<void> {
   status.textContent = STRINGS.checking;
   try {
     const tab = await targetTab();
-    const page = await extract(tab.id!);
+    lastTabId = tab.id!;
+    const page = await extract(lastTabId);
     lastResult = await runEngine(page);
-    results.replaceChildren(renderResult(lastResult));
+    results.replaceChildren(renderResult(lastResult, { onWatch: (t) => void watch(t) }));
     status.textContent = '';
     readAloud.hidden = false;
     // Move reading position to the result for keyboard and screen-reader users.
@@ -222,6 +336,14 @@ largeText.addEventListener(
   'click',
   () => void setLargeText(largeText.getAttribute('aria-pressed') !== 'true', true),
 );
-void chrome.storage.local
-  .get('largeText')
-  .then((saved) => setLargeText(saved['largeText'] === true, false));
+quietChecks.textContent = STRINGS.quietChecks;
+byId('quiet-about').textContent = STRINGS.quietChecksAbout;
+quietChecks.addEventListener('click', () => {
+  const on = quietChecks.getAttribute('aria-pressed') !== 'true';
+  quietChecks.setAttribute('aria-pressed', String(on));
+  void chrome.storage.local.set({ [SETTING_BACKGROUND]: on });
+});
+void chrome.storage.local.get(['largeText', SETTING_BACKGROUND]).then((saved) => {
+  void setLargeText(saved['largeText'] === true, false);
+  quietChecks.setAttribute('aria-pressed', String(saved[SETTING_BACKGROUND] !== false));
+});

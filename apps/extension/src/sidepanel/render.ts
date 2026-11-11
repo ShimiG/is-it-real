@@ -91,7 +91,27 @@ function card(outcome: Outcome, title: string, body: string): HTMLElement {
   return section;
 }
 
-function itemCard(named: Named): HTMLElement {
+/** What the panel can do with a card beyond showing it. */
+export interface CardActions {
+  /** Offer to watch a video while it plays (needs the picture check). */
+  onWatch?: (target: WatchTarget) => void;
+}
+
+export interface WatchTarget {
+  item: PanelItem;
+  /** "Video 1". */
+  name: string;
+  card: HTMLElement;
+  button: HTMLButtonElement;
+  status: HTMLElement;
+}
+
+/** One item's card. `name` is its display name ("Picture 2", "Video 1"). */
+export function renderItem(name: string, item: PanelItem, actions: CardActions = {}): HTMLElement {
+  return itemCard({ name, item, index: 0 }, actions);
+}
+
+function itemCard(named: Named, actions: CardActions = {}): HTMLElement {
   const { item } = named;
   const section = card(item.outcome, `${named.name}: ${item.title}`, item.explanation);
   const picture = thumb(named);
@@ -99,6 +119,18 @@ function itemCard(named: Named): HTMLElement {
   const why = [...item.reasons.map((r) => r.text).slice(0, MAX_REASONS), ...evidenceLines(item)];
   if (why.length > 0) section.append(el('h4', 'why', STRINGS.whyHeading), list(why, 'reasons'));
   if (item.note !== undefined) section.append(el('p', 'note', item.note));
+  if (item.watch !== undefined && actions.onWatch !== undefined) {
+    const button = el('button', 'watch', STRINGS.watchButton);
+    button.type = 'button';
+    const status = el('p', 'watch-status');
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+    const onWatch = actions.onWatch;
+    button.addEventListener('click', () =>
+      onWatch({ item, name: named.name, card: section, button, status }),
+    );
+    section.append(button, status);
+  }
   return section;
 }
 
@@ -122,7 +154,7 @@ function groupCard(group: Named[]): HTMLElement {
 }
 
 /** Pictures with exactly the same quiet result share one card; findings always get their own. */
-function cards(items: readonly PanelItem[]): HTMLElement[] {
+function cards(items: readonly PanelItem[], actions: CardActions): HTMLElement[] {
   const named = nameItems(items).sort(
     (a, b) => ORDER.indexOf(a.item.outcome) - ORDER.indexOf(b.item.outcome) || a.index - b.index,
   );
@@ -141,13 +173,13 @@ function cards(items: readonly PanelItem[]): HTMLElement[] {
   for (const n of named) {
     const key = groupKey(n);
     const group = key === null ? null : groups.get(key)!;
-    if (group === null || group.length === 1) out.push(itemCard(n));
+    if (group === null || group.length === 1) out.push(itemCard(n, actions));
     else if (group[0] === n) out.push(groupCard(group));
   }
   return out;
 }
 
-export function renderResult(result: PanelResult): HTMLElement {
+export function renderResult(result: PanelResult, actions: CardActions = {}): HTMLElement {
   const root = el('div', 'result');
 
   const scam = el('section', `card scam scam-${result.scam.risk}`);
@@ -178,7 +210,8 @@ export function renderResult(result: PanelResult): HTMLElement {
   const ai = el('section', 'ai');
   ai.append(el('h2', 'section-title', STRINGS.aiHeading));
   if (result.items.length === 0) ai.append(el('p', 'note', STRINGS.nothingToCheck));
-  else ai.append(...cards(result.items));
+  // Watching a video needs the picture check.
+  else ai.append(...cards(result.items, result.checks.pictureModel ? actions : {}));
   const hasImages = result.items.some((i) => i.kind === 'image');
   if (result.notChecked > 0) ai.append(el('p', 'note', STRINGS.notChecked(result.notChecked)));
   if (hasImages && !result.checks.contentCredentials)

@@ -201,6 +201,10 @@ summary {
   padding: 0.5rem 0;
   text-decoration: underline;
 }
+.watch {
+  margin-top: 0.5rem;
+  font-weight: 700;
+}
 #setup {
   margin-top: 1.5rem;
 }

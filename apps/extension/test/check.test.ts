@@ -87,6 +87,47 @@ describe('checkPageData', () => {
     expect(seen.at(-1)).toEqual([MAX_IMAGES + 1, MAX_IMAGES + 1]);
   });
 
+  it('checks a video file for its signature and a streamed video for labels only', async () => {
+    const signed = new Uint8Array(await readFile(join(fixtures, 'ai-declared.mp4')));
+    const asked: string[] = [];
+    const r = await checkPageData(
+      page({
+        videos: [
+          { url: 'https://cdn.example/clip.mp4', labels: [], frameId: 0, index: 0, area: 9 },
+          {
+            url: 'blob:https://www.facebook.com/1',
+            labels: ['AI info'],
+            frameId: 0,
+            index: 1,
+            area: 8,
+          },
+          { url: 'https://cdn.example/third.mp4', labels: [], frameId: 0, index: 2, area: 7 },
+        ],
+      }),
+      caps({
+        fetchVideo: async (url) => {
+          asked.push(url);
+          return signed;
+        },
+      }),
+    );
+    // Only the first two videos are checked, and the stream is never fetched.
+    expect(asked).toEqual(['https://cdn.example/clip.mp4']);
+    expect(r.items.map((i) => `${i.kind}:${i.outcome}`)).toEqual([
+      'video:no_clear_signs',
+      'video:verified_ai',
+    ]);
+    // No Content Credentials reader here, so the signed file is not recognised; with one it is
+    // (see the browser tests). The streamed video is "Made with AI" from the site's label.
+    expect(r.items[1]!.reasons.map((x) => x.code)).toEqual(['platform_label_ai']);
+    expect(r.items[1]!.note).toContain('small pieces');
+    expect(r.items[0]!.note).toContain('picture check is not set up');
+    // A video whose frames were not looked at can be watched while it plays; one that the site
+    // already labels as AI needs no second look.
+    expect(r.items[0]!.watch).toEqual({ frameId: 0, index: 0, labels: [] });
+    expect(r.items[1]!.watch).toBeUndefined();
+  });
+
   it('reports the label a site shows for the whole page', async () => {
     const r = await checkPageData(page({ pageLabels: ['AI info', 'Like'] }), caps());
     expect(r.items).toHaveLength(1);

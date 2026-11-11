@@ -27,7 +27,14 @@
       <div class="tools">
         <button id="read-aloud" type="button" hidden></button>
         <button id="large-text" type="button" aria-pressed="false"></button>
+        <button
+          id="quiet-checks"
+          type="button"
+          aria-pressed="true"
+          aria-describedby="quiet-about"
+        ></button>
       </div>
+      <p id="quiet-about" class="note"></p>
       <p id="version"></p>
     </footer>
     <script type="module" src="sidepanel.js"></script>

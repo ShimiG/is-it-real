@@ -10,15 +10,17 @@ it records, with numbers only:
   - simple motion statistics from two bursts of 9 consecutive frames (at 30% and 70%)
   - container facts (size, frame rate, duration), to check that results are not explained by them
 
-Frames are decoded by ffmpeg, the same way the shipped Node code does it (packages/video-node).
+Frames: ffmpeg only decodes (raw YUV planes); the conversion to RGB is the project's one fixed
+rule (yuv.py here, packages/core/src/video/yuv.ts in the shipped code), because the picture model
+reacts to how a decoder makes RGB. The plugin and the browser extension read frames the same way.
 Output: eval/datasets/.cache/video-raw.jsonl (large: it holds the encoder outputs). The gate
 training (eval/src/image-gate-train.ts) turns it into the committed, numbers-only table
 eval/features/video-scores.v1.jsonl. Resumable: clips already scored are skipped.
-Usage:  python3 -I eval/reference/video_eval.py [--limit N] [--wait-for N]
+Usage:  python3 -I eval/reference/video_eval.py [--limit N] [--wait-for N] [--shard K/N] [--threads T]
+        (with --shard, run one process per shard, then: cat video-raw.shard-*.jsonl >> video-raw.jsonl)
 """
 
 import argparse
-import io
 import json
 import os
 import subprocess
@@ -28,11 +30,11 @@ import time
 
 import numpy as np
 import onnxruntime as ort
-from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import image_embed  # noqa: E402
 import image_eval as ie  # noqa: E402
+import yuv  # noqa: E402
 
 VIDEOS = os.path.join(ie.CACHE, "videos")
 OUT = os.path.join(ie.CACHE, "video-raw.jsonl")
@@ -62,17 +64,6 @@ def probe(path: str) -> dict:
         }
     except Exception:
         return {}
-
-
-def frame_at(path: str, t: float):
-    """One decoded frame at time t (seconds), as an RGB image; None if ffmpeg gives nothing."""
-    data = run(["ffmpeg", "-v", "error", "-ss", f"{t:.3f}", "-i", path, "-frames:v", "1", "-f", "image2pipe", "-vcodec", "bmp", "-pix_fmt", "bgr24", "-"])
-    if not data:
-        return None
-    try:
-        return Image.open(io.BytesIO(data)).convert("RGB")
-    except Exception:
-        return None
 
 
 def burst(path: str, t: float):
@@ -111,13 +102,13 @@ def motion_stats(f: np.ndarray) -> dict:
 
 
 class Scorer:
-    def __init__(self):
+    def __init__(self, threads: int = 4):
         so = ort.SessionOptions()
-        so.intra_op_num_threads = 4
+        so.intra_op_num_threads = threads
         self.clf = ort.InferenceSession(os.path.join(ie.MODELS, ie.CANDIDATES["tf-low-quality"][0]), so, providers=["CPUExecutionProvider"])
         self.clip = ort.InferenceSession(image_embed.MODEL, so, providers=["CPUExecutionProvider"])
 
-    def frame(self, im: Image.Image, with_logit: bool = True):
+    def frame(self, im, with_logit: bool = True):
         e = self.clip.run(None, {self.clip.get_inputs()[0].name: image_embed.preprocess(im)})[0].reshape(-1).astype(np.float64)
         e /= np.linalg.norm(e) or 1.0
         emb = [round(float(x), 5) for x in e]
@@ -129,23 +120,22 @@ class Scorer:
 
 
 def score_file(scorer: Scorer, path: str, known: dict | None = None) -> dict:
-    """`known`: an earlier result for the same file (picture-model scores and motion statistics
-    do not depend on the gate encoder, so they are reused and only the encoder is run again)."""
+    """`known`: an earlier result for the same file. Its motion statistics are reused (they are
+    made from grey frames and do not depend on how colour is converted); frame scores are not."""
     info = probe(path)
     if not info or info["duration"] <= 0:
         return {"error": "unreadable"}
     frames = []
     for k in range(FRAMES):
-        im = frame_at(path, info["duration"] * (k + 0.5) / FRAMES)
+        im = yuv.frame_at(path, info["duration"] * (k + 0.5) / FRAMES)
         if im is not None and min(im.size) >= 16:
             frames.append(im)
-    reuse = known is not None and len(known.get("logit", [])) == len(frames) and "motion" in known
     embs, logits = [], []
-    for i, im in enumerate(frames):
-        emb, logit = scorer.frame(im, with_logit=not reuse)
+    for im in frames:
+        emb, logit = scorer.frame(im)
         embs.append(emb)
-        logits.append(known["logit"][i] if reuse else logit)
-    if reuse:
+        logits.append(logit)
+    if known is not None and "motion" in known:
         bursts = known["motion"]
     else:
         bursts = []
@@ -173,27 +163,33 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--wait-for", type=int, default=0, help="keep re-reading the manifest until this many clips are scored")
+    ap.add_argument("--shard", default="", help="K/N: score only the clips of shard K of N, into video-raw.shard-K.jsonl")
+    ap.add_argument("--threads", type=int, default=4)
     args = ap.parse_args()
+    shard, shards = (int(x) for x in args.shard.split("/")) if args.shard else (0, 1)
+    target = OUT if shards == 1 else OUT.replace(".jsonl", f".shard-{shard}.jsonl")
     done = set()
-    if os.path.exists(OUT):
-        for line in open(OUT):
-            if line.startswith("{"):
-                r = json.loads(line)
-                done.add((r["id"], r["version"]))
-    # Results of an earlier run with a different gate encoder: their picture-model scores are reused.
+    for name in os.listdir(ie.CACHE):
+        if name == "video-raw.jsonl" or name.startswith("video-raw.shard-"):
+            for line in open(os.path.join(ie.CACHE, name)):
+                if line.startswith("{"):
+                    r = json.loads(line)
+                    done.add((r["id"], r["version"]))
+    # Results of the first scoring run (frames converted by ffmpeg itself): only their motion
+    # statistics are reused.
     known = {}
-    earlier = os.path.join(ie.CACHE, "video-scores-quantized-partial.jsonl")
+    earlier = os.path.join(ie.CACHE, "video-raw-ffmpeg-colours.jsonl")
     if os.path.exists(earlier):
         for line in open(earlier):
             if line.startswith("{"):
                 r = json.loads(line)
-                known[(r["id"], r["version"])] = r
-    scorer = Scorer()
-    out = open(OUT, "a")
+                known[(r["id"], r["version"])] = {"motion": r.get("motion", [])} if "motion" in r else {}
+    scorer = Scorer(args.threads)
+    out = open(target, "a")
     count, t0 = 0, time.time()
     tmp = tempfile.mkdtemp(prefix="isitreal-video-")
     while True:
-        todo = [r for r in manifest() if (r["id"], "reshared") not in done]
+        todo = [r for i, r in enumerate(manifest()) if i % shards == shard and (r["id"], "reshared") not in done]
         for r in todo:
             src = os.path.join(VIDEOS, r["path"])
             base = {"id": r["id"], "source": r["source"], "truth": r["truth"], "split": r["split"]}
@@ -201,6 +197,8 @@ def main() -> int:
                 out.write(json.dumps({**base, "version": "original", **score_file(scorer, src, known.get((r["id"], "original")))}) + "\n")
                 done.add((r["id"], "original"))
             copy = os.path.join(tmp, "reshared.mp4")
+            if os.path.exists(copy):
+                os.remove(copy)
             res = score_file(scorer, copy, known.get((r["id"], "reshared"))) if reshare(src, copy) else {"error": "reencode failed"}
             out.write(json.dumps({**base, "version": "reshared", **res}) + "\n")
             out.flush()
@@ -212,10 +210,10 @@ def main() -> int:
                 print(f"  {count} clips this run, {len(done) // 2} in table, {(time.time() - t0) / count:.1f} s per clip", file=sys.stderr, flush=True)
             if args.limit and count >= args.limit:
                 break
-        if (args.limit and count >= args.limit) or len(done) // 2 >= args.wait_for:
+        if (args.limit and count >= args.limit) or len(done) // 2 >= args.wait_for or shards > 1:
             break
         time.sleep(30)
-    print(f"{len(done) // 2} clips in {OUT}")
+    print(f"{len(done) // 2} clips scored (this run wrote to {target})")
     return 0
 
 

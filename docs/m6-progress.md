@@ -4,15 +4,15 @@ Working notes for M6 (PLAN.md section 9). Decisions: [ADR-0013](decisions/0013-e
 
 ## Stages
 
-| #   | Stage                                                                                                                                  | Status |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| 1   | Extension skeleton: page reader, hidden engine page, side panel, scam rules, text check, site labels, file labels; browser tests       | done   |
-| 2   | Content Credentials in the browser (official library, trust list), checked against the plugin                                          | done   |
-| 3   | Picture model and photo gate in the browser: one-time download with checksum, same numbers as the plugin (test), progress in the panel | done   |
-| 4   | Video: files by link, and frames from the playing video for streamed video                                                             | next   |
-| 5   | Background mode: quiet badges from the cheap checks, alerts only for scams and declared AI; right-click "check this picture"           | todo   |
-| 6   | Accessibility check (automated audit, keyboard, screen reader labels, large text), works offline after the download                    | todo   |
-| 7   | Packaging, README, results page; try-out with 3 to 5 older users (owner)                                                               | todo   |
+| #   | Stage                                                                                                                                                                                                 | Status                           |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| 1   | Extension skeleton: page reader, hidden engine page, side panel, scam rules, text check, site labels, file labels; browser tests                                                                      | done                             |
+| 2   | Content Credentials in the browser (official library, trust list), checked against the plugin                                                                                                         | done                             |
+| 3   | Picture model and photo gate in the browser: one-time download with checksum, same numbers as the plugin (test), progress in the panel                                                                | done                             |
+| 4   | Video: files by link (signature, then frames), and frames of a playing video for streamed video ("Check this video while it plays"); one colour conversion shared by plugin, extension and evaluation | code done; recalibration running |
+| 5   | Background mode: a quiet mark on the toolbar button from the cheap checks (scam rules, site AI labels); can be switched off. No interrupting alerts yet (see findings)                                | done                             |
+| 6   | Accessibility check (automated audit, keyboard, screen reader labels, large text), works offline after the download                                                                                   | next                             |
+| 7   | Packaging, README, results page; try-out with 3 to 5 older users (owner)                                                                                                                              | todo                             |
 
 ## Findings so far
 
@@ -22,6 +22,12 @@ Working notes for M6 (PLAN.md section 9). Decisions: [ADR-0013](decisions/0013-e
 - **The whole picture check gives the plugin's numbers in the browser:** 17 pictures of eight kinds, including the rotated phone photo, checked in Chromium against the plugin path (photo-gate score within 0.01, picture-model score within 0.02; `apps/extension/test/models.local.test.ts`).
 - **The one-time download works from the authors' pages:** both files (220 MB) arrived in 10 seconds on a fast connection and passed their checksums. A file with the right name and the wrong content is refused (tested).
 - The hidden engine page can only use `chrome.runtime`: no storage and no tabs. Settings reach it inside requests.
+- **Video frames must not be read through the browser's own colour conversion.** The first version drew the video onto a canvas, as web pages normally do. The same frames then scored 1 to 2 points away from the evaluation (up to 4.7 on single frames; the cut-off is 4.74), because a browser and ffmpeg turn the decoder's raw output (YUV) into RGB differently, and the picture model reacts to that. On a user's computer the graphics card would add a third variant.
+- **The decoder's raw output is identical everywhere** (checked byte for byte between Chromium and ffmpeg on three clips). So every host now copies the raw planes and converts them with one fixed rule in the core (`packages/core/src/video/yuv.ts`, Python copy `eval/reference/yuv.py`, same bytes by test). With it, 84 frames from 14 clips score the same in the browser as in the plugin path (largest difference 0.007).
+- **Consequence:** the video evaluation is being re-scored with this conversion, and the frame check recalibrated. The plugin switches to it in its next version; until then the released plugin keeps its own, self-consistent path.
+- **Streamed video works:** the page reader copies raw frames from the playing video (it never plays, pauses or seeks it), about one per second of video, and the engine judges them. Tested with a real AI clip (flagged) and a real studio clip (not flagged). Protected video and paused video are reported as such.
+- Browsers cannot play some old formats (the OpenVid test clips use MPEG-4 Part 2); such files are "not checked".
+- **No interrupting alerts in this version.** The scam rules were measured on messages, not on ordinary web pages (news about scams, bank security pages). Until that is measured, the background mode only marks the toolbar button.
 - **Content Credentials give the same answer as in the plugin** on every test file: our fixtures, the 26 official C2PA test images, and real ChatGPT, Gemini, Copilot and Sora 2 files (`apps/extension/test/c2pa.test.ts`). The extension uses the WebAssembly build of the official library directly; the library's own browser wrapper starts a worker from generated code, which Chrome does not allow in extensions.
 - Chrome gives extension pages a small default text size; the panel sets its own (18 px, 22 px in large-text mode).
 

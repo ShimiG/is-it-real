@@ -92,6 +92,127 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     expect(await scam.locator('.advice').count()).toBe(0);
   }, 60_000);
 
+  it('checks video files for a signature, and says what it could not check', async () => {
+    const { panel } = await loaded.openPanelFor(`${base}/video-page.html`);
+    await panel.getByRole('button', { name: 'Check this page' }).click();
+    await expect
+      .poll(() => panel.locator('.ai .card').count(), { timeout: 30_000 })
+      .toBeGreaterThan(1);
+    const text = await panel.locator('.ai').innerText();
+    expect(text).toContain('Video 1: Made with AI');
+    expect(text).toContain('Its digital signature (Content Credentials) says an AI tool made it.');
+    expect(text).toContain('Video 2: No clear signs');
+    // Without the picture check, frames are not looked at, and the panel says so.
+    expect(text).toContain('only the labels and the signature of this video were checked');
+  }, 60_000);
+
+  it('reads frames from a playing, streamed video without touching it', async () => {
+    const { page, panel } = await loaded.openPanelFor(`${base}/stream-page.html`);
+    await page.waitForFunction(
+      () => (document.getElementById('player') as HTMLVideoElement).currentTime > 0.2,
+    );
+    const tabId = Number(new URL(panel.url()).searchParams.get('tabId'));
+    // Ask the page reader for four frames, as the side panel does.
+    const got = await panel.evaluate(
+      (tab) =>
+        new Promise<{ sizes: string[]; times: number[]; lengths: number[]; problem?: string }>(
+          (resolve) => {
+            const out = { sizes: [] as string[], times: [] as number[], lengths: [] as number[] };
+            const port = chrome.tabs.connect(tab, { name: 'isitreal-capture', frameId: 0 });
+            port.onMessage.addListener(
+              (event: {
+                type: string;
+                problem?: string;
+                frame?: { width: number; height: number; time: number; planes: string };
+              }) => {
+                if (event.type === 'frame') {
+                  out.sizes.push(`${event.frame!.width}x${event.frame!.height}`);
+                  out.times.push(event.frame!.time);
+                  out.lengths.push(atob(event.frame!.planes).length);
+                } else resolve({ ...out, ...(event.problem ? { problem: event.problem } : {}) });
+              },
+            );
+            port.postMessage({ type: 'start', index: 0, count: 4 });
+          },
+        ),
+      tabId,
+    );
+    expect(got.problem).toBeUndefined();
+    expect(got.sizes).toEqual(['320x240', '320x240', '320x240', '320x240']);
+    // Raw planes: one full-size and two quarter-size, nothing else.
+    expect(got.lengths).toEqual([115200, 115200, 115200, 115200]);
+    // Four different moments of the video.
+    expect(new Set(got.times.map((t) => t.toFixed(1))).size).toBe(4);
+    // The video was not paused or moved.
+    expect(
+      await page.evaluate(() => (document.getElementById('player') as HTMLVideoElement).paused),
+    ).toBe(false);
+    // The page check sees a streamed video: labels only, and no file was fetched.
+    await panel.getByRole('button', { name: 'Check this page' }).click();
+    await expect
+      .poll(() => panel.locator('.ai .card').count(), { timeout: 30_000 })
+      .toBeGreaterThan(0);
+    expect(await panel.locator('.ai').innerText()).toContain('sent in small pieces');
+  }, 90_000);
+
+  it('says when a video is paused instead of waiting forever', async () => {
+    const { page, panel } = await loaded.openPanelFor(`${base}/stream-page.html`);
+    await page.waitForFunction(
+      () => (document.getElementById('player') as HTMLVideoElement).currentTime > 0.2,
+    );
+    await page.evaluate(() => (document.getElementById('player') as HTMLVideoElement).pause());
+    const tabId = Number(new URL(panel.url()).searchParams.get('tabId'));
+    const problem = await panel.evaluate(
+      (tab) =>
+        new Promise<string | undefined>((resolve) => {
+          const port = chrome.tabs.connect(tab, { name: 'isitreal-capture', frameId: 0 });
+          port.onMessage.addListener((event: { type: string; problem?: string }) => {
+            if (event.type === 'done') resolve(event.problem);
+          });
+          port.postMessage({ type: 'start', index: 0, count: 4 });
+        }),
+      tabId,
+    );
+    expect(problem).toBe('paused');
+  }, 60_000);
+
+  it('marks the toolbar button quietly as pages open, and stops when switched off', async () => {
+    const badgeOf = (url: string) =>
+      loaded.worker.evaluate(async (u) => {
+        const tab = (await chrome.tabs.query({ url: u }))[0]!;
+        return {
+          text: await chrome.action.getBadgeText({ tabId: tab.id! }),
+          title: await chrome.action.getTitle({ tabId: tab.id! }),
+        };
+      }, url);
+    const scam = await loaded.context.newPage();
+    await scam.goto(`${base}/scam-page.html`);
+    await expect
+      .poll(async () => (await badgeOf(`${base}/scam-page.html`)).text, { timeout: 15_000 })
+      .toBe('!');
+    expect((await badgeOf(`${base}/scam-page.html`)).title).toContain('looks like a scam');
+    const calm = await loaded.context.newPage();
+    await calm.goto(`${base}/calm-page.html`);
+    await calm.waitForTimeout(2500);
+    expect(await badgeOf(`${base}/calm-page.html`)).toEqual({
+      text: '',
+      title: 'Is It Real? Check this page',
+    });
+    // Switched off in the side panel: the next page gets no mark.
+    const { panel } = await loaded.openPanelFor(`${base}/calm-page.html`);
+    await panel.getByRole('button', { name: 'Quiet checks while I browse' }).click();
+    expect(
+      await panel
+        .getByRole('button', { name: 'Quiet checks while I browse' })
+        .getAttribute('aria-pressed'),
+    ).toBe('false');
+    const again = await loaded.context.newPage();
+    await again.goto(`${base}/scam-page.html?again`);
+    await again.waitForTimeout(2500);
+    expect((await badgeOf(`${base}/scam-page.html?again`)).text).toBe('');
+    await panel.getByRole('button', { name: 'Quiet checks while I browse' }).click();
+  }, 90_000);
+
   it('refuses model files that are not the genuine ones', async () => {
     // A folder with files of the right names and the wrong content.
     await loaded.worker.evaluate(

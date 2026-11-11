@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>A playing video</title>
+  </head>
+  <body>
+    <main>
+      <p>A video that plays the way video sites deliver it: with no file address to fetch.</p>
+      <video id="player" width="320" height="240" muted loop playsinline></video>
+    </main>
+    <script>
+      // ?src=... names the clip; it is handed to the player as a blob, like a streamed video.
+      const src = new URLSearchParams(location.search).get('src') || '/video/testsrc.mp4';
+      fetch(src)
+        .then((r) => r.blob())
+        .then((blob) => {
+          const player = document.getElementById('player');
+          player.src = URL.createObjectURL(blob);
+          return player.play();
+        });
+    </script>
+  </body>
+</html>

@@ -37,6 +37,7 @@ export async function startServer(
 ): Promise<{ server: Server; base: string }> {
   const mounts: Record<string, string> = {
     '/c2pa/': join(root, 'packages', 'c2pa-node', 'test', 'fixtures'),
+    '/video/': join(root, 'packages', 'video-node', 'test', 'fixtures'),
     ...extra,
     '/': join(here, 'fixtures'),
   };
@@ -83,7 +84,8 @@ export async function launchWithExtension(): Promise<Loaded> {
       const page = await context.newPage();
       await page.goto(url);
       const tabId = await worker.evaluate(
-        async (u) => (await chrome.tabs.query({ url: u }))[0]!.id!,
+        // The newest tab with this address (earlier tests may have left one open).
+        async (u) => (await chrome.tabs.query({ url: u })).at(-1)!.id!,
         url,
       );
       const panel = await context.newPage();
