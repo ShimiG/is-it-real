@@ -14,7 +14,7 @@ import {
 } from './tools.js';
 
 export const SERVER_NAME = 'is-it-real';
-export const SERVER_VERSION = '0.2.0';
+export const SERVER_VERSION = '0.3.0';
 
 const link = z.object({ text: z.string().max(500), href: z.string().max(4000) });
 const labels = z
@@ -135,6 +135,7 @@ export function settingsFromEnv(env: NodeJS.ProcessEnv = process.env): LoadSetti
     imageModel: env['ISITREAL_NO_IMAGE_MODEL'] !== '1',
     nativeFrom: env['ISITREAL_NATIVE_FROM'],
     imageModelPath: env['ISITREAL_IMAGE_MODEL_PATH'],
+    gateModelPath: env['ISITREAL_GATE_MODEL_PATH'],
   };
 }
 

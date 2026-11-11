@@ -1,5 +1,6 @@
 import { conformalScore } from '../calibration.js';
 import type { DetectorResult } from '../types.js';
+import { isPhotoLike, type PhotoGate } from './photo-gate.js';
 import { preprocessForClassifier, type PreprocessSpec } from './preprocess.js';
 import type { Pixels } from './spectral.js';
 
@@ -64,10 +65,16 @@ export async function detectImageClassifier(
 /** Everything a host needs to add the statistical check to `checkImage`. */
 export interface ImageStatisticalCheck {
   decode: (bytes: Uint8Array) => Promise<Pixels | null>;
+  /** Decides whether the image is photo-like. The picture model only judges images that pass. */
+  gate: PhotoGate;
   runner: ImageClassifierRunner;
   model: ImageClassifierModel;
 }
 
+/**
+ * Decode, gate, then classify. Drawings, illustrations and screenshots get "not assessed":
+ * the picture model is not calibrated for them and would raise many false alarms.
+ */
 export async function runImageStatisticalCheck(
   bytes: Uint8Array,
   check: ImageStatisticalCheck,
@@ -75,5 +82,9 @@ export async function runImageStatisticalCheck(
   const pixels = await check.decode(bytes);
   if (pixels === null)
     return { status: 'not_assessed', detector: check.model.id, reason: 'unreadable_media' };
+  if (Math.min(pixels.width, pixels.height) < check.model.minSide)
+    return { status: 'not_assessed', detector: check.model.id, reason: 'too_short' };
+  if (!(await isPhotoLike(pixels, check.gate)))
+    return { status: 'not_assessed', detector: check.model.id, reason: 'not_a_photo' };
   return detectImageClassifier(pixels, check.runner, check.model);
 }

@@ -8,13 +8,16 @@ import { isAbsolute, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   IMAGE_CLASSIFIER_MODEL,
+  PHOTO_GATE_MODEL,
+  photoLikeScore,
   type C2paReader,
   type ImageClassifierModel,
   type ImageStatisticalCheck,
   type LanguageModel,
+  type PhotoGateModel,
 } from '@isitreal/core';
 import { createC2paReaderWith, type C2paLibrary } from '@isitreal/c2pa-node/reader';
-import { loadImageClassifierWith } from '@isitreal/image-node/classifier';
+import { loadImageClassifierWith, loadImageEmbedderWith } from '@isitreal/image-node/classifier';
 import { decodeImageWith, type SharpLibrary } from '@isitreal/image-node/decode';
 import { GPT2_ZOO, loadGpt2With, type OrtLibrary } from '@isitreal/lm-node/gpt2';
 
@@ -149,6 +152,8 @@ export interface LoadSettings {
   nativeFrom?: string | undefined;
   /** Tests: use this model file instead of downloading. */
   imageModelPath?: string | undefined;
+  /** Tests: use this photo-gate encoder file instead of downloading. */
+  gateModelPath?: string | undefined;
 }
 
 export function lazyC2pa(settings: LoadSettings): () => Promise<C2paReader | null> {
@@ -235,19 +240,40 @@ async function downloadVerified(
   }
 }
 
+/** A model file in the data folder: downloaded and checked on first use. Null when unavailable. */
+async function modelFile(
+  settings: LoadSettings,
+  spec: { file: string; url: string; sha256: string; bytes: number },
+): Promise<string | null> {
+  const dir = join(settings.dataDir, 'models');
+  mkdirSync(dir, { recursive: true });
+  const path = join(dir, spec.file);
+  if (existsSync(path)) return path;
+  if (!settings.autoInstall) return null;
+  return (await downloadVerified(spec.url, path, spec.sha256, spec.bytes)) ? path : null;
+}
+
 /**
- * The picture check: decoder (sharp), runner (onnxruntime-node) and the model file, all set up in
- * the data folder on first use (about 45 MB of model plus the two libraries). Null when switched
- * off or when setup fails; images then get the provenance checks only.
+ * The picture check: decoder (sharp), runner (onnxruntime-node) and two model files, all set up in
+ * the data folder on first use: the photo gate's image encoder (about 90 MB) and the picture model
+ * (about 45 MB), plus the two libraries. The gate decides whether an image is photo-like; only
+ * those are judged by the picture model. Null when switched off or when setup fails; images then
+ * get the provenance checks only.
  */
 export function lazyImageCheck(
   settings: LoadSettings,
   model: ImageClassifierModel = IMAGE_CLASSIFIER_MODEL,
+  gateModel: PhotoGateModel = PHOTO_GATE_MODEL,
 ): () => Promise<ImageStatisticalCheck | null> {
   let pending: Promise<ImageStatisticalCheck | null> | null = null;
   return () =>
     (pending ??= (async () => {
-      if (!settings.imageModel || model.calibration.length === 0) return null;
+      if (
+        !settings.imageModel ||
+        model.calibration.length === 0 ||
+        gateModel.logistic.weights.length === 0
+      )
+        return null;
       const from = settings.nativeFrom ?? settings.dataDir;
       if (settings.nativeFrom === undefined) await ensureInstalled(settings);
       const ort = (await loadPackage(from, ORT_PACKAGE, ORT_VERSION)) as OrtLibrary | null;
@@ -257,28 +283,26 @@ export function lazyImageCheck(
       const sharp = (
         typeof sharpModule === 'function' ? sharpModule : sharpModule.default
       ) as SharpLibrary;
-      let path = settings.imageModelPath;
-      if (path === undefined) {
-        const dir = join(settings.dataDir, 'models');
-        mkdirSync(dir, { recursive: true });
-        path = join(dir, model.file);
-        if (
-          !existsSync(path) &&
-          !(
-            settings.autoInstall &&
-            (await downloadVerified(model.url, path, model.sha256, model.bytes))
-          )
-        )
-          return null;
-      }
+      const path = settings.imageModelPath ?? (await modelFile(settings, model));
+      const gatePath = settings.gateModelPath ?? (await modelFile(settings, gateModel));
+      if (path === null || gatePath === null) return null;
       try {
         const runner = await loadImageClassifierWith(ort, model.runnerId, path);
+        const gate = {
+          runner: await loadImageEmbedderWith(ort, gateModel.runnerId, gatePath),
+          model: gateModel,
+        };
         const decode = decodeImageWith(sharp);
         // Try both once, so a broken install is noticed here rather than on a user's image.
         await runner.run(new Float32Array(3 * model.cropSize * model.cropSize), model.cropSize);
-        return { decode, runner, model };
+        const side = Math.max(model.minSide, 32);
+        await photoLikeScore(
+          { width: side, height: side, data: new Uint8ClampedArray(side * side * 4) },
+          gate,
+        );
+        return { decode, gate, runner, model };
       } catch (err) {
-        log(`could not load the picture-checking model: ${String(err)}`);
+        log(`could not load the picture-checking models: ${String(err)}`);
         return null;
       }
     })());

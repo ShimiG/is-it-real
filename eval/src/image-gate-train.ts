@@ -13,10 +13,14 @@ import { fitLogReg, predict } from './logreg.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const GATE_SCORES_FILE = join(root, 'features', 'image-gate.v1.jsonl');
-/** Non-AI sources that are photographs (memes are photos with a caption). */
-export const PHOTO_SOURCES = ['real', 'phone', 'cosplay', 'meme'];
-/** Non-AI sources that are drawn, painted or rendered by software. */
-export const GRAPHIC_SOURCES = ['cartoon', 'digital_art', 'sketch', 'screenshot'];
+/** Non-AI sources that are plain photographs. */
+export const PHOTO_SOURCES = ['real', 'phone', 'cosplay'];
+/**
+ * Non-AI sources that are drawn, painted or rendered by software, plus memes (pictures with text
+ * added on top). Memes were first counted as photos: the picture model then wrongly flagged 7 of
+ * 108 of them, far above the 1% rule, so they are kept away from it as well.
+ */
+export const GRAPHIC_SOURCES = ['cartoon', 'digital_art', 'sketch', 'screenshot', 'meme'];
 export const GATE_THRESHOLD = 0.5;
 
 interface EmbedRow {
@@ -94,7 +98,7 @@ async function main() {
   };
   model['threshold'] = GATE_THRESHOLD;
   model['trainedOn'] =
-    `${train.length} image versions (calibration split; original, social copy, copy of a copy): photos = Open Images, SPAQ phone photos, cosplay and stage photos, memes; graphics = human-made cartoons, digital art, sketches (Human-Art) and screenshots (ScreenSpot-v2).`;
+    `${train.length} image versions (calibration split; original, social copy, copy of a copy): plain photos = Open Images, SPAQ phone photos, cosplay and stage photos; not plain photos = human-made cartoons, digital art, sketches (Human-Art), screenshots (ScreenSpot-v2) and memes (pictures with added text).`;
   writeFileSync(out, JSON.stringify(model, null, 2) + '\n');
   writeFileSync(
     GATE_SCORES_FILE,

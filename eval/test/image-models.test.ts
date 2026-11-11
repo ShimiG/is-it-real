@@ -35,8 +35,8 @@ describe('evaluateImageModels', () => {
   it('calibrates on real calibration photos and reports per source', () => {
     const [r] = evaluateImageModels(rows);
     expect(r!.calibrationSize).toBe(200);
-    expect(r!.aiCaught['gen']!['original']).toEqual({ n: 10, flagged: 10 });
-    expect(r!.aiCaught['other']!['original']).toEqual({ n: 10, flagged: 0 });
+    expect(r!.aiCaught['gen']!['original']).toEqual({ n: 10, flagged: 10, notChecked: 0 });
+    expect(r!.aiCaught['other']!['original']).toEqual({ n: 10, flagged: 0, notChecked: 0 });
     expect(r!.realFlagged['real']!['original']!.flagged).toBeLessThanOrEqual(2);
     expect(imageReportMarkdown([r!])).toMatch(/AI caught: gen \| 10\/10/);
   });
@@ -59,7 +59,7 @@ describe('evaluateImageModels', () => {
     const [r] = evaluateImageModels(multi);
     expect(r!.calibrationSize).toBe(100);
     // 4 is above every original-view score but below the social-view maxima: not flagged.
-    expect(r!.aiCaught['gen']!['original']).toEqual({ n: 1, flagged: 0 });
+    expect(r!.aiCaught['gen']!['original']).toEqual({ n: 1, flagged: 0, notChecked: 0 });
   });
 
   it('reports other kinds of non-AI images separately and can add them to the calibration', () => {
@@ -74,14 +74,40 @@ describe('evaluateImageModels', () => {
       ),
       ...Array.from({ length: 10 }, (_, i) => row(`a${i}`, 'ai', 'test', 'original', 4.5)),
     ];
-    const [photoOnly] = evaluateImageModels(mixed);
+    const [photoOnly] = evaluateImageModels(mixed, { calibrationSources: ['real'] });
     expect(photoOnly!.calibrationSize).toBe(200);
-    expect(photoOnly!.realFlagged['screenshot']!['original']).toEqual({ n: 50, flagged: 50 });
+    expect(photoOnly!.realFlagged['screenshot']!['original']).toMatchObject({ n: 50, flagged: 50 });
     expect(photoOnly!.aiCaught['gen']!['original']!.flagged).toBe(10);
-    const [both] = evaluateImageModels(mixed, 0.01, ['real', 'screenshot']);
+    const [both] = evaluateImageModels(mixed, { calibrationSources: ['real', 'screenshot'] });
     expect(both!.calibrationSize).toBe(400);
     expect(both!.realFlagged['screenshot']!['original']!.flagged).toBeLessThanOrEqual(2);
     // The price: the AI images now fall under the higher threshold.
     expect(both!.aiCaught['gen']!['original']!.flagged).toBe(0);
+  });
+
+  it('with a photo gate, images that fail it are not checked and do not calibrate', () => {
+    const mixed: ImageScoreRow[] = [
+      ...Array.from({ length: 200 }, (_, i) => row(`c${i}`, 'real', 'calib', 'original', i / 100)),
+      ...Array.from({ length: 200 }, (_, i) =>
+        row(`sc${i}`, 'real', 'calib', 'original', 3 + i / 100, 'screenshot'),
+      ),
+      ...Array.from({ length: 50 }, (_, i) =>
+        row(`st${i}`, 'real', 'test', 'original', 3 + i / 25, 'screenshot'),
+      ),
+      ...Array.from({ length: 10 }, (_, i) => row(`a${i}`, 'ai', 'test', 'original', 4.5)),
+    ];
+    // The gate passes everything except screenshots.
+    const scores = new Map(
+      mixed.map((r) => [`${r.id}|${r.view}`, r.source === 'screenshot' ? 0.1 : 0.9]),
+    );
+    const [r] = evaluateImageModels(mixed, { gate: { scores, threshold: 0.5 } });
+    expect(r!.calibrationSize).toBe(200); // screenshots do not calibrate
+    expect(r!.realFlagged['screenshot']!['original']).toEqual({
+      n: 50,
+      flagged: 0,
+      notChecked: 50,
+    });
+    expect(r!.aiCaught['gen']!['original']).toEqual({ n: 10, flagged: 10, notChecked: 0 });
+    expect(imageReportMarkdown([r!])).toMatch(/not checked 100%/);
   });
 });

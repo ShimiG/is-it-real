@@ -40,6 +40,8 @@ export function loadImageScores(path = IMAGE_SCORES_FILE): ImageScoreRow[] {
 export interface Cell {
   n: number;
   flagged: number;
+  /** Images the photo gate kept away from the model ("Not checked"). */
+  notChecked: number;
 }
 
 export interface ImageModelReport {
@@ -47,7 +49,8 @@ export interface ImageModelReport {
   /** Which non-AI sources the calibration used. */
   calibrationSources: string[];
   calibrationSize: number;
-  /** AUROC of stock-style real photos (source "real", test) vs AI, per view. */
+  gated: boolean;
+  /** AUROC of stock-style real photos (source "real", test) vs AI, per view (gate not applied). */
   auroc: Record<string, number>;
   /** Non-AI test images wrongly flagged, per source and view. */
   realFlagged: Record<string, Record<string, Cell>>;
@@ -55,37 +58,74 @@ export interface ImageModelReport {
   aiCaught: Record<string, Record<string, Cell>>;
 }
 
-/** The stock-style photo source (Open Images) that the shipped calibration uses. */
+/** The stock-style photo source (Open Images). */
 export const PHOTO_SOURCE = 'real';
 
-/**
- * @param calibrationSources non-AI sources whose calibration split sets the threshold
- *   (default: stock-style photos only, like the shipped model).
- */
+export interface GateScores {
+  /** Gate score per `${id}|${view}`. */
+  scores: Map<string, number>;
+  threshold: number;
+}
+
+export function loadGateScores(path: string, threshold: number): GateScores | null {
+  if (!existsSync(path)) return null;
+  const scores = new Map<string, number>();
+  for (const line of readFileSync(path, 'utf8').split('\n')) {
+    if (!line.startsWith('{')) continue;
+    const r = JSON.parse(line) as { id: string; view: string; gate: number };
+    scores.set(`${r.id}|${r.view}`, r.gate);
+  }
+  return { scores, threshold };
+}
+
+export interface EvalOptions {
+  alpha?: number;
+  /** Non-AI sources whose calibration split sets the threshold; default: every non-AI source. */
+  calibrationSources?: readonly string[];
+  /** When given, only images that pass the photo gate are judged (and used for calibration). */
+  gate?: GateScores | null;
+}
+
 export function evaluateImageModels(
   rows: readonly ImageScoreRow[],
-  alpha = 0.01,
-  calibrationSources: readonly string[] = [PHOTO_SOURCE],
+  options: EvalOptions = {},
 ): ImageModelReport[] {
+  const alpha = options.alpha ?? 0.01;
+  const gate = options.gate ?? null;
+  const passes = (r: ImageScoreRow) =>
+    gate === null || (gate.scores.get(`${r.id}|${r.view}`) ?? 0) >= gate.threshold;
+  const calibrationSources =
+    options.calibrationSources ??
+    [...new Set(rows.filter((r) => r.truth === 'real').map((r) => r.source))].sort();
   const models = [...new Set(rows.flatMap((r) => Object.keys(r.scores)))].sort();
-  const views = [...new Set(rows.map((r) => r.view))];
+  const views = [...new Set(rows.map((r) => r.view))].sort(
+    (a, b) => VIEW_ORDER.indexOf(a) - VIEW_ORDER.indexOf(b),
+  );
   return models.map((model) => {
     const has = rows.filter((r) => r.scores[model] !== undefined);
-    // An image is judged once, in an unknown condition: calibrate on each image's HIGHEST
-    // score across its views, so false alarms stay at or below alpha in every condition.
+    // An image is judged once, in an unknown condition: calibrate on each image's HIGHEST score
+    // across its versions, so false alarms stay at or below alpha in every condition. With a gate,
+    // only images that pass it in at least one version belong to the judged population.
     const worst = new Map<string, number>();
+    const passing = new Set<string>();
     for (const r of has.filter(
       (x) => x.truth === 'real' && x.split === 'calib' && calibrationSources.includes(x.source),
-    ))
+    )) {
       worst.set(r.id, Math.max(worst.get(r.id) ?? -Infinity, r.scores[model]!));
-    const calibration = [...worst.values()].sort((a, b) => a - b);
+      if (passes(r)) passing.add(r.id);
+    }
+    const calibration = [...worst.entries()]
+      .filter(([id]) => passing.has(id))
+      .map(([, v]) => v)
+      .sort((a, b) => a - b);
     const flagged = (r: ImageScoreRow) =>
-      conformalScore(r.scores[model]!, calibration) >= 1 - alpha;
+      passes(r) && conformalScore(r.scores[model]!, calibration) >= 1 - alpha;
     const test = has.filter((r) => r.split === 'test');
     const report: ImageModelReport = {
       model,
       calibrationSources: [...calibrationSources],
       calibrationSize: calibration.length,
+      gated: gate !== null,
       auroc: {},
       realFlagged: {},
       aiCaught: {},
@@ -112,6 +152,7 @@ export function evaluateImageModels(
           (target[source] ??= {})[view] = {
             n: group.length,
             flagged: group.filter(flagged).length,
+            notChecked: group.filter((r) => !passes(r)).length,
           };
         }
       }
@@ -120,10 +161,13 @@ export function evaluateImageModels(
   });
 }
 
-const pct = (c: Cell | undefined) =>
-  c === undefined || c.n === 0
-    ? 'n/a'
-    : `${c.flagged}/${c.n} (${((100 * c.flagged) / c.n).toFixed(1)}%)`;
+const VIEW_ORDER = ['original', 'social', 'harsh'];
+
+const pct = (c: Cell | undefined, gated: boolean) => {
+  if (c === undefined || c.n === 0) return 'n/a';
+  const base = `${c.flagged}/${c.n} (${((100 * c.flagged) / c.n).toFixed(1)}%)`;
+  return gated ? `${base}, not checked ${((100 * c.notChecked) / c.n).toFixed(0)}%` : base;
+};
 
 const LABELS: Record<string, string> = {
   real: 'stock-style photos (Open Images)',
@@ -147,7 +191,7 @@ export function imageReportMarkdown(
   const lines = [
     `## ${title}`,
     '',
-    `Flag rule: conformal score >= ${1 - alpha}. Calibrated on the calibration split of: ${reports[0]!.calibrationSources.map(label).join(', ')} (each image's highest score across its views). Numbers are for the test split only.`,
+    `Flag rule: conformal score >= ${1 - alpha}${reports[0]!.gated ? ', only for images that pass the photo gate (others are "not checked")' : ''}. Calibrated on the calibration split of: ${reports[0]!.calibrationSources.map(label).join(', ')} (each image's highest score across its versions). Numbers are for the test split only.`,
     '',
   ];
   for (const r of reports) {
@@ -159,11 +203,11 @@ export function imageReportMarkdown(
       `| AUROC (photos vs AI) | ${views.map((v) => (Number.isNaN(r.auroc[v]) ? 'n/a' : r.auroc[v]!.toFixed(3))).join(' | ')} |`,
       ...Object.entries(r.realFlagged).map(
         ([source, byView]) =>
-          `| Wrongly flagged: ${label(source)} | ${views.map((v) => pct(byView[v])).join(' | ')} |`,
+          `| Wrongly flagged: ${label(source)} | ${views.map((v) => pct(byView[v], r.gated)).join(' | ')} |`,
       ),
       ...Object.entries(r.aiCaught).map(
         ([source, byView]) =>
-          `| AI caught: ${source} | ${views.map((v) => pct(byView[v])).join(' | ')} |`,
+          `| AI caught: ${source} | ${views.map((v) => pct(byView[v], r.gated)).join(' | ')} |`,
       ),
       '',
     );

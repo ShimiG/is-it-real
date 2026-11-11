@@ -1,8 +1,8 @@
 /**
  * Bundles the MCP server into plugin/server/server.mjs (one file, no install needed), copies the
  * C2PA trust list next to it, and writes THIRD_PARTY_NOTICES.md for the bundled packages.
- * Native libraries (@contentauth/c2pa-node, onnxruntime-node) are NOT bundled: the server loads
- * them at run time from the plugin's data folder (src/load.ts).
+ * Native libraries (@contentauth/c2pa-node, onnxruntime-node, sharp) and model files are NOT
+ * bundled: the server loads them at run time from the plugin's data folder (src/load.ts).
  */
 import { build } from 'esbuild';
 import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -77,7 +77,9 @@ await writeFile(
     '|---|---|---|',
     ...rows.map(([n, p]) => `| ${n} | ${p.version} | ${p.license} |`),
     '',
-    'Loaded at run time, not bundled: @contentauth/c2pa-node (MIT), onnxruntime-node (MIT, only for the optional deep text check).',
+    'Loaded at run time, not bundled: @contentauth/c2pa-node (MIT), onnxruntime-node (MIT), sharp (Apache-2.0).',
+    '',
+    'Model files downloaded on first use, not bundled: the picture model (Community Forensics low-quality fine-tune, MIT) and the photo gate encoder (OpenAI CLIP ViT-B/32 image encoder, MIT).',
     '',
   ].join('\n'),
 );

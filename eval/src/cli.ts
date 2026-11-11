@@ -3,12 +3,15 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { ENGINE_VERSION, SCAM_ENGINE_VERSION } from '@isitreal/core';
+import { ENGINE_VERSION, PHOTO_GATE_MODEL, SCAM_ENGINE_VERSION } from '@isitreal/core';
 import { loadJsonl } from './dataset.js';
 import { randomBaseline } from './detectors.js';
+import { GATE_SCORES_FILE } from './image-gate-train.js';
 import {
+  PHOTO_SOURCE,
   evaluateImageModels,
   imageReportMarkdown,
+  loadGateScores,
   loadImageScores,
   type ImageModelReport,
 } from './image-models.js';
@@ -42,7 +45,7 @@ const json: {
   textModels?: SpecReport[];
   leaveOneDomainOut?: LodoRow[];
   imageModels?: ImageModelReport[];
-  imageModelsBroadCalibration?: ImageModelReport[];
+  imageModelsUngated?: ImageModelReport[];
 } = { text: [], scam: [] };
 
 // Harness sanity check on the toy set.
@@ -68,26 +71,28 @@ if (existsSync(FEATURES_FILE)) {
   sections.push(textReportMarkdown(reports, lodo, rows));
 }
 
-// Image classifiers, from the committed score table (numbers only).
+// Image classifiers, from the committed score tables (numbers only).
 {
   const rows = loadImageScores();
   if (rows.length > 0) {
-    const reports = evaluateImageModels(rows, alpha);
-    json.imageModels = reports;
-    sections.push(imageReportMarkdown(reports, alpha));
-    // What if everyday non-AI images (screenshots, memes, art...) also set the threshold?
-    const everyday = [
-      ...new Set(rows.filter((r) => r.truth === 'real').map((r) => r.source)),
-    ].sort();
-    if (everyday.length > 1) {
-      const broad = evaluateImageModels(rows, alpha, everyday);
-      json.imageModelsBroadCalibration = broad;
+    // 1. Without the photo gate, calibrated on stock-style photos only: shows why a gate is needed.
+    const plain = evaluateImageModels(rows, { alpha, calibrationSources: [PHOTO_SOURCE] });
+    json.imageModelsUngated = plain;
+    sections.push(
+      imageReportMarkdown(
+        plain,
+        alpha,
+        'Image classifiers WITHOUT the photo gate (calibrated on stock-style photos)',
+      ),
+    );
+    // 2. As shipped: only photo-like images are judged; calibration uses every kind of non-AI
+    // image that passes the gate.
+    const gate = loadGateScores(GATE_SCORES_FILE, PHOTO_GATE_MODEL.threshold);
+    if (gate !== null) {
+      const gated = evaluateImageModels(rows, { alpha, gate });
+      json.imageModels = gated;
       sections.push(
-        imageReportMarkdown(
-          broad,
-          alpha,
-          'Image classifiers, calibrated on every kind of non-AI image',
-        ),
+        imageReportMarkdown(gated, alpha, 'Image classifiers WITH the photo gate (as shipped)'),
       );
     }
   }

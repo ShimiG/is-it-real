@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import type { ImageClassifierRunner } from '@isitreal/core';
+import type { ImageClassifierRunner, ImageEmbeddingRunner } from '@isitreal/core';
 import type * as OrtTypes from 'onnxruntime-node';
 
 /** The parts of onnxruntime-node used here. Passed in so a host can load the library its own way. */
@@ -30,6 +30,34 @@ export async function loadImageClassifierWith(
       const t = new ort.Tensor('float32', tensor, [1, 3, size, size]);
       const result = await session.run({ [input]: t }, [output]);
       return Number((result[output]!.data as Float32Array)[0]);
+    },
+  };
+}
+
+/**
+ * ONNX image encoder runner (for the photo gate): one float32 NCHW input, first output is the
+ * embedding vector.
+ */
+export async function loadImageEmbedderWith(
+  ort: OrtLibrary,
+  id: string,
+  modelPath: string,
+  opts: { threads?: number } = {},
+): Promise<ImageEmbeddingRunner> {
+  if (!existsSync(modelPath)) throw new Error(`Model file not found: ${modelPath}`);
+  const session = await ort.InferenceSession.create(modelPath, {
+    executionProviders: ['cpu'],
+    graphOptimizationLevel: 'all',
+    ...(opts.threads === undefined ? {} : { intraOpNumThreads: opts.threads }),
+  });
+  const input = session.inputNames[0]!;
+  const output = session.outputNames[0]!;
+  return {
+    id,
+    async run(tensor: Float32Array, size: number): Promise<Float32Array> {
+      const t = new ort.Tensor('float32', tensor, [1, 3, size, size]);
+      const result = await session.run({ [input]: t }, [output]);
+      return Float32Array.from(result[output]!.data as Float32Array);
     },
   };
 }

@@ -73,6 +73,8 @@ export const REASON_TEXT: Record<ReasonCode, string> = {
   unsupported_language: 'This language is not supported yet.',
   unreadable_media: 'We could not read this item.',
   uncalibrated_bucket: 'We have not tested this kind of content enough to judge it.',
+  not_a_photo:
+    'This looks like a drawing, a screenshot or a picture with added text. Our picture check only works on plain photos.',
 };
 
 export const SCAM_ADVICE: readonly string[] = [

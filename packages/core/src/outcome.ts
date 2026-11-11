@@ -42,6 +42,7 @@ export function resolveOutcome(
     // Provenance was checked and nothing declared AI: an honest "no clear signs", with whatever
     // the check did find (e.g. a manifest with no AI claim, or a broken signature) as context.
     const checked = signals.filter((s) => s.kind === 'provenance' || s.kind === 'platform_label');
+    const notAssessed = results.flatMap((r) => (r.status === 'not_assessed' ? [r.reason] : []));
     if (checked.length > 0) {
       return {
         modality,
@@ -49,10 +50,10 @@ export function resolveOutcome(
         confidence: null,
         alert: false,
         signals,
-        reasons: unique(checked.flatMap((s) => s.reasons)),
+        // Also say why a further check was skipped (e.g. the picture model does not judge drawings).
+        reasons: unique([...checked.flatMap((s) => s.reasons), ...notAssessed]),
       };
     }
-    const notAssessed = results.flatMap((r) => (r.status === 'not_assessed' ? [r.reason] : []));
     return {
       modality,
       outcome: 'not_assessed',

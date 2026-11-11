@@ -66,7 +66,7 @@ beforeAll(async () => {
         ISITREAL_NO_INSTALL: '1',
         ISITREAL_C2PA_FROM: join(root, 'packages', 'c2pa-node'),
         ISITREAL_ALLOW_PRIVATE_NETWORK: '1',
-        // Picture check: libraries from the workspace, and a tiny stand-in model instead of the real one.
+        // Picture check: libraries from the workspace, and tiny stand-in models instead of the real ones.
         ISITREAL_NATIVE_FROM: join(root, 'packages', 'image-node'),
         ISITREAL_IMAGE_MODEL_PATH: join(
           root,
@@ -75,6 +75,14 @@ beforeAll(async () => {
           'test',
           'fixtures',
           'standin-classifier.onnx',
+        ),
+        ISITREAL_GATE_MODEL_PATH: join(
+          root,
+          'packages',
+          'image-node',
+          'test',
+          'fixtures',
+          'standin-gate.onnx',
         ),
       },
       stderr: 'ignore',

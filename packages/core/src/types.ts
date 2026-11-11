@@ -65,6 +65,7 @@ export const REASON_CODES = [
   'unsupported_language',
   'unreadable_media',
   'uncalibrated_bucket',
+  'not_a_photo',
 ] as const;
 export type ReasonCode = (typeof REASON_CODES)[number];
 
@@ -73,6 +74,7 @@ export const NOT_ASSESSED_REASONS = [
   'unsupported_language',
   'unreadable_media',
   'uncalibrated_bucket',
+  'not_a_photo',
 ] as const satisfies readonly ReasonCode[];
 export type NotAssessedReason = (typeof NOT_ASSESSED_REASONS)[number];
 

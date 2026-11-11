@@ -53,6 +53,10 @@ export async function photoLikeScore(pixels: Pixels, gate: PhotoGate): Promise<n
   if (runner.id !== m.runnerId)
     throw new Error(`Gate ${m.id} belongs to ${m.runnerId}, but the runner is ${runner.id}`);
   const e = await runner.run(preprocessForClassifier(pixels, m.preprocess), m.preprocess.cropSize);
+  if (e.length !== m.logistic.weights.length)
+    throw new Error(
+      `Gate ${m.id} expects ${m.logistic.weights.length} values, but the encoder returned ${e.length}`,
+    );
   let norm = 0;
   for (const v of e) norm += v * v;
   norm = Math.sqrt(norm) || 1;
