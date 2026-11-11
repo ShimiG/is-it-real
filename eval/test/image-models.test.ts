@@ -47,4 +47,18 @@ describe('evaluateImageModels', () => {
     expect(r!.calibrationSize).toBe(50);
     expect(r!.aiCaught['gen']!['original']!.flagged).toBe(0);
   });
+
+  it("calibrates on each real photo's highest score across its views", () => {
+    const multi: ImageScoreRow[] = [
+      ...Array.from({ length: 100 }, (_, i) => row(`c${i}`, 'real', 'calib', 'original', i / 100)),
+      ...Array.from({ length: 100 }, (_, i) =>
+        row(`c${i}`, 'real', 'calib', 'social', i / 100 + 5),
+      ),
+      row('a', 'ai', 'test', 'original', 4),
+    ];
+    const [r] = evaluateImageModels(multi);
+    expect(r!.calibrationSize).toBe(100);
+    // 4 is above every original-view score but below the social-view maxima: not flagged.
+    expect(r!.aiCaught['gen']!['original']).toEqual({ n: 1, flagged: 0 });
+  });
 });

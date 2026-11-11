@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "fetch": "tsx src/fetch.ts",
     "train:text": "tsx src/train-text.ts",
-    "features": "tsx src/features.ts"
+    "features": "tsx src/features.ts",
+    "write:image-model": "tsx src/write-image-model.ts"
   },
   "dependencies": {
     "@isitreal/core": "workspace:*",

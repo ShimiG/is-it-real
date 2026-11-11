@@ -166,7 +166,7 @@ One JPEG generated inside Lovable, shared unchanged through Google Drive. Lovabl
 
 Lessons: one company can sign with different certificates in different products, so trust state is per product, not per company. And apps built on another company's model (Lovable here) pass the model maker's label through, so "who made it" in the evidence names the model maker, not the app.
 
-## Statistical image detection: built, waiting on one network host (2026-11-11)
+## Statistical image detection (2026-11-11): done, see [m3-results.md](m3-results.md)
 
 **Candidates** (ONNX, licences compatible with Apache-2.0), chosen from a Hugging Face survey:
 
@@ -197,7 +197,7 @@ Every image is scored as the original, a "social copy" (long side 1080 px, JPEG 
 - `packages/image-node`: an ONNX Runtime runner, tested with a 336-byte stand-in model.
 - `eval/reference/image_data.py` (builds the test set), `eval/reference/image_eval.py` (scores every image, view and model into `eval/features/image-scores.v1.jsonl`), and `eval/src/image-models.ts` (the report in `pnpm eval`).
 
-**Blocked:** Hugging Face serves large files (model weights, dataset images) from `us.aws.cdn.hf.co`, which the build environment's network policy does not allow yet. Once it does: download the three models and the AI sets, run the scoring, and choose a model only if the numbers justify it.
+**Update:** the file host was allowed, the three models and AI sets were downloaded and scored, and the low-quality model was chosen. Results: [m3-results.md](m3-results.md).
 
 ## Still to do in M3
 

@@ -1,7 +1,8 @@
 /**
  * Evaluates image classifiers from the committed score table (eval/features/image-scores.v1.jsonl,
  * written by eval/reference/image_eval.py). Same honest rule as text: calibrate a conformal
- * threshold on held-out REAL photos (split "calib", all views pooled), then report on the test
+ * threshold on held-out REAL photos (split "calib", each photo's highest score across its views),
+ * then report on the test
  * split only: AI caught per source and view, real photos wrongly flagged per view.
  */
 import { existsSync, readFileSync } from 'node:fs';
@@ -60,10 +61,12 @@ export function evaluateImageModels(
   const views = [...new Set(rows.map((r) => r.view))];
   return models.map((model) => {
     const has = rows.filter((r) => r.scores[model] !== undefined);
-    const calibration = has
-      .filter((r) => r.truth === 'real' && r.split === 'calib')
-      .map((r) => r.scores[model]!)
-      .sort((a, b) => a - b);
+    // An image is judged once, in an unknown condition: calibrate on each real photo's HIGHEST
+    // score across its views, so false alarms stay at or below alpha in every condition.
+    const worst = new Map<string, number>();
+    for (const r of has.filter((x) => x.truth === 'real' && x.split === 'calib'))
+      worst.set(r.id, Math.max(worst.get(r.id) ?? -Infinity, r.scores[model]!));
+    const calibration = [...worst.values()].sort((a, b) => a - b);
     const flagged = (r: ImageScoreRow) =>
       conformalScore(r.scores[model]!, calibration) >= 1 - alpha;
     const test = has.filter((r) => r.split === 'test');
@@ -110,12 +113,12 @@ export function imageReportMarkdown(reports: readonly ImageModelReport[], alpha 
   const lines = [
     '## Image classifiers (score table)',
     '',
-    `Flag rule: conformal score >= ${1 - alpha}, calibrated on held-out real photos (all views pooled). Test split only.`,
+    `Flag rule: conformal score >= ${1 - alpha}, calibrated on held-out real photos (each photo's highest score across its views). Test split only.`,
     '',
   ];
   for (const r of reports) {
     lines.push(
-      `### ${r.model} (calibration: ${r.calibrationSize} real-photo views)`,
+      `### ${r.model} (calibration: ${r.calibrationSize} real photos)`,
       '',
       `| | ${views.join(' | ')} |`,
       `|---|${views.map(() => '---').join('|')}|`,
