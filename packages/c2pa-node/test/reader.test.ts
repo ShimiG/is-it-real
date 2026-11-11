@@ -200,3 +200,28 @@ describe.skipIf(!existsSync(copilot))('real Copilot download (local only)', () =
     expect(String(c2pa.details!['aiActions'])).toMatch(/artificial intelligence/);
   });
 });
+
+/** A real Meta AI image, downloaded by the project owner, fetched unchanged from Google Drive. Local only. */
+const meta = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  '..',
+  'eval',
+  'datasets',
+  '.cache',
+  'private',
+  'meta-originals',
+  'meta-1.jpg',
+);
+describe.skipIf(!existsSync(meta))('real Meta AI download (local only)', () => {
+  it('is "Made with AI" from the unsigned IPTC label; there are no Content Credentials', async () => {
+    const bytes = await readFile(meta);
+    expect(await reader.read(bytes, 'image/jpeg')).toBeNull();
+    const verdict = await checkImageProvenance(bytes, reader);
+    expect(verdict).toMatchObject({
+      outcome: 'verified_ai',
+      reasons: ['iptc_trained_algorithmic_media'],
+    });
+  });
+});
