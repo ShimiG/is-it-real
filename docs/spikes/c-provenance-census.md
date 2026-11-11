@@ -1,6 +1,6 @@
 # Spike (c): provenance census
 
-**Date:** 2026-11-09 · **Status:** tool built and smoke-tested; **data collection pending (owner)** · **Feeds:** background-mode alert rules (M6)
+**Date:** 2026-11-09 · **Status:** first data in (2026-11-11); **provisional decision**, more data welcome · **Feeds:** background-mode alert rules (M6)
 
 ## Question
 
@@ -52,3 +52,31 @@ Also record: the share of images that are unreadable (blob/streamed), which tell
 
 - The sniffers check that markers are _present_; they don't validate signatures (that's M3).
 - Platform label patterns are guesses until hits are checked by hand; wrong patterns get fixed in `packages/core/src/platform-labels.ts`.
+
+## Results, round 1 (2026-11-09 to 2026-11-11)
+
+Three days of the owner's normal browsing. Only totals are recorded here: the export also lists the sites visited, which is private and is not committed.
+
+|                               | Count                                           |
+| ----------------------------- | ----------------------------------------------- |
+| Pages counted                 | 179 (another 10 skipped by the never-scan list) |
+| Different sites               | 34                                              |
+| Images checked                | 442                                             |
+| Images that could not be read | 22 (4.7%: streamed or `blob:` images)           |
+| Videos seen                   | 11                                              |
+| Content Credentials           | **0**                                           |
+| IPTC "made by AI" label       | **0**                                           |
+| Image-generator settings      | **0**                                           |
+| Platform AI labels            | **0**                                           |
+
+**What it means.** Zero hits in 179 pages means the true rate is very likely below about 1 in 60 pages (95% upper bound, "rule of three"), and below about 0.7% of images. That is under the "1 in 50 pages" bar set before collecting data.
+
+**Provisional decision:** background mode shows **quiet badges only** and interrupts only for **high scam risk**. AI checks run mainly on demand ("Check this page").
+
+**Caveats, so this is provisional:**
+
+- The browsing was mostly work and job search: only 12 of the 179 pages were on social or video sites (LinkedIn, YouTube, Reddit), and none on Facebook, Instagram or TikTok, where platform AI labels and AI images are most common. The platform-label patterns were therefore barely exercised.
+- One person, three days. Older adults' browsing (Facebook, WhatsApp web, news) may look quite different.
+- The real-file tests in M3 show why the rate is low: most images on the web have been re-encoded by the site and have lost their labels.
+
+**Next round:** more days, ideally including social media, or a second person's browsing. The decision is revisited before M6 (the extension).
