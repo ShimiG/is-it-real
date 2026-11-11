@@ -34,6 +34,8 @@ export const SCAM_TEXT: Record<ScamRisk, string> = {
 
 export const REASON_TEXT: Record<ReasonCode, string> = {
   c2pa_declares_ai: 'Its digital signature (Content Credentials) says an AI tool made it.',
+  c2pa_history_declares_ai:
+    'Its digital signature records that an AI tool made or changed it at an earlier step.',
   c2pa_present_no_ai_claim: 'It has a digital signature that does not mention AI.',
   c2pa_invalid_signature: 'It has a digital signature, but the signature is broken or changed.',
   c2pa_signer_unrecognised:

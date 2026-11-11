@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -88,3 +89,60 @@ describe('C2PA reader on real files', () => {
     ).toBe('valid');
   });
 });
+
+describe('AI declarations in the image history', () => {
+  it('finds an AI claim in a parent manifest wrapped by a later re-save', async () => {
+    const summary = summarizeManifestStore(
+      await reader.read(await fixture('history-parent.jpg'), 'image/jpeg'),
+    )!;
+    expect(summary).toMatchObject({ state: 'valid', aiDeclared: true, aiDeclaredIn: 'history' });
+    const verdict = await checkImageProvenance(await fixture('history-parent.jpg'), reader);
+    expect(verdict).toMatchObject({
+      outcome: 'verified_ai',
+      reasons: ['c2pa_history_declares_ai', 'c2pa_signer_unrecognised'],
+    });
+  });
+
+  it('does not inherit the claim of an ingredient that was only an input', async () => {
+    const summary = summarizeManifestStore(
+      await reader.read(await fixture('history-input.jpg'), 'image/jpeg'),
+    )!;
+    expect(summary).toMatchObject({ state: 'valid', aiDeclared: false });
+    expect((await checkImageProvenance(await fixture('history-input.jpg'), reader)).outcome).toBe(
+      'no_clear_signs',
+    );
+  });
+});
+
+/**
+ * Real Gemini images, downloaded from Gemini by the project owner and fetched unchanged from
+ * Google Drive (2026-11-11). Not committed (owner's private files); the test runs where they exist.
+ */
+const geminiDir = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  '..',
+  'eval',
+  'datasets',
+  '.cache',
+  'private',
+  'gemini-originals',
+);
+describe.skipIf(!existsSync(join(geminiDir, 'gemini-2.jpeg')))(
+  'real Gemini downloads (local only)',
+  () => {
+    it.each([
+      ['gemini-1.jpeg', 'valid'],
+      ['gemini-2.jpeg', 'trusted'],
+    ])('%s is "Made with AI" from Google\'s signed history', async (file, state) => {
+      const bytes = await readFile(join(geminiDir, file));
+      const verdict = await checkImageProvenance(bytes, reader);
+      expect(verdict.outcome).toBe('verified_ai');
+      expect(verdict.reasons).toContain('c2pa_history_declares_ai');
+      const c2pa = verdict.signals.find((s) => s.detector.startsWith('image.c2pa'))!;
+      expect(c2pa.details).toMatchObject({ state, issuer: 'Google LLC', aiDeclaredIn: 'history' });
+      expect(String(c2pa.details!['aiActions'])).toMatch(/SynthID/);
+    });
+  },
+);

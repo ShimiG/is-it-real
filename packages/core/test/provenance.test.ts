@@ -99,3 +99,76 @@ describe('metadata and checkImageProvenance', () => {
     expect((await checkImageProvenance(jpeg(''))).outcome).toBe('no_clear_signs');
   });
 });
+
+describe('history walk', () => {
+  const AI_URI = 'http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia';
+  const manifest = (actions: object[], ingredients: object[] = []) => ({
+    claim_generator_info: [{ name: 'Gen' }],
+    assertions: [{ label: 'c2pa.actions.v2', data: { actions } }],
+    ingredients,
+    signature_info: { issuer: 'CA' },
+  });
+  const store = (manifests: Record<string, object>, extra: object = {}) => ({
+    active_manifest: 'top',
+    validation_state: 'Trusted',
+    validation_status: [],
+    manifests,
+    ...extra,
+  });
+
+  it('ignores the claim of an ingredient whose manifest failed validation', () => {
+    const s = summarizeManifestStore(
+      store(
+        {
+          top: manifest(
+            [{ action: 'c2pa.opened' }],
+            [{ relationship: 'parentOf', active_manifest: 'old' }],
+          ),
+          old: manifest([{ action: 'c2pa.created', digitalSourceType: AI_URI }]),
+        },
+        {
+          validation_results: {
+            ingredientDeltas: [
+              {
+                validationDeltas: {
+                  failure: [
+                    { code: 'claimSignature.mismatch', url: 'self#jumbf=/c2pa/old/c2pa.signature' },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      ),
+    )!;
+    expect(s.aiDeclared).toBe(false);
+  });
+
+  it('follows components (an AI part pasted into the image) but not inputs', () => {
+    const withRel = (relationship: string) =>
+      summarizeManifestStore(
+        store({
+          top: manifest([{ action: 'c2pa.created' }], [{ relationship, active_manifest: 'part' }]),
+          part: manifest([
+            { action: 'c2pa.created', digitalSourceType: AI_URI, description: 'Made by AI' },
+          ]),
+        }),
+      )!;
+    expect(withRel('componentOf')).toMatchObject({
+      aiDeclared: true,
+      aiDeclaredIn: 'history',
+      aiDescriptions: ['Made by AI'],
+    });
+    expect(withRel('inputTo').aiDeclared).toBe(false);
+  });
+
+  it('survives a loop in a malformed store', () => {
+    const s = summarizeManifestStore(
+      store({
+        top: manifest([], [{ relationship: 'parentOf', active_manifest: 'a' }]),
+        a: manifest([], [{ relationship: 'parentOf', active_manifest: 'top' }]),
+      }),
+    )!;
+    expect(s.aiDeclared).toBe(false);
+  });
+});

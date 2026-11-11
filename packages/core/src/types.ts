@@ -29,6 +29,7 @@ export type SignalKind = (typeof SIGNAL_KINDS)[number];
 export const REASON_CODES = [
   // provenance
   'c2pa_declares_ai',
+  'c2pa_history_declares_ai',
   'c2pa_present_no_ai_claim',
   'c2pa_invalid_signature',
   'c2pa_signer_unrecognised',

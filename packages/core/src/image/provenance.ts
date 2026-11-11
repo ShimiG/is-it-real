@@ -21,11 +21,18 @@ export interface C2paSummary {
   /** Who signed the manifest (certificate issuer / common name). */
   issuer: string | null;
   signedAt: string | null;
-  /** Software that produced the claim and the actions in it. */
+  /** Software that produced the claim and the actions in it (whole history). */
   generators: string[];
-  /** IPTC digital source type codes found in the active manifest's actions (last path segment). */
+  /** IPTC digital source type codes found in the validated history (last path segment). */
   digitalSourceTypes: string[];
   aiDeclared: boolean;
+  /**
+   * Where the AI declaration was found: in the newest manifest (`active`), or in an earlier,
+   * validated step of the image's history (`history`), e.g. a platform re-saved an AI image.
+   */
+  aiDeclaredIn: 'active' | 'history' | null;
+  /** Descriptions attached to the AI actions, e.g. "Added imperceptible SynthID watermark". */
+  aiDescriptions: string[];
   /** Validation failure codes, e.g. `assertion.dataHash.mismatch` (the pixels were changed). */
   failures: string[];
 }
@@ -51,15 +58,45 @@ const isObj = (v: unknown): v is Json => typeof v === 'object' && v !== null && 
 const str = (v: unknown): string | null => (typeof v === 'string' && v.length > 0 ? v : null);
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 
+/** Ingredient relationships whose history carries over to this image. `inputTo` (prompts, reference images) does not. */
+const INHERITED_RELATIONSHIPS = new Set(['parentOf', 'componentOf']);
+/** How far back to follow the history (protects against malformed or looping stores). */
+const MAX_HISTORY_DEPTH = 8;
+
+function failureCodes(v: unknown): string[] {
+  return arr(v)
+    .map((s) => (isObj(s) ? str(s['code']) : null))
+    .filter((c): c is string => c !== null && !NON_FATAL.has(c));
+}
+
+/** True when the validator reported any failure for this ingredient's manifest. */
+function ingredientFailed(ingredient: Json, manifestLabel: string, store: Json): boolean {
+  if (failureCodes(ingredient['validation_status']).length > 0) return true;
+  const own = isObj(ingredient['validation_results']) ? ingredient['validation_results'] : {};
+  const ownActive = isObj(own['activeManifest']) ? own['activeManifest'] : {};
+  if (failureCodes(ownActive['failure']).length > 0) return true;
+  const results = isObj(store['validation_results']) ? store['validation_results'] : {};
+  for (const delta of arr(results['ingredientDeltas'])) {
+    if (!isObj(delta) || !isObj(delta['validationDeltas'])) continue;
+    const failed = arr(delta['validationDeltas']['failure']).some(
+      (f) =>
+        isObj(f) &&
+        !NON_FATAL.has(String(f['code'])) &&
+        String(f['url'] ?? '').includes(manifestLabel),
+    );
+    if (failed) return true;
+  }
+  return false;
+}
+
 export function summarizeManifestStore(store: unknown): C2paSummary | null {
   if (!isObj(store)) return null;
   const manifests = isObj(store['manifests']) ? store['manifests'] : {};
-  const active = manifests[str(store['active_manifest']) ?? ''];
+  const activeLabel = str(store['active_manifest']) ?? '';
+  const active = manifests[activeLabel];
   if (!isObj(active)) return null;
 
-  const failures = arr(store['validation_status'])
-    .map((s) => (isObj(s) ? str(s['code']) : null))
-    .filter((c): c is string => c !== null && !NON_FATAL.has(c));
+  const failures = failureCodes(store['validation_status']);
   const reported = str(store['validation_state']);
   const state: C2paState =
     failures.length > 0 || reported === 'Invalid'
@@ -70,31 +107,59 @@ export function summarizeManifestStore(store: unknown): C2paSummary | null {
 
   const sourceTypes = new Set<string>();
   const generators = new Set<string>();
-  for (const info of arr(active['claim_generator_info'])) {
-    const name = isObj(info) ? str(info['name']) : null;
-    if (name !== null) generators.add(name);
-  }
-  for (const assertion of arr(active['assertions'])) {
-    if (!isObj(assertion) || !String(assertion['label']).startsWith('c2pa.actions')) continue;
-    const data = isObj(assertion['data']) ? assertion['data'] : {};
-    for (const action of arr(data['actions'])) {
-      if (!isObj(action)) continue;
-      const dst = str(action['digitalSourceType']);
-      if (dst !== null) sourceTypes.add(dst.split('/').pop()!);
-      const agent = action['softwareAgent'];
-      const name = isObj(agent) ? str(agent['name']) : str(agent);
+  const aiDescriptions = new Set<string>();
+  let aiDeclaredIn: 'active' | 'history' | null = null;
+  const visited = new Set<string>();
+
+  // Walk the newest manifest, then the validated manifests of the ingredients it was made from.
+  const walk = (label: string, manifest: Json, depth: number): void => {
+    if (visited.has(label) || depth > MAX_HISTORY_DEPTH) return;
+    visited.add(label);
+    for (const info of arr(manifest['claim_generator_info'])) {
+      const name = isObj(info) ? str(info['name']) : null;
       if (name !== null) generators.add(name);
     }
-  }
+    for (const assertion of arr(manifest['assertions'])) {
+      if (!isObj(assertion) || !String(assertion['label']).startsWith('c2pa.actions')) continue;
+      const data = isObj(assertion['data']) ? assertion['data'] : {};
+      for (const action of arr(data['actions'])) {
+        if (!isObj(action)) continue;
+        const agent = action['softwareAgent'];
+        const agentName = isObj(agent) ? str(agent['name']) : str(agent);
+        if (agentName !== null) generators.add(agentName);
+        const dst = str(action['digitalSourceType']);
+        if (dst === null) continue;
+        const code = dst.split('/').pop()!;
+        sourceTypes.add(code);
+        if (AI_SOURCE_TYPES.has(code)) {
+          aiDeclaredIn ??= depth === 0 ? 'active' : 'history';
+          const description = str(action['description']);
+          if (description !== null) aiDescriptions.add(description);
+        }
+      }
+    }
+    for (const ingredient of arr(manifest['ingredients'])) {
+      if (!isObj(ingredient) || !INHERITED_RELATIONSHIPS.has(String(ingredient['relationship'])))
+        continue;
+      const childLabel = str(ingredient['active_manifest']);
+      const child = childLabel === null ? undefined : manifests[childLabel];
+      if (childLabel === null || !isObj(child) || ingredientFailed(ingredient, childLabel, store))
+        continue;
+      walk(childLabel, child, depth + 1);
+    }
+  };
+  walk(activeLabel, active, 0);
+
   const sig = isObj(active['signature_info']) ? active['signature_info'] : {};
-  const digitalSourceTypes = [...sourceTypes];
   return {
     state,
     issuer: str(sig['issuer']) ?? str(sig['common_name']),
     signedAt: str(sig['time']),
     generators: [...generators],
-    digitalSourceTypes,
-    aiDeclared: digitalSourceTypes.some((t) => AI_SOURCE_TYPES.has(t)),
+    digitalSourceTypes: [...sourceTypes],
+    aiDeclared: aiDeclaredIn !== null,
+    aiDeclaredIn,
+    aiDescriptions: [...aiDescriptions],
     failures,
   };
 }
@@ -107,6 +172,8 @@ export function c2paResult(summary: C2paSummary): DetectorResult {
   if (summary.issuer !== null) details['issuer'] = summary.issuer;
   if (summary.generators.length > 0) details['generators'] = summary.generators.join(', ');
   if (summary.failures.length > 0) details['failures'] = summary.failures.join(', ');
+  if (summary.aiDeclaredIn !== null) details['aiDeclaredIn'] = summary.aiDeclaredIn;
+  if (summary.aiDescriptions.length > 0) details['aiActions'] = summary.aiDescriptions.join('; ');
   let score = 0;
   let reasons: ReasonCode[];
   if (summary.state === 'invalid') {
@@ -114,10 +181,9 @@ export function c2paResult(summary: C2paSummary): DetectorResult {
     reasons = ['c2pa_invalid_signature'];
   } else if (summary.aiDeclared) {
     score = 1;
-    reasons =
-      summary.state === 'trusted'
-        ? ['c2pa_declares_ai']
-        : ['c2pa_declares_ai', 'c2pa_signer_unrecognised'];
+    const declared: ReasonCode =
+      summary.aiDeclaredIn === 'history' ? 'c2pa_history_declares_ai' : 'c2pa_declares_ai';
+    reasons = summary.state === 'trusted' ? [declared] : [declared, 'c2pa_signer_unrecognised'];
   } else {
     reasons = ['c2pa_present_no_ai_claim'];
   }
