@@ -44,27 +44,39 @@ export interface Cell {
 
 export interface ImageModelReport {
   model: string;
+  /** Which non-AI sources the calibration used. */
+  calibrationSources: string[];
   calibrationSize: number;
-  /** AUROC of real (test) vs AI per view. */
+  /** AUROC of stock-style real photos (source "real", test) vs AI, per view. */
   auroc: Record<string, number>;
-  /** Real test photos wrongly flagged, per view. */
-  realFlagged: Record<string, Cell>;
+  /** Non-AI test images wrongly flagged, per source and view. */
+  realFlagged: Record<string, Record<string, Cell>>;
   /** AI images caught, per source and view. */
   aiCaught: Record<string, Record<string, Cell>>;
 }
 
+/** The stock-style photo source (Open Images) that the shipped calibration uses. */
+export const PHOTO_SOURCE = 'real';
+
+/**
+ * @param calibrationSources non-AI sources whose calibration split sets the threshold
+ *   (default: stock-style photos only, like the shipped model).
+ */
 export function evaluateImageModels(
   rows: readonly ImageScoreRow[],
   alpha = 0.01,
+  calibrationSources: readonly string[] = [PHOTO_SOURCE],
 ): ImageModelReport[] {
   const models = [...new Set(rows.flatMap((r) => Object.keys(r.scores)))].sort();
   const views = [...new Set(rows.map((r) => r.view))];
   return models.map((model) => {
     const has = rows.filter((r) => r.scores[model] !== undefined);
-    // An image is judged once, in an unknown condition: calibrate on each real photo's HIGHEST
+    // An image is judged once, in an unknown condition: calibrate on each image's HIGHEST
     // score across its views, so false alarms stay at or below alpha in every condition.
     const worst = new Map<string, number>();
-    for (const r of has.filter((x) => x.truth === 'real' && x.split === 'calib'))
+    for (const r of has.filter(
+      (x) => x.truth === 'real' && x.split === 'calib' && calibrationSources.includes(x.source),
+    ))
       worst.set(r.id, Math.max(worst.get(r.id) ?? -Infinity, r.scores[model]!));
     const calibration = [...worst.values()].sort((a, b) => a - b);
     const flagged = (r: ImageScoreRow) =>
@@ -72,30 +84,36 @@ export function evaluateImageModels(
     const test = has.filter((r) => r.split === 'test');
     const report: ImageModelReport = {
       model,
+      calibrationSources: [...calibrationSources],
       calibrationSize: calibration.length,
       auroc: {},
       realFlagged: {},
       aiCaught: {},
     };
+    const sourcesOf = (truth: 'ai' | 'real') =>
+      [...new Set(test.filter((r) => r.truth === truth).map((r) => r.source))].sort((a, b) =>
+        a === PHOTO_SOURCE ? -1 : b === PHOTO_SOURCE ? 1 : a.localeCompare(b),
+      );
     for (const view of views) {
       const v = test.filter((r) => r.view === view);
-      const real = v.filter((r) => r.truth === 'real');
-      report.realFlagged[view] = { n: real.length, flagged: real.filter(flagged).length };
       report.auroc[view] = auroc(
-        v.map((r) => ({
-          truth: r.truth === 'ai' ? ('ai' as const) : ('human' as const),
-          score: r.scores[model]!,
-          subgroup: r.source,
-        })),
+        v
+          .filter((r) => r.truth === 'ai' || r.source === PHOTO_SOURCE)
+          .map((r) => ({
+            truth: r.truth === 'ai' ? ('ai' as const) : ('human' as const),
+            score: r.scores[model]!,
+            subgroup: r.source,
+          })),
       );
-      for (const source of [
-        ...new Set(v.filter((r) => r.truth === 'ai').map((r) => r.source)),
-      ].sort()) {
-        const ai = v.filter((r) => r.source === source && r.truth === 'ai');
-        (report.aiCaught[source] ??= {})[view] = {
-          n: ai.length,
-          flagged: ai.filter(flagged).length,
-        };
+      for (const truth of ['real', 'ai'] as const) {
+        for (const source of sourcesOf(truth)) {
+          const group = v.filter((r) => r.source === source && r.truth === truth);
+          const target = truth === 'real' ? report.realFlagged : report.aiCaught;
+          (target[source] ??= {})[view] = {
+            n: group.length,
+            flagged: group.filter(flagged).length,
+          };
+        }
       }
     }
     return report;
@@ -107,23 +125,42 @@ const pct = (c: Cell | undefined) =>
     ? 'n/a'
     : `${c.flagged}/${c.n} (${((100 * c.flagged) / c.n).toFixed(1)}%)`;
 
-export function imageReportMarkdown(reports: readonly ImageModelReport[], alpha = 0.01): string {
+const LABELS: Record<string, string> = {
+  real: 'stock-style photos (Open Images)',
+  phone: 'phone photos (SPAQ)',
+  screenshot: 'screenshots',
+  meme: 'memes',
+  cartoon: 'cartoons',
+  digital_art: 'digital art',
+  sketch: 'sketches',
+  cosplay: 'cosplay and stage photos',
+};
+const label = (s: string) => LABELS[s] ?? s;
+
+export function imageReportMarkdown(
+  reports: readonly ImageModelReport[],
+  alpha = 0.01,
+  title = 'Image classifiers (score table)',
+): string {
   if (reports.length === 0) return '';
-  const views = Object.keys(reports[0]!.realFlagged);
+  const views = Object.keys(reports[0]!.auroc);
   const lines = [
-    '## Image classifiers (score table)',
+    `## ${title}`,
     '',
-    `Flag rule: conformal score >= ${1 - alpha}, calibrated on held-out real photos (each photo's highest score across its views). Test split only.`,
+    `Flag rule: conformal score >= ${1 - alpha}. Calibrated on the calibration split of: ${reports[0]!.calibrationSources.map(label).join(', ')} (each image's highest score across its views). Numbers are for the test split only.`,
     '',
   ];
   for (const r of reports) {
     lines.push(
-      `### ${r.model} (calibration: ${r.calibrationSize} real photos)`,
+      `### ${r.model} (calibration: ${r.calibrationSize} images)`,
       '',
       `| | ${views.join(' | ')} |`,
       `|---|${views.map(() => '---').join('|')}|`,
-      `| AUROC | ${views.map((v) => (Number.isNaN(r.auroc[v]) ? 'n/a' : r.auroc[v]!.toFixed(3))).join(' | ')} |`,
-      `| Real photos wrongly flagged | ${views.map((v) => pct(r.realFlagged[v])).join(' | ')} |`,
+      `| AUROC (photos vs AI) | ${views.map((v) => (Number.isNaN(r.auroc[v]) ? 'n/a' : r.auroc[v]!.toFixed(3))).join(' | ')} |`,
+      ...Object.entries(r.realFlagged).map(
+        ([source, byView]) =>
+          `| Wrongly flagged: ${label(source)} | ${views.map((v) => pct(byView[v])).join(' | ')} |`,
+      ),
       ...Object.entries(r.aiCaught).map(
         ([source, byView]) =>
           `| AI caught: ${source} | ${views.map((v) => pct(byView[v])).join(' | ')} |`,

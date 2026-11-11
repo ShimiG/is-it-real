@@ -42,6 +42,7 @@ const json: {
   textModels?: SpecReport[];
   leaveOneDomainOut?: LodoRow[];
   imageModels?: ImageModelReport[];
+  imageModelsBroadCalibration?: ImageModelReport[];
 } = { text: [], scam: [] };
 
 // Harness sanity check on the toy set.
@@ -74,6 +75,21 @@ if (existsSync(FEATURES_FILE)) {
     const reports = evaluateImageModels(rows, alpha);
     json.imageModels = reports;
     sections.push(imageReportMarkdown(reports, alpha));
+    // What if everyday non-AI images (screenshots, memes, art...) also set the threshold?
+    const everyday = [
+      ...new Set(rows.filter((r) => r.truth === 'real').map((r) => r.source)),
+    ].sort();
+    if (everyday.length > 1) {
+      const broad = evaluateImageModels(rows, alpha, everyday);
+      json.imageModelsBroadCalibration = broad;
+      sections.push(
+        imageReportMarkdown(
+          broad,
+          alpha,
+          'Image classifiers, calibrated on every kind of non-AI image',
+        ),
+      );
+    }
   }
 }
 

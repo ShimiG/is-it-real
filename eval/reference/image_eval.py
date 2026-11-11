@@ -74,6 +74,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--models", default=",".join(CANDIDATES))
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--sources", default="", help="only score these manifest sources and merge them into the existing table")
     args = ap.parse_args()
     sessions = {}
     for name in args.models.split(","):
@@ -88,6 +89,9 @@ def main() -> int:
         print("no models available", file=sys.stderr)
         return 1
     rows = [json.loads(l) for l in open(os.path.join(IMAGES, "manifest.jsonl")) if l.strip()]
+    only = set(args.sources.split(",")) if args.sources else None
+    if only:
+        rows = [r for r in rows if r["source"] in only]
     if args.limit:
         rows = rows[: args.limit]
     out = []
@@ -111,8 +115,14 @@ def main() -> int:
         if (i + 1) % 50 == 0:
             print(f"  {i + 1}/{len(rows)} images, {time.time() - t0:.0f}s", file=sys.stderr)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    header = "// " + json.dumps({"models": {n: CANDIDATES[n][0] for n in CANDIDATES}, "views": VIEWS})
+    if only and os.path.exists(OUT):
+        # Merge: keep every existing row except the sources being rescored.
+        kept = [json.loads(l) for l in open(OUT) if l.startswith("{")]
+        out = [r for r in kept if r["source"] not in only] + out
+    out.sort(key=lambda r: (r["id"], r["view"]))
     with open(OUT, "w") as f:
-        f.write("// " + json.dumps({"models": {n: CANDIDATES[n][0] for n in sessions}, "views": VIEWS}) + "\n")
+        f.write(header + "\n")
         for row in out:
             f.write(json.dumps(row) + "\n")
     print(f"wrote {len(out)} rows -> {OUT}")
