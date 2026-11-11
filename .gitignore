@@ -6,3 +6,4 @@ coverage/
 eval/reports/
 *.zip
 eval/datasets/.cache/
+__pycache__/
