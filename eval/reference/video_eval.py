@@ -4,14 +4,16 @@ For every clip in eval/datasets/.cache/videos/manifest.jsonl, in two versions:
   original  the file as published
   reshared  re-encoded the way chat apps and social sites do: at most 480 px high, H.264 at CRF 30
 it records, with numbers only:
-  - 6 evenly spaced frames (frame k at (k + 0.5) / 6 of the duration), each scored exactly like a
-    still image: photo-gate score (CLIP encoder + packages/core/src/image/photo-gate.model.json)
-    and the picture model's raw logit (float32 copy of the shipped file, see image_eval.py)
+  - 6 evenly spaced frames (frame k at (k + 0.5) / 6 of the duration), each measured exactly like a
+    still image: the photo gate's encoder output (CLIP, see image_embed.py) and the picture
+    model's raw logit (float32 copy of the shipped file, see image_eval.py)
   - simple motion statistics from two bursts of 9 consecutive frames (at 30% and 70%)
   - container facts (size, frame rate, duration), to check that results are not explained by them
 
 Frames are decoded by ffmpeg, the same way the shipped Node code does it (packages/video-node).
-Output: eval/features/video-scores.v1.jsonl. Resumable: clips already in the table are skipped.
+Output: eval/datasets/.cache/video-raw.jsonl (large: it holds the encoder outputs). The gate
+training (eval/src/image-gate-train.ts) turns it into the committed, numbers-only table
+eval/features/video-scores.v1.jsonl. Resumable: clips already scored are skipped.
 Usage:  python3 -I eval/reference/video_eval.py [--limit N] [--wait-for N]
 """
 
@@ -33,8 +35,7 @@ import image_embed  # noqa: E402
 import image_eval as ie  # noqa: E402
 
 VIDEOS = os.path.join(ie.CACHE, "videos")
-OUT = os.path.join(ie.HERE, "..", "features", "video-scores.v1.jsonl")
-GATE_JSON = os.path.join(ie.HERE, "..", "..", "packages", "core", "src", "image", "photo-gate.model.json")
+OUT = os.path.join(ie.CACHE, "video-raw.jsonl")
 FRAMES = 6
 BURST_AT = (0.3, 0.7)
 BURST_FRAMES = 9
@@ -65,7 +66,7 @@ def probe(path: str) -> dict:
 
 def frame_at(path: str, t: float):
     """One decoded frame at time t (seconds), as an RGB image; None if ffmpeg gives nothing."""
-    data = run(["ffmpeg", "-v", "error", "-ss", f"{t:.3f}", "-i", path, "-frames:v", "1", "-f", "image2pipe", "-vcodec", "bmp", "-"])
+    data = run(["ffmpeg", "-v", "error", "-ss", f"{t:.3f}", "-i", path, "-frames:v", "1", "-f", "image2pipe", "-vcodec", "bmp", "-pix_fmt", "bgr24", "-"])
     if not data:
         return None
     try:
@@ -115,38 +116,44 @@ class Scorer:
         so.intra_op_num_threads = 4
         self.clf = ort.InferenceSession(os.path.join(ie.MODELS, ie.CANDIDATES["tf-low-quality"][0]), so, providers=["CPUExecutionProvider"])
         self.clip = ort.InferenceSession(image_embed.MODEL, so, providers=["CPUExecutionProvider"])
-        g = json.load(open(GATE_JSON))["logistic"]
-        self.g_mean, self.g_std = np.asarray(g["mean"]), np.asarray(g["std"])
-        self.g_w, self.g_b = np.asarray(g["weights"]), g["bias"]
 
-    def frame(self, im: Image.Image):
+    def frame(self, im: Image.Image, with_logit: bool = True):
         e = self.clip.run(None, {self.clip.get_inputs()[0].name: image_embed.preprocess(im)})[0].reshape(-1).astype(np.float64)
         e /= np.linalg.norm(e) or 1.0
-        z = float(self.g_b + np.sum(self.g_w * (e - self.g_mean) / np.where(self.g_std == 0, 1, self.g_std)))
-        gate = 1 / (1 + np.exp(-z))
+        emb = [round(float(x), 5) for x in e]
+        if not with_logit:
+            return emb, None
         _, mean, std = ie.CANDIDATES["tf-low-quality"]
         logit = float(self.clf.run(None, {self.clf.get_inputs()[0].name: ie.preprocess(im, mean, std)})[0].reshape(-1)[0])
-        return round(float(gate), 4), round(logit, 4)
+        return emb, round(logit, 4)
 
 
-def score_file(scorer: Scorer, path: str) -> dict:
+def score_file(scorer: Scorer, path: str, known: dict | None = None) -> dict:
+    """`known`: an earlier result for the same file (picture-model scores and motion statistics
+    do not depend on the gate encoder, so they are reused and only the encoder is run again)."""
     info = probe(path)
     if not info or info["duration"] <= 0:
         return {"error": "unreadable"}
-    gates, logits = [], []
+    frames = []
     for k in range(FRAMES):
         im = frame_at(path, info["duration"] * (k + 0.5) / FRAMES)
-        if im is None or min(im.size) < 16:
-            continue
-        g, l = scorer.frame(im)
-        gates.append(g)
-        logits.append(l)
-    bursts = []
-    for at in BURST_AT:
-        f = burst(path, info["duration"] * at)
-        if f is not None:
-            bursts.append(motion_stats(f))
-    return {**info, "gate": gates, "logit": logits, "motion": bursts}
+        if im is not None and min(im.size) >= 16:
+            frames.append(im)
+    reuse = known is not None and len(known.get("logit", [])) == len(frames) and "motion" in known
+    embs, logits = [], []
+    for i, im in enumerate(frames):
+        emb, logit = scorer.frame(im, with_logit=not reuse)
+        embs.append(emb)
+        logits.append(known["logit"][i] if reuse else logit)
+    if reuse:
+        bursts = known["motion"]
+    else:
+        bursts = []
+        for at in BURST_AT:
+            f = burst(path, info["duration"] * at)
+            if f is not None:
+                bursts.append(motion_stats(f))
+    return {**info, "logit": logits, "motion": bursts, "emb": embs}
 
 
 def reshare(src: str, dst: str) -> bool:
@@ -173,6 +180,14 @@ def main() -> int:
             if line.startswith("{"):
                 r = json.loads(line)
                 done.add((r["id"], r["version"]))
+    # Results of an earlier run with a different gate encoder: their picture-model scores are reused.
+    known = {}
+    earlier = os.path.join(ie.CACHE, "video-scores-quantized-partial.jsonl")
+    if os.path.exists(earlier):
+        for line in open(earlier):
+            if line.startswith("{"):
+                r = json.loads(line)
+                known[(r["id"], r["version"])] = r
     scorer = Scorer()
     out = open(OUT, "a")
     count, t0 = 0, time.time()
@@ -183,10 +198,10 @@ def main() -> int:
             src = os.path.join(VIDEOS, r["path"])
             base = {"id": r["id"], "source": r["source"], "truth": r["truth"], "split": r["split"]}
             if (r["id"], "original") not in done:
-                out.write(json.dumps({**base, "version": "original", **score_file(scorer, src)}) + "\n")
+                out.write(json.dumps({**base, "version": "original", **score_file(scorer, src, known.get((r["id"], "original")))}) + "\n")
                 done.add((r["id"], "original"))
             copy = os.path.join(tmp, "reshared.mp4")
-            res = score_file(scorer, copy) if reshare(src, copy) else {"error": "reencode failed"}
+            res = score_file(scorer, copy, known.get((r["id"], "reshared"))) if reshare(src, copy) else {"error": "reencode failed"}
             out.write(json.dumps({**base, "version": "reshared", **res}) + "\n")
             out.flush()
             done.add((r["id"], "reshared"))

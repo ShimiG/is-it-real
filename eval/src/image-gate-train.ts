@@ -4,8 +4,13 @@
  * and writes the weights into packages/core/src/image/photo-gate.model.json.
  * Also writes eval/features/image-gate.v1.jsonl: the gate score of every evaluation image and
  * version (numbers only), which `pnpm eval` reads. Training uses the calibration split only.
+ *
+ * When eval/datasets/.cache/video-raw.jsonl exists (written by eval/reference/video_eval.py), it
+ * also writes eval/features/video-scores.v1.jsonl: per video and version, the gate score and the
+ * picture-model score of each sampled frame, with the motion statistics. The gate is trained on
+ * still images only; video frames never influence it.
  */
-import { createReadStream, readFileSync, writeFileSync } from 'node:fs';
+import { createReadStream, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +18,8 @@ import { fitLogReg, predict } from './logreg.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const GATE_SCORES_FILE = join(root, 'features', 'image-gate.v1.jsonl');
+const VIDEO_RAW_FILE = join(root, 'datasets', '.cache', 'video-raw.jsonl');
+const VIDEO_SCORES_FILE = join(root, 'features', 'video-scores.v1.jsonl');
 /** Non-AI sources that are plain photographs. */
 export const PHOTO_SOURCES = ['real', 'phone', 'cosplay'];
 /**
@@ -88,7 +95,7 @@ async function main() {
   const round = (x: number) => Number(x.toFixed(6));
   const out = resolve(root, '..', 'packages', 'core', 'src', 'image', 'photo-gate.model.json');
   const model = JSON.parse(readFileSync(out, 'utf8')) as Record<string, unknown>;
-  model['id'] = 'image.photo-gate@0.1.0';
+  model['id'] = 'image.photo-gate@0.2.0';
   model['logistic'] = {
     features: m.mean.map((_, i) => `e${i}`),
     mean: m.mean.map(round),
@@ -108,6 +115,29 @@ async function main() {
       .join('\n')}\n`,
   );
   console.log(`\nwrote ${out}\nwrote ${GATE_SCORES_FILE} (${scores.length} rows)`);
+
+  // Video frames: apply the trained gate to the frames' encoder outputs.
+  if (existsSync(VIDEO_RAW_FILE)) {
+    const lines: string[] = [];
+    const raw = createInterface({ input: createReadStream(VIDEO_RAW_FILE) });
+    for await (const line of raw) {
+      if (!line.startsWith('{')) continue;
+      const { emb, ...rest } = JSON.parse(line) as {
+        emb?: number[][];
+        id: string;
+        version: string;
+      };
+      lines.push(
+        JSON.stringify({
+          ...rest,
+          ...(emb === undefined ? {} : { gate: emb.map((e) => Number(predict(m, e).toFixed(4))) }),
+        }),
+      );
+    }
+    lines.sort();
+    writeFileSync(VIDEO_SCORES_FILE, `// gate=${String(model['id'])}\n${lines.join('\n')}\n`);
+    console.log(`wrote ${VIDEO_SCORES_FILE} (${lines.length} rows)`);
+  }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

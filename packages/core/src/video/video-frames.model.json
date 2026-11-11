@@ -1,7 +1,7 @@
 {
   "id": "video.frames@untrained",
   "imageModelId": "image.classifier.commfor-lq@0.1.0",
-  "gateId": "image.photo-gate@0.1.0",
+  "gateId": "image.photo-gate@0.2.0",
   "frames": 6,
   "minChecked": 4,
   "calibration": [],

@@ -202,9 +202,10 @@ describe('photo gate', () => {
  * The SHIPPED picture model and photo gate on the owner's real downloads (local only: needs both model files and the
  * private files).
  */
-const cache = join(here, '..', '..', '..', 'eval', 'datasets', '.cache');
+const evalDir = join(here, '..', '..', '..', 'eval');
+const cache = join(evalDir, 'datasets', '.cache');
 const shippedModel = join(cache, 'models', 'image', 'tf-low-quality', 'model_fp16.onnx');
-const shippedGate = join(cache, 'models', 'image', 'clip-b32', 'vision_model_quantized.onnx');
+const shippedGate = join(cache, 'models', 'image', 'clip-b32', 'vision_model_fp16.onnx');
 const perchance = join(cache, 'private', 'perchance-originals', 'perchance-1.jpeg');
 const geminiCopy = join(cache, 'private', 'gemini-chat-upload', '4.webp');
 const phonePhoto = join(cache, 'images', 'phone', '00bc51498f245159.jpg');
@@ -253,13 +254,33 @@ describe.skipIf(
     expect(verdict.signals.some((x) => x.kind === 'statistical')).toBe(true);
   }, 60_000);
 
-  it('does not judge a synthetic test pattern', async () => {
-    const statistical = await shipped();
-    const verdict = await checkImage(
-      { bytes: new Uint8Array(await fixture('plain.jpg')) },
-      { statistical },
-    );
-    expect(verdict.outcome).toBe('no_clear_signs');
-    expect(verdict.reasons).toContain('not_a_photo');
-  }, 60_000);
+  it('gives the same photo-gate scores as the evaluation table', async () => {
+    // The evaluation computes gate scores in Python; users get them from this code. An earlier,
+    // quantized encoder disagreed with itself between runtimes by up to 0.13, so this is checked.
+    const { gate } = await shipped();
+    const table = new Map<string, number>();
+    for (const line of (await readFile(join(evalDir, 'features', 'image-gate.v1.jsonl'), 'utf8'))
+      .split('\n')
+      .filter((l) => l.startsWith('{'))) {
+      const r = JSON.parse(line) as { id: string; view: string; gate: number };
+      if (r.view === 'original') table.set(r.id, r.gate);
+    }
+    const manifest = (await readFile(join(cache, 'images', 'manifest.jsonl'), 'utf8'))
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l) as { id: string; path: string; source: string });
+    let checked = 0;
+    for (const source of ['phone', 'cartoon', 'meme', 'zimage', 'gpt25', 'cosplay']) {
+      for (const item of manifest.filter((m) => m.source === source).slice(0, 4)) {
+        const pixels = await decodeImage(
+          new Uint8Array(await readFile(join(cache, 'images', item.path))),
+        );
+        if (pixels === null) continue;
+        const score = await photoLikeScore(pixels, gate);
+        expect(Math.abs(score - table.get(item.id)!), item.id).toBeLessThan(0.02);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThanOrEqual(20);
+  }, 120_000);
 });

@@ -15,6 +15,10 @@ import model from './photo-gate.model.json' with { type: 'json' };
  * Simple pixel statistics were tried first and could not tell digital paintings from photos.
  * Like the picture model, the encoder only measures (ADR-0001); the weights are downloaded on
  * first use and checked by sha256.
+ *
+ * The encoder file is the float16 export (176 MB). The smaller quantized export was tried first
+ * and dropped: its output changes with the runtime's internal optimisations, so the evaluation
+ * and a user's computer could disagree about the same picture.
  */
 export interface PhotoGateModel {
   id: string;

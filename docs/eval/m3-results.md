@@ -1,6 +1,6 @@
 # M3 results: statistical image detection
 
-**Date:** 2026-11-11 (photo gate added the same day) · Shipped detector `image.classifier.commfor-lq@0.1.0` behind `image.photo-gate@0.1.0` · Reproduce: `python3 -I eval/reference/image_data.py`, `python3 -I eval/reference/image_eval.py`, then `pnpm eval` (the score tables `eval/features/image-scores.v1.jsonl` and `image-gate.v1.jsonl` are committed, so the last step alone reproduces every number).
+**Date:** 2026-11-11 (photo gate added the same day) · Shipped detector `image.classifier.commfor-lq@0.1.0` behind `image.photo-gate@0.2.0` · Reproduce: `python3 -I eval/reference/image_data.py`, `python3 -I eval/reference/image_eval.py`, then `pnpm eval` (the score tables `eval/features/image-scores.v1.jsonl` and `image-gate.v1.jsonl` are committed, so the last step alone reproduces every number).
 
 Provenance results (Content Credentials, labels) are in [m3-progress.md](m3-progress.md). This page is about images that carry no label at all.
 
@@ -25,7 +25,7 @@ In total 84 of 1,065. The model calls about a third of human-made cartoons and d
 
 ## What ships: the picture model behind the photo gate
 
-**The gate.** Before the picture model is asked, a second measurement decides whether the image is a _plain photo_. A general-purpose image encoder (CLIP ViT-B/32, MIT, 89 MB, downloaded once and checked by sha256) turns the image into 512 numbers; a small logistic model trained here reads them. Trained on the calibration half only: plain photos (stock, phone, stage) against everything else (cartoons, digital art, sketches, screenshots, memes). Images that do not pass get **"not checked"** with the reason _"This looks like a drawing, a screenshot or a picture with added text. Our picture check only works on plain photos."_ Simple pixel statistics were tried first and failed (80% of digital art passed).
+**The gate.** Before the picture model is asked, a second measurement decides whether the image is a _plain photo_. A general-purpose image encoder (CLIP ViT-B/32, MIT, 176 MB, downloaded once and checked by sha256) turns the image into 512 numbers; a small logistic model trained here reads them. Trained on the calibration half only: plain photos (stock, phone, stage) against everything else (cartoons, digital art, sketches, screenshots, memes). Images that do not pass get **"not checked"** with the reason _"This looks like a drawing, a screenshot or a picture with added text. Our picture check only works on plain photos."_ Simple pixel statistics were tried first and failed (80% of digital art passed).
 
 Memes were first counted as photos. The picture model then wrongly flagged 7 of 108, so pictures with added text are kept out as well.
 
@@ -33,38 +33,40 @@ Share of held-out images the gate lets through (all three versions):
 
 | Plain photos             | Passes | Everything else | Passes |
 | ------------------------ | ------ | --------------- | ------ |
-| Stock-style photos       | 96%    | Cartoons        | 0%     |
+| Stock-style photos       | 97%    | Cartoons        | 0%     |
 | Phone photos             | 100%   | Digital art     | 0%     |
-| Cosplay and stage photos | 89%    | Sketches        | 0%     |
-| AI: GPT portraits        | 87%    | Screenshots     | 4%     |
-| AI: gpt-image-2.5        | 63%    | Memes           | 8%     |
-| AI: Z-Image-Turbo        | 75%    |                 |        |
+| Cosplay and stage photos | 90%    | Sketches        | 0%     |
+| AI: GPT portraits        | 92%    | Screenshots     | 1%     |
+| AI: gpt-image-2.5        | 69%    | Memes           | 7%     |
+| AI: Z-Image-Turbo        | 76%    |                 |        |
 
 The gate threshold is 0.5, the natural middle of the trained model; it was not tuned on the test half.
 
-**Calibration.** The picture model is now calibrated on the images it is allowed to judge: all 645 non-AI calibration images that pass the gate (420 stock photos, 110 phone photos, 107 stage photos and 8 others that slipped through), each at its highest score across the three versions. Cut-off: raw score 6.27 (was 5.73).
+**Which encoder file, and a bug found on the way.** The first gate (0.1.0) used the 89 MB _quantized_ export of the encoder. While building the video check, a parity test showed that file gives different numbers depending on the runtime's internal optimisations: the same picture's embedding differed between ONNX Runtime 1.29 (evaluation) and 1.31 (plugin) with a cosine of only 0.993, moving gate scores by up to 0.13. A user's plugin could therefore disagree with the measurements on borderline pictures. Gate 0.2.0 uses the float16 export (176 MB), which gives the same numbers everywhere (cosine 0.9999997 across settings), and a test now compares the shipped code's gate scores with this page's table. All numbers below are for 0.2.0; they moved by a point or two.
+
+**Calibration.** The picture model is now calibrated on the images it is allowed to judge: all 643 non-AI calibration images that pass the gate (420 stock photos, 110 phone photos, 107 stage photos and 6 others that slipped through), each at its highest score across the three versions. Cut-off: raw score 6.27 (was 5.73).
 
 **Shipped result, held-out test half:**
 
 | Not AI: wrongly flagged  | As published          | Social copy | Copy of a copy | Not checked |
 | ------------------------ | --------------------- | ----------- | -------------- | ----------- |
-| Stock-style photos       | 2 of 379 (0.5%)       | 0           | 1              | 4%          |
+| Stock-style photos       | 2 of 379 (0.5%)       | 0           | 0              | 3%          |
 | Phone photos             | 1 of 90               | 0           | 0              | 0%          |
 | Cosplay and stage photos | 1 of 93               | 0           | 0              | 10%         |
 | Memes                    | 2 of 108              | 0           | 1              | 92%         |
-| Screenshots              | 0 of 100              | 0           | 0              | 97%         |
+| Screenshots              | 0 of 100              | 0           | 0              | 99%         |
 | Cartoons                 | 0 of 112              | 0           | 0              | 100%        |
 | Digital art              | 0 of 89               | 0           | 0              | 100%        |
 | Sketches                 | 0 of 94               | 0           | 0              | 100%        |
-| **All non-AI images**    | **6 of 1,065 (0.6%)** | **0**       | **2**          |             |
+| **All non-AI images**    | **6 of 1,065 (0.6%)** | **0**       | **1**          |             |
 
 | AI: caught                      | As published | Social copy | Copy of a copy | Not checked |
 | ------------------------------- | ------------ | ----------- | -------------- | ----------- |
-| GPT selfies and portraits       | 61.5%        | 18.5%       | 3.5%           | 10%         |
-| OpenAI gpt-image-2.5            | 22%          | 22.5%       | 10.5%          | 37%         |
-| Z-Image-Turbo (free open model) | 39%          | 27.5%       | 16.5%          | 26%         |
+| GPT selfies and portraits       | 63.5%        | 19%         | 3.5%           | 8%          |
+| OpenAI gpt-image-2.5            | 24%          | 24%         | 12%            | 34%         |
+| Z-Image-Turbo (free open model) | 39.5%        | 26.5%       | 17%            | 24%         |
 
-**What the gate cost, honestly.** False alarms fell from 84 to 6 of 1,065. Detection fell too: 75% / 53% / 62% of originals became 61.5% / 22% / 39%. Most of that loss is AI pictures that are drawings or carry text: the model "caught" them before, but it said the same of a third of human-made drawings, so those catches told the user nothing. They are now "not checked". The rest is the higher cut-off that phone and stage photos require.
+**What the gate cost, honestly.** False alarms fell from 84 to 6 of 1,065. Detection fell too: 75% / 53% / 62% of originals became 63.5% / 24% / 39.5%. Most of that loss is AI pictures that are drawings or carry text: the model "caught" them before, but it said the same of a third of human-made drawings, so those catches told the user nothing. They are now "not checked". The rest is the higher cut-off that phone and stage photos require.
 
 ## Test set
 
@@ -100,28 +102,29 @@ Shipped: the low-quality model, which has the fewest false alarms and the best c
 
 Shipped gate and picture model, cut-off 6.27. These files are private and not committed.
 
-| File                           | Provenance result | Photo gate                     | Picture model    | Combined                            |
-| ------------------------------ | ----------------- | ------------------------------ | ---------------- | ----------------------------------- |
-| ChatGPT original               | Made with AI      | not asked                      | not asked        | Made with AI                        |
-| Gemini originals 1 and 2       | Made with AI      | not asked                      | not asked        | Made with AI                        |
-| Copilot original               | Made with AI      | not asked                      | not asked        | Made with AI                        |
-| Meta AI original               | Made with AI      | not asked                      | not asked        | Made with AI                        |
-| Lovable original               | Made with AI      | not asked                      | not asked        | Made with AI                        |
-| **Gemini chat copy 4**         | No clear signs    | plain photo (0.85)             | **above (12.1)** | **Likely made with AI**             |
-| Gemini chat copy 2 (an ad)     | No clear signs    | has added text (0.09)          | not asked        | No clear signs, picture not checked |
-| Gemini chat copy 3 (a comic)   | No clear signs    | has added text (0.09)          | not asked        | No clear signs, picture not checked |
-| Gemini chat copies 1 and 5     | No clear signs    | not a plain photo (0.38, 0.33) | not asked        | No clear signs, picture not checked |
-| **Perchance original (anime)** | No clear signs    | a drawing (0.10)               | not asked        | No clear signs, picture not checked |
+| File                           | Provenance result | Photo gate            | Picture model    | Combined                            |
+| ------------------------------ | ----------------- | --------------------- | ---------------- | ----------------------------------- |
+| ChatGPT original               | Made with AI      | not asked             | not asked        | Made with AI                        |
+| Gemini originals 1 and 2       | Made with AI      | not asked             | not asked        | Made with AI                        |
+| Copilot original               | Made with AI      | not asked             | not asked        | Made with AI                        |
+| Meta AI original               | Made with AI      | not asked             | not asked        | Made with AI                        |
+| Lovable original               | Made with AI      | not asked             | not asked        | Made with AI                        |
+| **Gemini chat copy 4**         | No clear signs    | plain photo (0.85)    | **above (12.1)** | **Likely made with AI**             |
+| **Gemini chat copy 5**         | No clear signs    | plain photo (0.72)    | **above (6.5)**  | **Likely made with AI**             |
+| Gemini chat copy 1             | No clear signs    | plain photo (0.53)    | below (-7.5)     | No clear signs                      |
+| Gemini chat copy 2 (an ad)     | No clear signs    | has added text (0.07) | not asked        | No clear signs, picture not checked |
+| Gemini chat copy 3 (a comic)   | No clear signs    | has added text (0.10) | not asked        | No clear signs, picture not checked |
+| **Perchance original (anime)** | No clear signs    | a drawing (0.21)      | not asked        | No clear signs, picture not checked |
 
 The picture model alone scored the Perchance image far above the cut-off (11.9), and an earlier version of this page counted that as a catch. It is an anime drawing: the model gives human-made anime the same scores, so that "catch" was the false-alarm mechanism at work. The honest answer for it is "not checked". When a file declares AI, the gate and the picture model are not run at all.
 
-Copies 1 and 5 look like photos, and the gate scores them just under its threshold: the gate also turns away some AI pictures it should let through (see the pass rates above).
+Copy 1 is an edit of a real TV still, so a low score there is reasonable.
 
 ## Limits
 
 - **Plain photos only.** Drawings, paintings, screenshots and pictures with added text are not judged. An AI-made cartoon, poster or meme with no label gets "No clear signs, picture not checked". This is a real gap, chosen over false alarms.
-- **The gate turns away some AI photos** (13% of GPT portraits, 25% of Z-Image-Turbo, 37% of gpt-image-2.5), partly because some of them are illustrations and partly because glossy AI pictures look "rendered" to the encoder.
-- **Re-shared copies are mostly missed** for photo-realistic portraits (18.5% as a social copy, 3.5% as a copy of a copy).
+- **The gate turns away some AI photos** (8% of GPT portraits, 24% of Z-Image-Turbo, 31% of gpt-image-2.5), partly because some of them are illustrations and partly because glossy AI pictures look "rendered" to the encoder.
+- **Re-shared copies are mostly missed** for photo-realistic portraits (19% as a social copy, 3.5% as a copy of a copy).
 - The counts are small: 6 of 1,065 is consistent with a true false-alarm rate between about 0.2% and 1.2%. Per kind (about 100 each) the numbers can only show "low", not how low.
 - Phone photos are from SPAQ (2020 phones). Photos from current phones with heavy processing, portrait mode or beauty filters are not measured.
 - AI sets: one GPT style collection, one gpt-image-2.5 set and one open model. Midjourney, Flux, Gemini and Grok output are not in this test.
@@ -131,4 +134,4 @@ Copies 1 and 5 look like photos, and the gate scores them just under its thresho
 
 - The TypeScript preprocessing matches Pillow byte for byte on real photos; the full TypeScript path (sharp decoding, our preprocessing, ONNX Runtime in Node) matches the Python evaluation path with a median score difference of 0 (largest 0.09, from JPEG decoders).
 - Evaluation scored a float32 copy of the published float16 file (6x faster on CPU; scores differ by at most 0.07). For the shipped calibration, every image within 1 of the cut-off or above was rescored with the exact published float16 file.
-- The gate's scores in the evaluation come from Pillow preprocessing; the shipped path uses the same byte-identical TypeScript preprocessing as the picture model.
+- The gate's scores in the evaluation come from Python (Pillow preprocessing, ONNX Runtime 1.29); the shipped path (TypeScript preprocessing, ONNX Runtime 1.31 in Node) gives the same scores within 0.02 on 24 test images of six kinds (a local test). The picture-model scores of video frames match between the two paths to four decimals.

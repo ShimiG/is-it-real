@@ -1,7 +1,7 @@
 """Builds standin-gate.onnx: a tiny ONNX model shaped like the photo gate's image encoder
 (input "pixel_values" float32 [1, 3, 224, 224], output "image_embeds" float32 [1, 512]).
 The first three output values are the mean of the red, green and blue channels; the other 509
-are zero. Lets the gate be tested without downloading the real 89 MB encoder.
+are zero. Lets the gate be tested without downloading the real 176 MB encoder.
 
 Usage: PYTHONPATH=<dir with onnx> python3 make-standin-gate.py
 """

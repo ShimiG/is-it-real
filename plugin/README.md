@@ -1,6 +1,6 @@
 # Is It Real? (Claude plugin)
 
-Checks the page you are looking at, a message or an image for **scam warning signs** and for **AI-generated text and images**. Version 0.3.0.
+Checks the page you are looking at, a message or an image for **scam warning signs** and for **AI-generated text and images**. Version 0.3.1.
 
 - Runs on your computer. Nothing is uploaded; the only network use is downloading the page's own images (and, once, the Content Credentials library, see below).
 - The answers come from fixed rules and measurements, not from an AI opinion. Claude collects the page, calls the tools and explains the results.
@@ -45,9 +45,9 @@ Everything runs on your computer. The first time an image is checked, the server
 | `@contentauth/c2pa-node` (npm)                            | about 80 MB installed  | reads Content Credentials                                                                                         |
 | `onnxruntime-node` and `sharp` (npm)                      | about 350 MB installed | runs the two models, decodes images                                                                               |
 | Picture model `community_forensics_low_quality_fp16.onnx` | 44 MB                  | downloaded from its author's Hugging Face page at a pinned version, checked against its sha256                    |
-| Photo gate encoder `clip-vit-b32-vision-quantized.onnx`   | 89 MB                  | decides whether a picture is a plain photo, so the picture model is not asked about drawings; same download rules |
+| Photo gate encoder `clip-vit-b32-vision-fp16.onnx`        | 176 MB                 | decides whether a picture is a plain photo, so the picture model is not asked about drawings; same download rules |
 
-In total the data folder grows to about 810 MB; setup takes about a minute on a normal connection. Until it finishes, or if it is not possible, answers say which checks were skipped. Set `ISITREAL_NO_IMAGE_MODEL=1` to never download the two models.
+In total the data folder grows to about 900 MB; setup takes about a minute on a normal connection. Until it finishes, or if it is not possible, answers say which checks were skipped. Set `ISITREAL_NO_IMAGE_MODEL=1` to never download the two models.
 
 ## Content Credentials support
 

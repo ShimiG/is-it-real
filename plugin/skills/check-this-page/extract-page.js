@@ -5,6 +5,7 @@
   const MAX_TEXT = 20000;
   const MAX_LINKS = 200;
   const MAX_IMAGES = 12;
+  const MAX_VIDEOS = 2;
   const MIN_SIDE = 128;
   const SHORT = 60;
   const clean = (s) => (s || '').replace(/\s+/g, ' ').trim();
@@ -56,6 +57,20 @@
       return { url: img.currentSrc || img.src, nearby_labels: shortTexts(box).slice(0, 12) };
     });
 
+  // Videos: the largest visible players. A streamed video has a blob: address, which the tool
+  // cannot fetch; it is still passed on, because labels shown next to it count.
+  const videos = [...document.querySelectorAll('video')]
+    .map((v) => ({ v, r: v.getBoundingClientRect() }))
+    .filter(({ r }) => r.width >= MIN_SIDE && r.height >= MIN_SIDE)
+    .sort((a, b) => b.r.width * b.r.height - a.r.width * a.r.height)
+    .slice(0, MAX_VIDEOS)
+    .map(({ v }) => {
+      const source = v.querySelector('source[src]');
+      const url = v.currentSrc || v.src || (source ? source.src : '');
+      const box = v.closest('figure, article, [role="article"], div') || v.parentElement || v;
+      return { url: url || undefined, nearby_labels: shortTexts(box).slice(0, 12) };
+    });
+
   const labelWords = /\b(ai|a\.i\.|synthetic|generated|imagined|content credentials|altered)\b/i;
   const pageLabels = shortTexts(document.body).filter((s) => labelWords.test(s));
   for (const el of document.querySelectorAll('[aria-label]')) {
@@ -68,6 +83,7 @@
     text,
     links,
     images,
+    videos,
     page_labels: pageLabels.slice(0, 50),
     note:
       skipped > 0 ? `${skipped} images could not be passed (for example blob: images).` : undefined,

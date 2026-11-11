@@ -278,7 +278,7 @@ async function modelFile(
 
 /**
  * The picture check: decoder (sharp), runner (onnxruntime-node) and two model files, all set up in
- * the data folder on first use: the photo gate's image encoder (about 90 MB) and the picture model
+ * the data folder on first use: the photo gate's image encoder (about 180 MB) and the picture model
  * (about 45 MB), plus the two libraries. The gate decides whether an image is photo-like; only
  * those are judged by the picture model. Null when switched off or when setup fails; images then
  * get the provenance checks only.

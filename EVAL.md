@@ -1,6 +1,6 @@
 # Evaluation
 
-What "Is It Real?" catches, what it misses, and how that was measured. Version: engine `0.6.0-m3`, plugin 0.3.0 (2026-11-11).
+What "Is It Real?" catches, what it misses, and how that was measured. Version: engine `0.6.1-m3`, plugin 0.3.1 (2026-11-11).
 
 Every number here can be reproduced: `pnpm eval:fetch` downloads the public datasets (pinned commits), `pnpm eval` prints the report. Details: [M1](docs/eval/m1-results.md), [M2](docs/eval/m2-results.md), [M3 labels](docs/eval/m3-progress.md), [M3 picture model](docs/eval/m3-results.md).
 
@@ -54,18 +54,18 @@ A pretrained detector (MIT licence) that only judges **plain photos**. A second 
 
 | Not AI: wrongly flagged                        | As published | Social-media copy | Copy of a copy |
 | ---------------------------------------------- | ------------ | ----------------- | -------------- |
-| All 1,065 non-AI images                        | 6 (0.6%)     | 0                 | 2              |
-| of which stock, phone and stage photos (562)   | 4            | 0                 | 1              |
+| All 1,065 non-AI images                        | 6 (0.6%)     | 0                 | 1              |
+| of which stock, phone and stage photos (562)   | 4            | 0                 | 0              |
 | of which cartoons, digital art, sketches (295) | 0            | 0                 | 0              |
 | of which screenshots and memes (208)           | 2            | 0                 | 1              |
 
 | AI: caught (and share not checked) | As published | Social-media copy | Copy of a copy |
 | ---------------------------------- | ------------ | ----------------- | -------------- |
-| GPT selfies and portraits          | 61.5% (10%)  | 18.5%             | 3.5%           |
-| OpenAI gpt-image-2.5               | 22% (37%)    | 22.5%             | 10.5%          |
-| Z-Image-Turbo (free open model)    | 39% (26%)    | 27.5%             | 16.5%          |
+| GPT selfies and portraits          | 63.5% (8%)   | 19%               | 3.5%           |
+| OpenAI gpt-image-2.5               | 24% (34%)    | 24%               | 12%            |
+| Z-Image-Turbo (free open model)    | 39.5% (24%)  | 26.5%             | 17%            |
 
-Honest summary: it catches a useful share of unlabelled AI photos as published, few after re-sharing, and it stays quiet on real pictures. AI-made drawings, posters and memes without a label are not judged at all. On the owner's real downloads it flags 1 of 5 re-shared Gemini copies; the Perchance anime image is "not checked". Details: [M3 picture model](docs/eval/m3-results.md).
+Honest summary: it catches a useful share of unlabelled AI photos as published, few after re-sharing, and it stays quiet on real pictures. AI-made drawings, posters and memes without a label are not judged at all. On the owner's real downloads it flags 2 of 5 re-shared Gemini copies; the Perchance anime image is "not checked". Details: [M3 picture model](docs/eval/m3-results.md).
 
 ## Not measured yet
 

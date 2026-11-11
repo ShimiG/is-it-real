@@ -12,7 +12,7 @@
       "name": "is-it-real",
       "source": "./plugin",
       "description": "Checks the page you are looking at for scam warning signs and AI-generated text and images.",
-      "version": "0.3.0"
+      "version": "0.3.1"
     }
   ]
 }

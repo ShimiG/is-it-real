@@ -28,5 +28,13 @@ Measuring false alarms on everyday images (docs/eval/m3-results.md) showed the m
 - **The picture model only judges plain photos.** A photo gate runs first: a general-purpose image encoder (CLIP ViT-B/32 image tower, MIT, 89 MB) plus a small logistic model trained in `eval/`. The encoder is a measuring instrument like the picture model (ADR-0001): it produces numbers, our trained rule decides. Images that do not pass get "not assessed" with the reason `not_a_photo`.
 - **No gate, no picture check.** The core requires a gate to run the picture model; a host that cannot load the gate offers provenance checks only.
 - **Calibration follows the gate:** the conformal calibration set is every non-AI calibration image that passes the gate, not stock photos only.
-- **Accepted cost:** AI-made drawings, posters and memes without a label are not judged, and detection on originals fell from 75% / 53% / 62% to 61.5% / 22% / 39%, while false alarms fell from 84 to 6 of 1,065 non-AI test images. A lower false-alarm rate was preferred over catches that could not be told apart from false alarms (ADR-0006).
-- Download size on first use grows by 89 MB.
+- **Accepted cost:** AI-made drawings, posters and memes without a label are not judged, and detection on originals fell from 75% / 53% / 62% to 63.5% / 24% / 39.5%, while false alarms fell from 84 to 6 of 1,065 non-AI test images. A lower false-alarm rate was preferred over catches that could not be told apart from false alarms (ADR-0006).
+- Download size on first use grows by 176 MB (see the next amendment).
+
+## Amendment 2 (2026-11-11): a model file must give the same numbers everywhere
+
+The first gate used the quantized (8-bit) export of the encoder, 89 MB. A parity test written for the video check showed its output depends on the runtime's internal graph optimisations: the same picture gave embeddings with a cosine of only 0.993 between ONNX Runtime 1.29 (evaluation) and 1.31 (plugin), enough to move gate scores by up to 0.13. Measurements made with one runtime did not describe what users got with another.
+
+- **Rule:** a model file is only shipped if the evaluation path and the shipped path give the same numbers on the same input, and a test checks it. Smaller is not a reason to accept a file that fails this.
+- The gate now uses the float16 export of the same encoder (176 MB; cosine 0.9999997 across runtime settings). Gate 0.2.0 was retrained and the picture model recalibrated with it; the results moved by a point or two.
+- The picture model itself already met the rule (float16 file; frame scores match between the two paths to four decimals).

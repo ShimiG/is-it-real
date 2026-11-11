@@ -1,10 +1,15 @@
-"""Embeds every evaluation image with the CLIP ViT-B/32 image encoder (quantized ONNX, MIT) in
+"""Embeds every evaluation image with the CLIP ViT-B/32 image encoder (float16 ONNX, MIT) in
 the same three versions as the picture-model scores. The embeddings feed the "photo or drawing?"
 gate (eval/src/image-gate-train.ts). Output: eval/datasets/.cache/clip-embeds.jsonl (large; the
 gate training reads it, and only the small trained gate is committed).
 
 Preprocessing: RGB, Pillow bicubic resize of the short edge to 224, centre crop 224, CLIP mean/std
 (the same pipeline as packages/core/src/image/preprocess.ts with resizeShortEdge 224, cropSize 224).
+
+Why float16 and not the smaller quantized file: the quantized encoder's output changes with the
+runtime's internal graph optimisations (cosine 0.993 between ONNX Runtime 1.29 and 1.31 on the same
+input), which moved gate scores by up to 0.13. The float16 file gives the same numbers everywhere
+(cosine 0.9999997 across settings).
 
 Usage: python3 -I eval/reference/image_embed.py [--views original,social,harsh]
 """
@@ -22,7 +27,7 @@ from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import image_eval as ie  # noqa: E402
 
-MODEL = os.path.join(ie.MODELS, "clip-b32", "vision_model_quantized.onnx")
+MODEL = os.path.join(ie.MODELS, "clip-b32", "vision_model_fp16.onnx")
 OUT = os.path.join(ie.CACHE, "clip-embeds.jsonl")
 
 

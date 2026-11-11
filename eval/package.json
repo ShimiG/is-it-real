@@ -12,7 +12,8 @@
     "train:text": "tsx src/train-text.ts",
     "features": "tsx src/features.ts",
     "write:image-model": "tsx src/write-image-model.ts",
-    "gate:train": "tsx src/image-gate-train.ts"
+    "gate:train": "tsx src/image-gate-train.ts",
+    "write:video-model": "tsx src/write-video-model.ts"
   },
   "dependencies": {
     "@isitreal/core": "workspace:*",
