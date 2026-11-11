@@ -34,11 +34,14 @@ CLIP_MEAN, CLIP_STD = (0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.261302
 IMAGENET_MEAN, IMAGENET_STD = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
 
 # name -> (file under models/image, mean, std). All: short edge 440, crop 384, one raw logit out.
+# The Thermostatic models are published with float16 weights, which are about 6x slower on CPU.
+# Scoring uses float32 copies made by fp16_to_fp32.py; on 37 images their logits differ from the
+# published files by at most 0.07 (logits span about -14 to +14).
 CANDIDATES = {
     "cf-vit": ("cf-vit/model.onnx", CLIP_MEAN, CLIP_STD),
     "cf-vit-int8": ("cf-vit/model_int8.onnx", CLIP_MEAN, CLIP_STD),
-    "tf-frontier": ("tf-frontier/model_fp16.onnx", IMAGENET_MEAN, IMAGENET_STD),
-    "tf-low-quality": ("tf-low-quality/model_fp16.onnx", IMAGENET_MEAN, IMAGENET_STD),
+    "tf-frontier": ("tf-frontier/model_fp32.onnx", IMAGENET_MEAN, IMAGENET_STD),
+    "tf-low-quality": ("tf-low-quality/model_fp32.onnx", IMAGENET_MEAN, IMAGENET_STD),
 }
 VIEWS = {"original": None, "social": (1080, 80), "harsh": (512, 60)}
 
