@@ -1,8 +1,8 @@
 # Evaluation
 
-What "Is It Real?" catches, what it misses, and how that was measured. Version: engine `0.4.0-m4`, plugin 0.1.0 (2026-11-11).
+What "Is It Real?" catches, what it misses, and how that was measured. Version: engine `0.5.0-m3`, plugin 0.2.0 (2026-11-11).
 
-Every number here can be reproduced: `pnpm eval:fetch` downloads the public datasets (pinned commits), `pnpm eval` prints the report. Details: [M1](docs/eval/m1-results.md), [M2](docs/eval/m2-results.md), [M3](docs/eval/m3-progress.md).
+Every number here can be reproduced: `pnpm eval:fetch` downloads the public datasets (pinned commits), `pnpm eval` prints the report. Details: [M1](docs/eval/m1-results.md), [M2](docs/eval/m2-results.md), [M3 labels](docs/eval/m3-progress.md), [M3 picture model](docs/eval/m3-results.md).
 
 ## How to read the results
 
@@ -46,8 +46,21 @@ Honest summary: useful against older or unedited AI text, weak against current m
 
 Two real-file bugs were found and fixed on the way (an AI claim hidden one step back in Google's history; Microsoft's non-standard signature treated as tampering).
 
-Honest summary: original files from the big generators are recognised reliably. Re-shared copies and free generators usually carry nothing, and the statistical image check that would help there is not built yet (M3, in progress).
+Honest summary: original files from the big generators are recognised reliably. Re-shared copies and free generators usually carry nothing; for those, the picture model below helps.
+
+## AI images: the picture model (no label needed)
+
+A pretrained detector (MIT licence) measured on 600 AI images made **after** it was trained and 379 held-out real photos. Calibrated so that about 1 in 100 real photos or fewer would be flagged.
+
+|                                        | As published | Social-media copy | Copy of a copy |
+| -------------------------------------- | ------------ | ----------------- | -------------- |
+| Real photos wrongly flagged            | 2 of 379     | 1 of 379          | 1 of 379       |
+| GPT selfies and portraits caught       | 75%          | 30%               | 5%             |
+| OpenAI gpt-image-2.5 caught            | 53%          | 55%               | 36%            |
+| Z-Image-Turbo (free open model) caught | 62%          | 47%               | 34%            |
+
+On the owner's real downloads it catches the unlabelled Perchance image and 3 of 5 re-shared Gemini copies. Not yet measured: false alarms on art, screenshots, memes and modern phone photos (the calibration used older Flickr photos).
 
 ## Not measured yet
 
-Video; images by statistics; text in languages other than English; current models from vendors other than the one used for the 2026 text set; real scam messages; speed in a browser extension.
+Video; false alarms of the picture model on art, screenshots and modern phone photos; text in languages other than English; current models from vendors other than the one used for the 2026 text set; real scam messages; speed in a browser extension.

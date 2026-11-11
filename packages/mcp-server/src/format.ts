@@ -32,7 +32,11 @@ export interface ToolResult {
     advice: readonly string[];
   } | null;
   items: ItemResult[];
-  checks_available: { content_credentials: boolean; deep_text_check: boolean };
+  checks_available: {
+    content_credentials: boolean;
+    picture_model: boolean;
+    deep_text_check: boolean;
+  };
   how_to_report: string;
   engine: string;
 }

@@ -21,3 +21,4 @@ export * from './image/fft.js';
 export * from './image/spectral.js';
 export * from './image/preprocess.js';
 export * from './image/classifier.js';
+export * from './image/models/index.js';

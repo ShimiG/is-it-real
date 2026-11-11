@@ -233,3 +233,21 @@ describe('tampering versus a signer that does not meet the standard', () => {
     expect(withStatus([['something.new', 'self#jumbf=/c2pa/m1']]).state).toBe('invalid');
   });
 });
+
+describe('a Content Credentials reader that fails on a file', () => {
+  it('leaves Content Credentials out and keeps the metadata check', async () => {
+    const broken = { read: async () => Promise.reject(new Error('native module missing')) };
+    const bytes = new Uint8Array([
+      0xff,
+      0xd8,
+      0xff,
+      0xe0,
+      0,
+      16,
+      ...new TextEncoder().encode(
+        '<x:xmpmeta>digitalsourcetype/trainedAlgorithmicMedia</x:xmpmeta>',
+      ),
+    ]);
+    expect((await checkImageProvenance(bytes, broken)).outcome).toBe('verified_ai');
+  });
+});

@@ -7,6 +7,7 @@ import {
   matchPlatformLabels,
   resolveOutcome,
   type C2paReader,
+  type ImageStatisticalCheck,
   type LanguageModel,
   type PageReport,
   type ReasonCode,
@@ -27,6 +28,8 @@ export interface Capabilities {
   /** Content Credentials reader; loaded lazily because it may still be installing. */
   c2pa: () => Promise<C2paReader | null>;
   lm: LanguageModel | null;
+  /** Picture check (image classifier); loaded lazily because it may still be setting up. */
+  imageCheck?: () => Promise<ImageStatisticalCheck | null>;
   media?: MediaOptions;
 }
 
@@ -45,6 +48,14 @@ export interface PageArgs {
 }
 
 export const MAX_IMAGES = 12;
+
+async function available(caps: Capabilities): Promise<ToolResult['checks_available']> {
+  return {
+    content_credentials: (await caps.c2pa()) !== null,
+    picture_model: ((await caps.imageCheck?.()) ?? null) !== null,
+    deep_text_check: caps.lm !== null,
+  };
+}
 
 const hostOf = (url: string | undefined): string | undefined => {
   if (url === undefined) return undefined;
@@ -77,15 +88,26 @@ async function checkOneImage(
     return itemFromVerdict(fromLabels, source, `Could not read the image file: ${note}`);
   }
   const c2pa = await caps.c2pa();
+  const statistical = (await caps.imageCheck?.()) ?? null;
   const verdict = await checkImage(
     { bytes, nearbyLabels: labels },
-    { ...(hostname === undefined ? {} : { hostname }), ...(c2pa === null ? {} : { c2pa }) },
+    {
+      ...(hostname === undefined ? {} : { hostname }),
+      ...(c2pa === null ? {} : { c2pa }),
+      ...(statistical === null ? {} : { statistical }),
+    },
   );
-  const note =
-    c2pa === null
-      ? 'Content Credentials could not be checked on this computer; file metadata was checked.'
-      : undefined;
-  return itemFromVerdict(verdict, source, note);
+  const notes = [
+    ...(c2pa === null
+      ? ['Content Credentials could not be checked on this computer; file metadata was checked.']
+      : []),
+    ...(statistical === null
+      ? [
+          'The picture-checking model was not available, so only labels and signatures were checked.',
+        ]
+      : []),
+  ];
+  return itemFromVerdict(verdict, source, notes.length > 0 ? notes.join(' ') : undefined);
 }
 
 async function textVerdict(text: string, caps: Capabilities): Promise<Verdict> {
@@ -151,10 +173,7 @@ export async function checkPageTool(args: PageArgs, caps: Capabilities): Promise
     summary,
     scam,
     items,
-    checks_available: {
-      content_credentials: (await caps.c2pa()) !== null,
-      deep_text_check: caps.lm !== null,
-    },
+    checks_available: await available(caps),
     how_to_report: HOW_TO_REPORT,
     engine: ENGINE_VERSION,
   };
@@ -177,10 +196,7 @@ export async function checkImageTool(
     summary: summaryLines(null, [item]),
     scam: null,
     items: [item],
-    checks_available: {
-      content_credentials: (await caps.c2pa()) !== null,
-      deep_text_check: caps.lm !== null,
-    },
+    checks_available: await available(caps),
     how_to_report: HOW_TO_REPORT,
     engine: ENGINE_VERSION,
   };

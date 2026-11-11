@@ -4,7 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ENGINE_VERSION } from '@isitreal/core';
 import { z } from 'zod';
-import { dataDir, lazyC2pa, loadLanguageModel, type LoadSettings } from './load.js';
+import { dataDir, lazyC2pa, lazyImageCheck, loadLanguageModel, type LoadSettings } from './load.js';
 import {
   MAX_IMAGES,
   checkImageTool,
@@ -14,7 +14,7 @@ import {
 } from './tools.js';
 
 export const SERVER_NAME = 'is-it-real';
-export const SERVER_VERSION = '0.1.0';
+export const SERVER_VERSION = '0.2.0';
 
 const link = z.object({ text: z.string().max(500), href: z.string().max(4000) });
 const labels = z
@@ -132,6 +132,9 @@ export function settingsFromEnv(env: NodeJS.ProcessEnv = process.env): LoadSetti
     autoInstall: env['ISITREAL_NO_INSTALL'] !== '1',
     gpt2ModelPath: env['ISITREAL_GPT2_MODEL'],
     c2paFrom: env['ISITREAL_C2PA_FROM'],
+    imageModel: env['ISITREAL_NO_IMAGE_MODEL'] !== '1',
+    nativeFrom: env['ISITREAL_NATIVE_FROM'],
+    imageModelPath: env['ISITREAL_IMAGE_MODEL_PATH'],
   };
 }
 
@@ -140,12 +143,14 @@ export async function main(): Promise<void> {
   const caps: Capabilities = {
     c2pa: lazyC2pa(settings),
     lm: await loadLanguageModel(settings),
+    imageCheck: lazyImageCheck(settings),
     ...(process.env['ISITREAL_ALLOW_PRIVATE_NETWORK'] === '1'
       ? { media: { allowPrivateNetwork: true } }
       : {}),
   };
   // Start installing Content Credentials support in the background, so the first image check is quick.
   void caps.c2pa();
+  void caps.imageCheck?.();
   await createServer(caps).connect(new StdioServerTransport());
   process.stderr.write(`[is-it-real] server ${SERVER_VERSION} (engine ${ENGINE_VERSION}) ready\n`);
 }

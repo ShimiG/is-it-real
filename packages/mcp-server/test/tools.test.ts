@@ -40,7 +40,11 @@ describe('check tools', () => {
       'Image 2',
     ]);
     expect(r.items[0]!.note).toMatch(/Content Credentials could not be checked/);
-    expect(r.checks_available).toEqual({ content_credentials: false, deep_text_check: false });
+    expect(r.checks_available).toEqual({
+      content_credentials: false,
+      picture_model: false,
+      deep_text_check: false,
+    });
   });
 
   it('still uses a platform label when the image cannot be fetched', async () => {

@@ -1,9 +1,11 @@
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as ort from 'onnxruntime-node';
 import { describe, expect, it } from 'vitest';
 import {
+  IMAGE_CLASSIFIER_MODEL,
   checkImage,
   detectImageClassifier,
   type ImageClassifierModel,
@@ -97,3 +99,44 @@ describe('ONNX image classifier runner', () => {
     expect(calls).toBe(1);
   });
 });
+
+/**
+ * The SHIPPED model on the owner's real downloads (local only: needs the 44 MB model and the
+ * private files). Perchance carries no label, so only the picture model can catch it.
+ */
+const cache = join(here, '..', '..', '..', 'eval', 'datasets', '.cache');
+const shippedModel = join(cache, 'models', 'image', 'tf-low-quality', 'model_fp16.onnx');
+const perchance = join(cache, 'private', 'perchance-originals', 'perchance-1.jpeg');
+describe.skipIf(!existsSync(shippedModel) || !existsSync(perchance))(
+  'shipped picture model (local only)',
+  () => {
+    it('turns the unlabelled Perchance image into "Likely made with AI"', async () => {
+      const runner = await loadImageClassifierWith(
+        ort,
+        IMAGE_CLASSIFIER_MODEL.runnerId,
+        shippedModel,
+      );
+      const statistical = { decode: decodeImage, runner, model: IMAGE_CLASSIFIER_MODEL };
+      const verdict = await checkImage(
+        { bytes: new Uint8Array(await readFile(perchance)) },
+        { statistical },
+      );
+      expect(verdict.outcome).toBe('likely_ai');
+      expect(verdict.reasons).toEqual(['image_classifier_ai']);
+    }, 60_000);
+
+    it('leaves a real photo alone', async () => {
+      const runner = await loadImageClassifierWith(
+        ort,
+        IMAGE_CLASSIFIER_MODEL.runnerId,
+        shippedModel,
+      );
+      const statistical = { decode: decodeImage, runner, model: IMAGE_CLASSIFIER_MODEL };
+      const verdict = await checkImage(
+        { bytes: new Uint8Array(await fixture('plain.jpg')) },
+        { statistical },
+      );
+      expect(verdict.outcome).toBe('no_clear_signs');
+    }, 60_000);
+  },
+);

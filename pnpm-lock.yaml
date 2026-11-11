@@ -92,6 +92,9 @@ importers:
       '@isitreal/core':
         specifier: workspace:*
         version: link:../core
+      '@isitreal/image-node':
+        specifier: workspace:*
+        version: link:../image-node
       '@isitreal/lm-node':
         specifier: workspace:*
         version: link:../lm-node

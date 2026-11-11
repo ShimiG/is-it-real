@@ -7,7 +7,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./classifier": "./src/classifier.ts"
+    "./classifier": "./src/classifier.ts",
+    "./decode": "./src/decode.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"

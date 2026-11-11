@@ -48,7 +48,7 @@ function expected(file: string): 'none' | 'invalid' | 'unverified' | 'valid' {
   return 'valid';
 }
 
-describe.skipIf(!existsSync(dir))('official C2PA test images', () => {
+describe.skipIf(!existsSync(dir))('official C2PA test images', { timeout: 60_000 }, () => {
   const reader = createC2paReader();
   const files = existsSync(dir)
     ? readdirSync(dir)

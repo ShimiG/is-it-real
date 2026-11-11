@@ -290,7 +290,14 @@ export async function checkImageProvenance(
     ]);
   const results: DetectorResult[] = [metadataResult(bytes)];
   if (reader !== undefined) {
-    const summary = summarizeManifestStore(await reader.read(bytes, mime));
+    let store: unknown = null;
+    try {
+      store = await reader.read(bytes, mime);
+    } catch {
+      // The reader failed on this file (not "no manifest"): Content Credentials cannot be judged,
+      // so they are left out (store stays null); the metadata checks still count.
+    }
+    const summary = summarizeManifestStore(store);
     if (summary !== null) results.push(c2paResult(summary));
   }
   return resolveOutcome('image', results);

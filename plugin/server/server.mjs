@@ -38761,7 +38761,7 @@ function detectTextStats(text, m = TEXT_STATS_MODEL) {
 }
 
 // ../core/src/version.ts
-var ENGINE_VERSION = "0.4.0-m4";
+var ENGINE_VERSION = "0.5.0-m3";
 
 // ../core/src/image/preprocess.ts
 var PRECISION_BITS = 32 - 8 - 2;
@@ -39103,7 +39103,12 @@ async function checkImageProvenance(bytes, reader) {
     ]);
   const results = [metadataResult(bytes)];
   if (reader !== void 0) {
-    const summary = summarizeManifestStore(await reader.read(bytes, mime));
+    let store = null;
+    try {
+      store = await reader.read(bytes, mime);
+    } catch {
+    }
+    const summary = summarizeManifestStore(store);
     if (summary !== null) results.push(c2paResult(summary));
   }
   return resolveOutcome("image", results);
@@ -40531,9 +40536,455 @@ async function checkImage(image, context = {}) {
   ]);
 }
 
+// ../core/src/image/models/commfor-low-quality.model.json
+var commfor_low_quality_model_default = {
+  id: "image.classifier.commfor-lq@0.1.0",
+  runnerId: "commfor-low-quality-2026-08-fp16",
+  file: "community_forensics_low_quality_fp16.onnx",
+  url: "https://huggingface.co/Thermostatic/community-forensics-low-quality-detector-2026-08/resolve/6fca3e7f4365363ee5c0fdb1a17d73917d54413d/community_forensics_low_quality_fp16.onnx",
+  sha256: "88ca8e90e5ab33e6e13887124614e14ba96d7c8cc9ecb21505b63cdc6549ff17",
+  bytes: 43778110,
+  license: "MIT (Thermostatic/community-forensics-low-quality-detector-2026-08, fine-tuned from OwensLab/commfor-model-384)",
+  resizeShortEdge: 440,
+  cropSize: 384,
+  mean: [0.485, 0.456, 0.406],
+  std: [0.229, 0.224, 0.225],
+  minSide: 128,
+  calibration: [
+    -10.89844,
+    -10.71094,
+    -10.5,
+    -10.47656,
+    -10.4375,
+    -10.41406,
+    -10.17188,
+    -10.13281,
+    -9.91406,
+    -9.71094,
+    -9.63281,
+    -9.59375,
+    -9.5625,
+    -9.47656,
+    -9.4375,
+    -9.26562,
+    -9.21094,
+    -9.17188,
+    -9.16406,
+    -9.15625,
+    -9.02344,
+    -8.94531,
+    -8.84375,
+    -8.77344,
+    -8.74219,
+    -8.70312,
+    -8.69531,
+    -8.63281,
+    -8.59375,
+    -8.54688,
+    -8.4375,
+    -8.42969,
+    -8.40625,
+    -8.39844,
+    -8.35156,
+    -8.23438,
+    -8.1875,
+    -8.10938,
+    -8.0625,
+    -8.05469,
+    -8.02344,
+    -7.99219,
+    -7.96875,
+    -7.95312,
+    -7.94531,
+    -7.91016,
+    -7.88672,
+    -7.82812,
+    -7.82031,
+    -7.80859,
+    -7.78125,
+    -7.75391,
+    -7.625,
+    -7.61328,
+    -7.54297,
+    -7.53906,
+    -7.53906,
+    -7.53906,
+    -7.51953,
+    -7.50781,
+    -7.5,
+    -7.48047,
+    -7.48047,
+    -7.45312,
+    -7.44141,
+    -7.37891,
+    -7.33594,
+    -7.26953,
+    -7.23438,
+    -7.22656,
+    -7.08594,
+    -7.07422,
+    -7.03906,
+    -7.02344,
+    -7.01953,
+    -7.01562,
+    -6.95703,
+    -6.94531,
+    -6.94531,
+    -6.9375,
+    -6.92578,
+    -6.92188,
+    -6.89062,
+    -6.87891,
+    -6.86328,
+    -6.78125,
+    -6.75781,
+    -6.73438,
+    -6.72656,
+    -6.72266,
+    -6.70312,
+    -6.69531,
+    -6.68359,
+    -6.66406,
+    -6.66016,
+    -6.625,
+    -6.59375,
+    -6.57031,
+    -6.57031,
+    -6.5625,
+    -6.55078,
+    -6.51172,
+    -6.46875,
+    -6.42969,
+    -6.41016,
+    -6.41016,
+    -6.39453,
+    -6.31641,
+    -6.26562,
+    -6.23438,
+    -6.20703,
+    -6.19922,
+    -6.16016,
+    -6.15625,
+    -6.125,
+    -6.09766,
+    -6.08594,
+    -6.07812,
+    -5.98047,
+    -5.94922,
+    -5.94141,
+    -5.92969,
+    -5.92969,
+    -5.89844,
+    -5.88672,
+    -5.86328,
+    -5.84766,
+    -5.83203,
+    -5.80859,
+    -5.80859,
+    -5.79688,
+    -5.78125,
+    -5.71875,
+    -5.69922,
+    -5.69141,
+    -5.65625,
+    -5.64062,
+    -5.57031,
+    -5.57031,
+    -5.54297,
+    -5.52344,
+    -5.48047,
+    -5.47266,
+    -5.46875,
+    -5.40234,
+    -5.39062,
+    -5.38672,
+    -5.34375,
+    -5.30469,
+    -5.30078,
+    -5.25,
+    -5.17188,
+    -5.16797,
+    -5.15625,
+    -5.15625,
+    -5.15625,
+    -5.13281,
+    -5.12109,
+    -5.12109,
+    -5.09766,
+    -5.07422,
+    -5.07031,
+    -5.05469,
+    -5.05078,
+    -5.00391,
+    -4.99219,
+    -4.96484,
+    -4.92969,
+    -4.87891,
+    -4.875,
+    -4.85938,
+    -4.85938,
+    -4.84766,
+    -4.82031,
+    -4.8125,
+    -4.8125,
+    -4.80469,
+    -4.76953,
+    -4.72656,
+    -4.71484,
+    -4.68359,
+    -4.64062,
+    -4.58984,
+    -4.55469,
+    -4.53125,
+    -4.52344,
+    -4.50781,
+    -4.48828,
+    -4.47266,
+    -4.46875,
+    -4.46094,
+    -4.45703,
+    -4.39453,
+    -4.38281,
+    -4.34766,
+    -4.3125,
+    -4.30859,
+    -4.29297,
+    -4.27344,
+    -4.26172,
+    -4.23438,
+    -4.22656,
+    -4.21094,
+    -4.19141,
+    -4.16797,
+    -4.15625,
+    -4.13672,
+    -4.10938,
+    -4.08203,
+    -4.07812,
+    -4.07422,
+    -4.07031,
+    -4.05859,
+    -4.03125,
+    -3.93945,
+    -3.92383,
+    -3.89062,
+    -3.85156,
+    -3.83984,
+    -3.81055,
+    -3.78711,
+    -3.73438,
+    -3.72656,
+    -3.72656,
+    -3.70312,
+    -3.67969,
+    -3.67969,
+    -3.67383,
+    -3.6582,
+    -3.62695,
+    -3.61133,
+    -3.61133,
+    -3.56836,
+    -3.53516,
+    -3.51953,
+    -3.50586,
+    -3.46289,
+    -3.42773,
+    -3.4043,
+    -3.39062,
+    -3.37695,
+    -3.36523,
+    -3.36328,
+    -3.35547,
+    -3.35156,
+    -3.28516,
+    -3.27539,
+    -3.25195,
+    -3.23438,
+    -3.21094,
+    -3.13867,
+    -3.125,
+    -3.11328,
+    -3.05273,
+    -3.03516,
+    -3.00586,
+    -3.00195,
+    -2.88086,
+    -2.86328,
+    -2.83203,
+    -2.76172,
+    -2.70898,
+    -2.70703,
+    -2.5957,
+    -2.58594,
+    -2.58398,
+    -2.58008,
+    -2.57031,
+    -2.56836,
+    -2.56445,
+    -2.56055,
+    -2.54688,
+    -2.5,
+    -2.49219,
+    -2.49023,
+    -2.45312,
+    -2.44336,
+    -2.41797,
+    -2.4043,
+    -2.35156,
+    -2.33789,
+    -2.31445,
+    -2.28125,
+    -2.28125,
+    -2.25977,
+    -2.25,
+    -2.24609,
+    -2.24609,
+    -2.23438,
+    -2.21875,
+    -2.20117,
+    -2.19531,
+    -2.19336,
+    -2.15625,
+    -2.14648,
+    -2.11328,
+    -2.07812,
+    -2.05078,
+    -2.02539,
+    -2.01758,
+    -2.00391,
+    -2,
+    -1.98828,
+    -1.98633,
+    -1.88086,
+    -1.70898,
+    -1.7002,
+    -1.68848,
+    -1.62793,
+    -1.62012,
+    -1.53613,
+    -1.51758,
+    -1.49902,
+    -1.49414,
+    -1.49316,
+    -1.48633,
+    -1.46973,
+    -1.41406,
+    -1.40137,
+    -1.37695,
+    -1.37402,
+    -1.32422,
+    -1.25195,
+    -1.24805,
+    -1.24805,
+    -1.22559,
+    -1.20508,
+    -1.20215,
+    -1.12598,
+    -1.11035,
+    -1.08691,
+    -1.05566,
+    -1.00195,
+    -0.96436,
+    -0.94189,
+    -0.80322,
+    -0.69873,
+    -0.65088,
+    -0.6001,
+    -0.54541,
+    -0.54346,
+    -0.51318,
+    -0.43677,
+    -0.34033,
+    -0.26562,
+    -0.08832,
+    -0.07648,
+    -0.06348,
+    -0.01984,
+    0.04797,
+    0.05463,
+    0.10028,
+    0.12744,
+    0.13037,
+    0.15186,
+    0.15503,
+    0.22095,
+    0.23682,
+    0.37305,
+    0.40259,
+    0.40356,
+    0.43311,
+    0.44409,
+    0.48096,
+    0.51855,
+    0.56006,
+    0.64209,
+    0.65967,
+    0.6626,
+    0.67773,
+    0.74512,
+    0.78223,
+    0.90283,
+    1.02441,
+    1.06836,
+    1.12305,
+    1.19531,
+    1.23047,
+    1.23926,
+    1.30957,
+    1.33691,
+    1.34082,
+    1.36328,
+    1.38672,
+    1.4375,
+    1.44434,
+    1.52344,
+    1.61426,
+    1.62012,
+    1.7041,
+    1.73633,
+    1.82812,
+    1.84082,
+    1.90332,
+    2.07617,
+    2.18164,
+    2.32422,
+    2.41211,
+    2.43164,
+    2.46094,
+    2.52344,
+    2.58008,
+    2.59766,
+    2.76562,
+    2.95312,
+    3.08008,
+    3.14453,
+    3.24023,
+    3.51758,
+    3.61133,
+    3.66992,
+    3.83008,
+    4.14062,
+    4.28125,
+    4.31641,
+    4.6875,
+    5.71484,
+    5.72266,
+    5.87109,
+    6.26953,
+    7.57031
+  ],
+  trainedOn: "Thermostatic training mix (COCO, LAION, Pexels, ImageNet and WikiArt real photos; 68,247 AI images from 131 sources incl. 40,101 frontier-generator images), with low-quality augmentation. See the model card.",
+  calibratedOn: "421 real photos (Open Images V7 validation, calibration split), each scored as original, social copy (1080 px, JPEG 80) and copy of a copy (512 px, JPEG 60) with this exact file; the highest of the three is kept. Covers photos like these; other kinds of images (art, screenshots, modern phone photos) are not calibrated."
+};
+
+// ../core/src/image/models/index.ts
+var IMAGE_CLASSIFIER_MODEL = commfor_low_quality_model_default;
+
 // src/load.ts
 import { spawn } from "node:child_process";
-import { existsSync as existsSync2, mkdirSync, readFileSync } from "node:fs";
+import { createHash as createHash2 } from "node:crypto";
+import { createWriteStream, renameSync, rmSync } from "node:fs";
+import { existsSync as existsSync3, mkdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
@@ -40568,9 +41019,47 @@ function isNoManifest(err) {
   return /JumbfNotFound|UnsupportedType|no JUMBF data found|ProvenanceMissing/i.test(String(err));
 }
 
+// ../image-node/src/classifier.ts
+import { existsSync } from "node:fs";
+async function loadImageClassifierWith(ort, id, modelPath, opts = {}) {
+  if (!existsSync(modelPath)) throw new Error(`Model file not found: ${modelPath}`);
+  const session = await ort.InferenceSession.create(modelPath, {
+    executionProviders: ["cpu"],
+    graphOptimizationLevel: "all",
+    ...opts.threads === void 0 ? {} : { intraOpNumThreads: opts.threads }
+  });
+  const input2 = session.inputNames[0];
+  const output2 = session.outputNames[0];
+  return {
+    id,
+    async run(tensor, size) {
+      const t = new ort.Tensor("float32", tensor, [1, 3, size, size]);
+      const result = await session.run({ [input2]: t }, [output2]);
+      return Number(result[output2].data[0]);
+    }
+  };
+}
+
+// ../image-node/src/decode.ts
+var MAX_PIXELS = 64e6;
+function decodeImageWith(sharp) {
+  return async (bytes) => {
+    try {
+      const { data, info } = await sharp(bytes, { limitInputPixels: MAX_PIXELS, failOn: "error" }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+      return {
+        width: info.width,
+        height: info.height,
+        data: new Uint8Array(data.buffer, data.byteOffset, data.length)
+      };
+    } catch {
+      return null;
+    }
+  };
+}
+
 // ../lm-node/src/gpt2.ts
 import { createHash } from "node:crypto";
-import { createReadStream, existsSync } from "node:fs";
+import { createReadStream, existsSync as existsSync2 } from "node:fs";
 
 // ../../node_modules/.pnpm/gpt-tokenizer@4.1.1/node_modules/gpt-tokenizer/esm/constants.js
 var DEFAULT_MERGE_CACHE_SIZE = 1e5;
@@ -92724,7 +93213,7 @@ async function sha256File(path) {
   return hash2.digest("hex");
 }
 async function loadGpt2With(ort, modelPath, opts = {}) {
-  if (!existsSync(modelPath)) throw new Error(`Model file not found: ${modelPath}`);
+  if (!existsSync2(modelPath)) throw new Error(`Model file not found: ${modelPath}`);
   if (opts.verify === true) {
     const sum = await sha256File(modelPath);
     if (sum !== GPT2_ZOO.sha256) throw new Error(`Checksum mismatch for ${modelPath}: ${sum}`);
@@ -92766,6 +93255,8 @@ var C2PA_PACKAGE = "@contentauth/c2pa-node";
 var C2PA_VERSION = "0.10.0";
 var ORT_PACKAGE = "onnxruntime-node";
 var ORT_VERSION = "1.31.1";
+var SHARP_PACKAGE = "sharp";
+var SHARP_VERSION = "0.35.5";
 var log = (msg) => process.stderr.write(`[is-it-real] ${msg}
 `);
 var usable = (v) => v !== void 0 && v !== "" && !v.includes("${") && isAbsolute(v);
@@ -92784,13 +93275,13 @@ function installedVersion(dir, pkg) {
     return null;
   }
 }
-function npmInstall(dir, spec) {
+function npmInstall(dir, specs) {
   mkdirSync(dir, { recursive: true });
   return new Promise((resolve) => {
-    log(`installing ${spec} into ${dir} (first use only)...`);
+    log(`installing ${specs.join(", ")} into ${dir} (first use only)...`);
     const child = spawn(
       process.platform === "win32" ? "npm.cmd" : "npm",
-      ["install", "--no-audit", "--no-fund", "--omit=dev", "--prefix", dir, spec],
+      ["install", "--no-audit", "--no-fund", "--omit=dev", "--prefix", dir, ...specs],
       { stdio: ["ignore", "pipe", "pipe"], shell: process.platform === "win32" }
     );
     child.stdout.on("data", (d) => process.stderr.write(d));
@@ -92803,14 +93294,8 @@ async function importFrom(dir, pkg) {
   const require2 = createRequire(join(dir, "package.json"));
   return import(pathToFileURL(require2.resolve(pkg)).href);
 }
-async function ensurePackage(dir, pkg, version2, autoInstall) {
-  if (installedVersion(dir, pkg) !== version2) {
-    if (!autoInstall) return null;
-    if (!await npmInstall(dir, `${pkg}@${version2}`)) {
-      log(`could not install ${pkg}; continuing without it`);
-      return null;
-    }
-  }
+async function loadPackage(dir, pkg, version2) {
+  if (installedVersion(dir, pkg) !== version2) return null;
   try {
     return await importFrom(dir, pkg);
   } catch (err) {
@@ -92818,36 +93303,72 @@ async function ensurePackage(dir, pkg, version2, autoInstall) {
     return null;
   }
 }
+function wantedPackages(settings) {
+  const want = [];
+  if (settings.c2paFrom === void 0) want.push([C2PA_PACKAGE, C2PA_VERSION]);
+  const needsOrt = settings.imageModel && settings.nativeFrom === void 0 || (settings.gpt2ModelPath ?? "") !== "";
+  if (needsOrt) want.push([ORT_PACKAGE, ORT_VERSION]);
+  if (settings.imageModel && settings.nativeFrom === void 0)
+    want.push([SHARP_PACKAGE, SHARP_VERSION]);
+  return want;
+}
+var installs = /* @__PURE__ */ new Map();
+function ensureInstalled(settings) {
+  const key = settings.dataDir;
+  let pending = installs.get(key);
+  if (pending === void 0) {
+    pending = (async () => {
+      const want = wantedPackages(settings);
+      const missing = want.filter(
+        ([pkg, version2]) => installedVersion(settings.dataDir, pkg) !== version2
+      );
+      if (missing.length === 0 || !settings.autoInstall) return;
+      if (!await npmInstall(
+        settings.dataDir,
+        want.map(([p, v]) => `${p}@${v}`)
+      ))
+        log("could not install the native libraries; continuing without them");
+    })();
+    installs.set(key, pending);
+  }
+  return pending;
+}
 function lazyC2pa(settings) {
   let pending = null;
   return () => pending ??= (async () => {
-    const lib = await ensurePackage(
+    if (settings.c2paFrom === void 0) await ensureInstalled(settings);
+    const lib = await loadPackage(
       settings.c2paFrom ?? settings.dataDir,
       C2PA_PACKAGE,
-      C2PA_VERSION,
-      settings.c2paFrom === void 0 && settings.autoInstall
+      C2PA_VERSION
     );
     if (lib === null) return null;
     const trustFile = join(settings.trustDir, "C2PA-TRUST-LIST.pem");
-    const trustAnchorsPem = existsSync2(trustFile) ? readFileSync(trustFile, "utf8") : void 0;
+    const trustAnchorsPem = existsSync3(trustFile) ? readFileSync(trustFile, "utf8") : void 0;
     if (trustAnchorsPem === void 0)
       log("trust list not found; every signer will show as not recognised");
-    return createC2paReaderWith(lib, trustAnchorsPem === void 0 ? {} : { trustAnchorsPem });
+    const reader = createC2paReaderWith(
+      lib,
+      trustAnchorsPem === void 0 ? {} : { trustAnchorsPem }
+    );
+    try {
+      await reader.read(new Uint8Array([255, 216, 255, 217]), "image/jpeg");
+    } catch (err) {
+      log(`the Content Credentials library is not usable: ${String(err)}`);
+      return null;
+    }
+    return reader;
   })();
 }
 async function loadLanguageModel(settings) {
   const path = settings.gpt2ModelPath;
   if (path === void 0 || path === "") return null;
-  if (!existsSync2(path)) {
+  if (!existsSync3(path)) {
     log(`ISITREAL_GPT2_MODEL is set but ${path} does not exist; deep text check disabled`);
     return null;
   }
-  const ort = await ensurePackage(
-    settings.dataDir,
-    ORT_PACKAGE,
-    ORT_VERSION,
-    settings.autoInstall
-  );
+  await ensureInstalled(settings);
+  const ort = await loadPackage(settings.dataDir, ORT_PACKAGE, ORT_VERSION);
   if (ort === null) return null;
   try {
     return await loadGpt2With(ort, path, { verify: true });
@@ -92855,6 +93376,64 @@ async function loadLanguageModel(settings) {
     log(`could not load ${GPT2_ZOO.file}: ${String(err)}`);
     return null;
   }
+}
+async function downloadVerified(url2, dest, sha256, bytes) {
+  const tmp = `${dest}.part`;
+  try {
+    log(`downloading ${url2} (${(bytes / 1e6).toFixed(0)} MB, first use only)...`);
+    const res = await fetch(url2, { redirect: "follow" });
+    if (!res.ok || res.body === null) throw new Error(`HTTP ${res.status}`);
+    const hash2 = createHash2("sha256");
+    const file2 = createWriteStream(tmp);
+    let total = 0;
+    const reader = res.body.getReader();
+    for (; ; ) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.length;
+      if (total > bytes) throw new Error("file is larger than expected");
+      hash2.update(value);
+      if (!file2.write(value)) await new Promise((r) => file2.once("drain", () => r()));
+    }
+    await new Promise((r, j) => file2.end((err) => err ? j(err) : r()));
+    const got = hash2.digest("hex");
+    if (got !== sha256) throw new Error(`checksum mismatch (${got})`);
+    renameSync(tmp, dest);
+    return true;
+  } catch (err) {
+    rmSync(tmp, { force: true });
+    log(`could not download the model: ${String(err)}`);
+    return false;
+  }
+}
+function lazyImageCheck(settings, model = IMAGE_CLASSIFIER_MODEL) {
+  let pending = null;
+  return () => pending ??= (async () => {
+    if (!settings.imageModel || model.calibration.length === 0) return null;
+    const from = settings.nativeFrom ?? settings.dataDir;
+    if (settings.nativeFrom === void 0) await ensureInstalled(settings);
+    const ort = await loadPackage(from, ORT_PACKAGE, ORT_VERSION);
+    const sharpModule = await loadPackage(from, SHARP_PACKAGE, SHARP_VERSION);
+    if (ort === null || sharpModule === null) return null;
+    const sharp = typeof sharpModule === "function" ? sharpModule : sharpModule.default;
+    let path = settings.imageModelPath;
+    if (path === void 0) {
+      const dir = join(settings.dataDir, "models");
+      mkdirSync(dir, { recursive: true });
+      path = join(dir, model.file);
+      if (!existsSync3(path) && !(settings.autoInstall && await downloadVerified(model.url, path, model.sha256, model.bytes)))
+        return null;
+    }
+    try {
+      const runner = await loadImageClassifierWith(ort, model.runnerId, path);
+      const decode4 = decodeImageWith(sharp);
+      await runner.run(new Float32Array(3 * model.cropSize * model.cropSize), model.cropSize);
+      return { decode: decode4, runner, model };
+    } catch (err) {
+      log(`could not load the picture-checking model: ${String(err)}`);
+      return null;
+    }
+  })();
 }
 
 // src/format.ts
@@ -93054,6 +93633,13 @@ async function loadFromPath(path) {
 
 // src/tools.ts
 var MAX_IMAGES = 12;
+async function available(caps) {
+  return {
+    content_credentials: await caps.c2pa() !== null,
+    picture_model: (await caps.imageCheck?.() ?? null) !== null,
+    deep_text_check: caps.lm !== null
+  };
+}
 var hostOf = (url2) => {
   if (url2 === void 0) return void 0;
   try {
@@ -93071,20 +93657,30 @@ async function checkOneImage(ref, hostname3, caps) {
     else if (ref.path !== void 0) bytes = await loadFromPath(ref.path);
     else throw new MediaError("Give an image link or a file path.", "unreadable");
   } catch (err) {
-    const note2 = err instanceof MediaError ? err.message : "The image could not be loaded.";
+    const note = err instanceof MediaError ? err.message : "The image could not be loaded.";
     const fromLabels = await checkImage(
       { bytes: new Uint8Array(0), nearbyLabels: labels2 },
       hostname3 === void 0 ? {} : { hostname: hostname3 }
     );
-    return itemFromVerdict(fromLabels, source, `Could not read the image file: ${note2}`);
+    return itemFromVerdict(fromLabels, source, `Could not read the image file: ${note}`);
   }
   const c2pa = await caps.c2pa();
+  const statistical = await caps.imageCheck?.() ?? null;
   const verdict = await checkImage(
     { bytes, nearbyLabels: labels2 },
-    { ...hostname3 === void 0 ? {} : { hostname: hostname3 }, ...c2pa === null ? {} : { c2pa } }
+    {
+      ...hostname3 === void 0 ? {} : { hostname: hostname3 },
+      ...c2pa === null ? {} : { c2pa },
+      ...statistical === null ? {} : { statistical }
+    }
   );
-  const note = c2pa === null ? "Content Credentials could not be checked on this computer; file metadata was checked." : void 0;
-  return itemFromVerdict(verdict, source, note);
+  const notes = [
+    ...c2pa === null ? ["Content Credentials could not be checked on this computer; file metadata was checked."] : [],
+    ...statistical === null ? [
+      "The picture-checking model was not available, so only labels and signatures were checked."
+    ] : []
+  ];
+  return itemFromVerdict(verdict, source, notes.length > 0 ? notes.join(" ") : void 0);
 }
 async function textVerdict(text, caps) {
   if (caps.lm !== null) {
@@ -93145,10 +93741,7 @@ async function checkPageTool(args, caps) {
     summary,
     scam,
     items,
-    checks_available: {
-      content_credentials: await caps.c2pa() !== null,
-      deep_text_check: caps.lm !== null
-    },
+    checks_available: await available(caps),
     how_to_report: HOW_TO_REPORT,
     engine: ENGINE_VERSION
   };
@@ -93163,10 +93756,7 @@ async function checkImageTool(args, caps) {
     summary: summaryLines(null, [item]),
     scam: null,
     items: [item],
-    checks_available: {
-      content_credentials: await caps.c2pa() !== null,
-      deep_text_check: caps.lm !== null
-    },
+    checks_available: await available(caps),
     how_to_report: HOW_TO_REPORT,
     engine: ENGINE_VERSION
   };
@@ -93174,7 +93764,7 @@ async function checkImageTool(args, caps) {
 
 // src/server.ts
 var SERVER_NAME = "is-it-real";
-var SERVER_VERSION = "0.1.0";
+var SERVER_VERSION = "0.2.0";
 var link = external_exports.object({ text: external_exports.string().max(500), href: external_exports.string().max(4e3) });
 var labels = external_exports.array(external_exports.string().max(200)).max(50).optional().describe(
   'Short texts shown right next to the item (badges, captions, alt text), e.g. "AI info".'
@@ -93244,7 +93834,10 @@ function settingsFromEnv(env = process.env) {
     trustDir: env["ISITREAL_TRUST_DIR"] ?? join2(here, "trust"),
     autoInstall: env["ISITREAL_NO_INSTALL"] !== "1",
     gpt2ModelPath: env["ISITREAL_GPT2_MODEL"],
-    c2paFrom: env["ISITREAL_C2PA_FROM"]
+    c2paFrom: env["ISITREAL_C2PA_FROM"],
+    imageModel: env["ISITREAL_NO_IMAGE_MODEL"] !== "1",
+    nativeFrom: env["ISITREAL_NATIVE_FROM"],
+    imageModelPath: env["ISITREAL_IMAGE_MODEL_PATH"]
   };
 }
 async function main() {
@@ -93252,9 +93845,11 @@ async function main() {
   const caps = {
     c2pa: lazyC2pa(settings),
     lm: await loadLanguageModel(settings),
+    imageCheck: lazyImageCheck(settings),
     ...process.env["ISITREAL_ALLOW_PRIVATE_NETWORK"] === "1" ? { media: { allowPrivateNetwork: true } } : {}
   };
   void caps.c2pa();
+  void caps.imageCheck?.();
   await createServer(caps).connect(new StdioServerTransport());
   process.stderr.write(`[is-it-real] server ${SERVER_VERSION} (engine ${ENGINE_VERSION}) ready
 `);

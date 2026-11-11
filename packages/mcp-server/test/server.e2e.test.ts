@@ -66,6 +66,16 @@ beforeAll(async () => {
         ISITREAL_NO_INSTALL: '1',
         ISITREAL_C2PA_FROM: join(root, 'packages', 'c2pa-node'),
         ISITREAL_ALLOW_PRIVATE_NETWORK: '1',
+        // Picture check: libraries from the workspace, and a tiny stand-in model instead of the real one.
+        ISITREAL_NATIVE_FROM: join(root, 'packages', 'image-node'),
+        ISITREAL_IMAGE_MODEL_PATH: join(
+          root,
+          'packages',
+          'image-node',
+          'test',
+          'fixtures',
+          'standin-classifier.onnx',
+        ),
       },
       stderr: 'ignore',
     }),
@@ -95,7 +105,11 @@ describe('plugin MCP server (built bundle, stdio)', () => {
       ],
     });
     expect(r.scam?.risk).toBe('high');
-    expect(r.checks_available).toEqual({ content_credentials: true, deep_text_check: false });
+    expect(r.checks_available).toEqual({
+      content_credentials: true,
+      picture_model: true,
+      deep_text_check: false,
+    });
     expect(r.items.map((i) => `${i.kind}:${i.outcome}`)).toEqual([
       'text:not_assessed',
       'image:verified_ai',
