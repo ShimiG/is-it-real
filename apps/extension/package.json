@@ -10,11 +10,13 @@
     "build": "node build.mjs"
   },
   "dependencies": {
-    "@contentauth/c2pa-web": "0.16.1",
+    "@contentauth/c2pa-utilities": "0.5.0",
+    "@contentauth/c2pa-wasm": "0.14.0",
     "@isitreal/core": "workspace:*",
     "onnxruntime-web": "1.31.1"
   },
   "devDependencies": {
+    "@isitreal/c2pa-node": "workspace:*",
     "@types/chrome": "^0.3.7",
     "esbuild": "^0.28.2",
     "playwright": "1.63.0"

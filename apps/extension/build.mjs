@@ -5,6 +5,7 @@
  */
 import { build } from 'esbuild';
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -46,4 +47,14 @@ await writeFile(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + 
 await cp(join(here, 'src/sidepanel/index.html'), join(out, 'sidepanel.html'));
 await cp(join(here, 'src/sidepanel/style.css'), join(out, 'sidepanel.css'));
 await cp(join(here, 'src/offscreen/index.html'), join(out, 'offscreen.html'));
+
+// Content Credentials: the official library's WebAssembly file and the official trust list
+// (the same file the plugin ships; see packages/c2pa-node/trust/README.md).
+const require = createRequire(import.meta.url);
+await cp(require.resolve('@contentauth/c2pa-wasm/c2pa.wasm'), join(out, 'c2pa.wasm'));
+await mkdir(join(out, 'trust'), { recursive: true });
+await cp(
+  join(here, '..', '..', 'packages', 'c2pa-node', 'trust', 'C2PA-TRUST-LIST.pem'),
+  join(out, 'trust', 'C2PA-TRUST-LIST.pem'),
+);
 console.log(`apps/extension/dist built (version ${pkg.version})`);

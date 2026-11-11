@@ -59,7 +59,18 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
       .toBeGreaterThan(0);
     const text = await panel.locator('.ai').innerText();
     // Three real pictures: the picture shown as a 16-pixel icon and the broken one are not content.
-    expect(text).toContain('3 pictures: No clear signs');
+    expect(text).not.toContain('Picture 4');
+    // The signed AI picture is named first, with the reason from its Content Credentials.
+    const first = panel.locator('.ai .card').first();
+    expect(await first.locator('.card-title').innerText()).toContain('Picture 2: Made with AI');
+    expect(await first.innerText()).toContain(
+      'Its digital signature (Content Credentials) says an AI tool made it.',
+    );
+    expect(await first.innerText()).toContain('Signed by: C2PA Test Signing Cert');
+    // The picture that was changed after signing is not called AI; the broken signature is named.
+    expect(text).toContain('Picture 1: No clear signs');
+    expect(text).toContain('the signature is broken or changed');
+    expect(text).not.toContain('could not be checked in this browser');
     expect(text).toContain('does not prove that something is real or safe');
   }, 60_000);
 
