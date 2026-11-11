@@ -36,6 +36,25 @@ describe('resolveOutcome', () => {
     expect(v.reasons).toEqual(['platform_label_ai']);
   });
 
+  it('keeps what the signature check found when a statistical check also ran', () => {
+    const broken: DetectorResult = {
+      status: 'assessed',
+      signal: {
+        detector: 'test.c2pa@0',
+        modality: 'video',
+        kind: 'provenance',
+        score: 0,
+        reasons: ['c2pa_invalid_signature'],
+      },
+    };
+    const quiet = resolveOutcome('video', [broken, stat(0.2)]);
+    expect(quiet.outcome).toBe('no_clear_signs');
+    expect(quiet.reasons).toEqual(['c2pa_invalid_signature']);
+    const flagged = resolveOutcome('video', [broken, stat(0.995)]);
+    expect(flagged.outcome).toBe('likely_ai');
+    expect(flagged.reasons).toEqual(['text_probability_curvature', 'c2pa_invalid_signature']);
+  });
+
   it('flags likely_ai at or above the conformal threshold', () => {
     const v = resolveOutcome('text', [stat(0.995)], { likelyAi: 0.99, alert: 0.999 });
     expect(v.outcome).toBe('likely_ai');

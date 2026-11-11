@@ -2,7 +2,7 @@
 
 A free, open-source, on-device detector for AI-generated text, images and video, built to help people (especially older adults) spot AI-driven scams.
 
-**Status:** M4 done: a Claude plugin (v0.3) you can install and try. It checks pages, messages and images for scam warning signs and AI-generated content. What it catches and misses: [EVAL.md](EVAL.md). Roadmap: [PLAN.md](PLAN.md).
+**Status:** M5 done: a Claude plugin (v0.4) you can install and try. It checks pages, messages, images and video files for scam warning signs and AI-generated content. What it catches and misses: [EVAL.md](EVAL.md). Roadmap: [PLAN.md](PLAN.md).
 
 - **Algorithms first:** provenance (C2PA), metadata, statistics and signal processing. LLMs are used only to explain results, never to decide them.
 - **Private:** everything runs locally. No accounts, no uploads, no tracking.
@@ -24,19 +24,20 @@ Then start Claude Code with Claude in Chrome (`claude --chrome`), open a page, a
 
 ## Repository
 
-| Path                       | What                                                                                                          |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `packages/core`            | Detection core: contracts, outcome rules, plain-language reasons, provenance sniffers, platform-label matcher |
-| `packages/c2pa-node`       | Reads and validates Content Credentials (C2PA) with the official library                                      |
-| `packages/image-node`      | Decodes images (sharp) and runs the picture model and photo gate (ONNX Runtime) in Node                       |
-| `packages/mcp-server`      | MCP server with the `check_page`, `check_text` and `check_image` tools (bundled into `plugin/server`)         |
-| `plugin`                   | The Claude plugin: server bundle, "check this page" skill, manifest                                           |
-| `packages/lm-node`         | Runs the local language model (GPT-2, ONNX Runtime) in Node                                                   |
-| `eval`                     | Evaluation harness, datasets, the committed feature table and the Python parity check                         |
-| `spikes/provenance-census` | Dev extension measuring how often AI labels and provenance markers appear while browsing                      |
-| `docs/decisions`           | Decision records (ADRs)                                                                                       |
-| `docs/spikes`              | M0 spike reports                                                                                              |
-| `docs/research`            | Background research                                                                                           |
+| Path                       | What                                                                                                                 |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `packages/core`            | Detection core: contracts, outcome rules, plain-language reasons, provenance sniffers, platform-label matcher        |
+| `packages/c2pa-node`       | Reads and validates Content Credentials (C2PA) with the official library                                             |
+| `packages/image-node`      | Decodes images (sharp) and runs the picture model and photo gate (ONNX Runtime) in Node                              |
+| `packages/video-node`      | Reads still frames from video files with ffmpeg, run as a separate, restricted program                               |
+| `packages/mcp-server`      | MCP server with the `check_page`, `check_text`, `check_image` and `check_video` tools (bundled into `plugin/server`) |
+| `plugin`                   | The Claude plugin: server bundle, "check this page" skill, manifest                                                  |
+| `packages/lm-node`         | Runs the local language model (GPT-2, ONNX Runtime) in Node                                                          |
+| `eval`                     | Evaluation harness, datasets, the committed feature table and the Python parity check                                |
+| `spikes/provenance-census` | Dev extension measuring how often AI labels and provenance markers appear while browsing                             |
+| `docs/decisions`           | Decision records (ADRs)                                                                                              |
+| `docs/spikes`              | M0 spike reports                                                                                                     |
+| `docs/research`            | Background research                                                                                                  |
 
 ## Development
 

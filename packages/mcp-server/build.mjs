@@ -79,6 +79,8 @@ await writeFile(
     '',
     'Loaded at run time, not bundled: @contentauth/c2pa-node (MIT), onnxruntime-node (MIT), sharp (Apache-2.0).',
     '',
+    'Run as a separate program to read video frames, not bundled and not linked: ffmpeg. The server uses an ffmpeg already on the computer; if there is none, npm installs the ffmpeg-static package (GPL-3.0-or-later; the ffmpeg build it downloads is GPL software from the FFmpeg project) into the plugin data folder.',
+    '',
     'Model files downloaded on first use, not bundled: the picture model (Community Forensics low-quality fine-tune, MIT) and the photo gate encoder (OpenAI CLIP ViT-B/32 image encoder, MIT).',
     '',
   ].join('\n'),

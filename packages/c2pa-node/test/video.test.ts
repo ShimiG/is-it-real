@@ -60,3 +60,38 @@ describe.skipIf(clips.length === 0)('real Sora 2 downloads (local only)', () => 
     }
   }, 60_000);
 });
+
+/**
+ * How many clips of the video evaluation set carry a signed AI declaration (local only). These
+ * counts are quoted in docs/eval/m5-results.md.
+ */
+const videos = join(here, '..', '..', '..', 'eval', 'datasets', '.cache', 'videos');
+const sources = ['sora2', 'sora1', 'runway', 'portrait', 'veo31', 'kling'];
+describe.skipIf(!sources.every((s) => existsSync(join(videos, s))))(
+  'signed declarations in the video evaluation set (local only)',
+  () => {
+    it('finds them in every Sora, Sora 2 and Runway file, some portraits, no Veo or Kling file', async () => {
+      const counts: Record<string, { n: number; declared: number; broken: number }> = {};
+      for (const source of sources) {
+        const c = (counts[source] = { n: 0, declared: 0, broken: 0 });
+        for (const clip of readdirSync(join(videos, source))) {
+          const verdict = await checkVideoProvenance(
+            await readFile(join(videos, source, clip)),
+            reader,
+          );
+          c.n++;
+          if (verdict.outcome === 'verified_ai') c.declared++;
+          if (verdict.reasons.includes('c2pa_invalid_signature')) c.broken++;
+        }
+      }
+      expect(counts).toEqual({
+        sora2: { n: 50, declared: 50, broken: 0 },
+        sora1: { n: 50, declared: 50, broken: 0 },
+        runway: { n: 50, declared: 50, broken: 0 },
+        portrait: { n: 127, declared: 26, broken: 20 },
+        veo31: { n: 50, declared: 0, broken: 0 },
+        kling: { n: 50, declared: 0, broken: 0 },
+      });
+    }, 300_000);
+  },
+);

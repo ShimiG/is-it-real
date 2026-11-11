@@ -158,8 +158,16 @@ describe('plugin MCP server (built bundle, stdio)', () => {
     const plain = await call('check_video', {
       path: join(root, 'packages', 'video-node', 'test', 'fixtures', 'testsrc.mp4'),
     });
-    expect(plain.items[0]).toMatchObject({ kind: 'video' });
-    expect(['no_clear_signs', 'likely_ai']).toContain(plain.items[0]!.outcome);
+    // The frame check is calibrated and on: frames are really read with the packaged ffmpeg and
+    // scored (here by the tiny stand-in models).
+    expect(plain.checks_available.video_frames).toBe(true);
+    expect(plain.items[0]).toMatchObject({
+      kind: 'video',
+      outcome: 'no_clear_signs',
+      evidence: { frames: 6, framesChecked: 6 },
+    });
+    // A broken signature stays in the answer even though the frames were then checked.
+    expect(changed.items[0]!.evidence).toMatchObject({ state: 'invalid', framesChecked: 6 });
     const stream = await call('check_video', { url: 'blob:https://example.com/1' });
     expect(stream.items[0]).toMatchObject({ kind: 'video', outcome: 'not_assessed' });
   }, 60_000);

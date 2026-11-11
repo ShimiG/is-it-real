@@ -15,3 +15,4 @@ Short records of the main design decisions (format: context, decision, consequen
 | [0009](0009-language-model-as-probability-meter.md) | A small local language model as a probability meter (GPT-2 for now) | Accepted |
 | [0010](0010-image-provenance-declarations.md)       | Which image provenance claims count as "Made with AI"               | Accepted |
 | [0011](0011-picture-model.md)                       | A pretrained picture model, measured and calibrated by us           | Accepted |
+| [0012](0012-video-frame-check.md)                   | Video: labels first, then an experimental frame check               | Accepted |

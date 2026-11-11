@@ -13,7 +13,8 @@ const isDeclaredAi = (s: Signal): boolean =>
  * 2. Otherwise, with no statistical signal: `no_clear_signs` when provenance was checked and
  *    declared nothing, `not_assessed` when no detector could assess the item.
  * 3. Otherwise the strongest statistical score is compared with the conformal threshold:
- *    at/above -> `likely_ai`; below -> `no_clear_signs`.
+ *    at/above -> `likely_ai`; below -> `no_clear_signs`. Either way, what provenance found
+ *    without declaring AI (a broken signature, a record with no AI claim) is kept as a reason.
  * Nothing ever yields "human".
  *
  * M0 note: step 3 uses max(score) as a placeholder; the calibrated combiner arrives in M2/M3.
@@ -66,13 +67,18 @@ export function resolveOutcome(
 
   const top = statistical.reduce((a, b) => (b.score > a.score ? b : a));
   const flagged = top.score >= thresholds.likelyAi;
+  // What the label and signature checks found without declaring AI (e.g. a broken signature)
+  // stays in the answer whatever the statistical check says.
+  const context = signals
+    .filter((s) => s.kind === 'provenance' || s.kind === 'platform_label')
+    .flatMap((s) => s.reasons);
   return {
     modality,
     outcome: flagged ? 'likely_ai' : 'no_clear_signs',
     confidence: top.score,
     alert: top.score >= thresholds.alert,
     signals,
-    reasons: flagged ? unique(top.reasons) : [],
+    reasons: unique([...(flagged ? top.reasons : []), ...context]),
   };
 }
 

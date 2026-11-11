@@ -144,7 +144,7 @@ async function checkOneImage(
 }
 
 const EXPERIMENTAL_NOTE =
-  'The frame check for video is experimental: it looks at a few still frames and catches only some AI video.';
+  'The frame check for video is experimental: it looks at a few still frames, catches only some AI video, and cannot detect a face swap (a real face put on another video, a "deepfake").';
 
 async function checkOneVideo(
   ref: VideoRef,

@@ -1,6 +1,6 @@
 {
   "name": "is-it-real",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Checks the page you are looking at for scam warning signs and AI-generated text and images. Runs on your computer; results come from fixed rules and measurements, not from an AI opinion.",
   "author": {
     "name": "Shimi",
