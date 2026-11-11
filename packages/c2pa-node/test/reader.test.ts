@@ -146,3 +146,30 @@ describe.skipIf(!existsSync(join(geminiDir, 'gemini-2.jpeg')))(
     });
   },
 );
+
+/** A real ChatGPT image (gpt-image), downloaded by the project owner, fetched unchanged from Google Drive. Local only. */
+const chatgpt = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  '..',
+  'eval',
+  'datasets',
+  '.cache',
+  'private',
+  'chatgpt-originals',
+  'chatgpt-1.png',
+);
+describe.skipIf(!existsSync(chatgpt))('real ChatGPT download (local only)', () => {
+  it('is "Made with AI" from OpenAI\'s trusted signature, declared in the newest manifest', async () => {
+    const verdict = await checkImageProvenance(await readFile(chatgpt), reader);
+    expect(verdict).toMatchObject({ outcome: 'verified_ai', reasons: ['c2pa_declares_ai'] });
+    const c2pa = verdict.signals.find((s) => s.detector.startsWith('image.c2pa'))!;
+    expect(c2pa.details).toMatchObject({
+      state: 'trusted',
+      issuer: 'OpenAI OpCo, LLC',
+      aiDeclaredIn: 'active',
+    });
+    expect(String(c2pa.details!['generators'])).toMatch(/ChatGPT/);
+  });
+});

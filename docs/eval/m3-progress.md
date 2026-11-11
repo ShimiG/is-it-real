@@ -84,6 +84,21 @@ Open question: both files use the same Google certificate, yet one reports as tr
 
 The two files stay local (`eval/datasets/.cache/private/`, git-ignored); a local-only test checks them on every run where they exist.
 
+### Real-world check: an ORIGINAL ChatGPT download (2026-11-11)
+
+One PNG generated with ChatGPT, shared unchanged through Google Drive. Result: **Made with AI**, from a trusted signature, with no code changes.
+
+|                       | ChatGPT                                                                                      | Gemini (for comparison)                                                   |
+| --------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Signer                | OpenAI OpCo, LLC ("OpenAI Media Service"), **trusted**                                       | Google LLC, trusted on one file, not recognised on the other              |
+| Where the AI claim is | In the newest manifest: `c2pa.created` by "ChatGPT" (`gpt-image`), `trainedAlgorithmicMedia` | One step back in the history, under a later "opened, transcoded" manifest |
+| History               | None: a single manifest                                                                      | Two manifests                                                             |
+| Invisible watermark   | Declared as `c2pa.watermarked.unbound` (OpenAI says it added one; its type is not named)     | Declared by name: "SynthID"                                               |
+| XMP / IPTC metadata   | None                                                                                         | One of two files                                                          |
+| File layout           | Manifest placed right after the PNG header, image data in one block                          | Manifest after the text chunks                                            |
+
+Neither invisible watermark can be checked offline: only Google and OpenAI can read their own marks. Both companies do declare them in the signed manifest, and the evidence panel can say so.
+
 ## Blocked: statistical image detection
 
 Training and measuring the frequency features, and adding a small image classifier, need two things this build environment cannot download:
@@ -100,6 +115,6 @@ To unblock: allow `huggingface.co` (and its file hosts) and `zenodo.org` in the 
 ## Still to do in M3
 
 1. Statistical image detection (blocked, above), then calibration and fusion with provenance.
-2. Real-world signed AI images: two Gemini originals confirmed the path (above). Still worth adding: originals from ChatGPT image generation and Adobe Firefly, and finding out why one Google signature reports as trusted and the other does not.
+2. Real-world signed AI images: two Gemini originals and one ChatGPT original confirm the path (above). Still worth adding: Adobe Firefly and Microsoft Designer originals, and finding out why one Google signature reports as trusted and the other does not.
 3. The C2PA reader for the browser (`@contentauth/c2pa-web`), needed in Phase 2.
 4. Investigate the Truepic discrepancy.
