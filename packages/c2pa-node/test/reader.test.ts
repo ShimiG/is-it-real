@@ -225,3 +225,32 @@ describe.skipIf(!existsSync(meta))('real Meta AI download (local only)', () => {
     });
   });
 });
+
+/**
+ * A real Perchance image (free generator on open-source models), fetched unchanged from Google Drive.
+ * Local only. KNOWN MISS: the file carries no provenance at all, so the provenance checks can only
+ * say "no clear signs". This test documents the gap; statistical image detection (blocked, see
+ * docs/eval/m3-progress.md) is what should eventually catch files like this.
+ */
+const perchance = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  '..',
+  'eval',
+  'datasets',
+  '.cache',
+  'private',
+  'perchance-originals',
+  'perchance-1.jpeg',
+);
+describe.skipIf(!existsSync(perchance))('real Perchance download (local only, known miss)', () => {
+  it('carries no provenance, so the honest answer is "no clear signs"', async () => {
+    const bytes = await readFile(perchance);
+    expect(await reader.read(bytes, 'image/jpeg')).toBeNull();
+    expect(await checkImageProvenance(bytes, reader)).toMatchObject({
+      outcome: 'no_clear_signs',
+      reasons: [],
+    });
+  });
+});
