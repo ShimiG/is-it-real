@@ -88,7 +88,9 @@ describe('evaluateVideoFrames', () => {
   it('writes a readable table', () => {
     const md = videoReportMarkdown(report);
     expect(md).toContain('## Video frame check (experimental)');
-    expect(md).toContain('| AI caught: gen | 10/10 (100.0%), not checked 0% | n/a |');
+    // Only the versions that were scored get a column.
+    expect(md).toContain('| | original |\n');
+    expect(md).toContain('| AI caught: gen | 10/10 (100.0%), not checked 0% |\n');
     expect(md).toContain('| **AI caught: all AI videos** | 10/30 (33.3%), not checked 33% |');
     expect(videoReportMarkdown(evaluateVideoFrames([], rule))).toBe('');
   });

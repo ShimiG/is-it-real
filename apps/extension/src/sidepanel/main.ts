@@ -295,6 +295,32 @@ async function watch(target: WatchTarget): Promise<void> {
   }
 }
 
+/**
+ * A result belongs to one page. When the person goes to another page or another tab, the old
+ * result is taken away, so it is never read as a verdict on the new page.
+ */
+function forgetResult(): void {
+  if (lastResult === null && results.childElementCount === 0) return;
+  speechSynthesis.cancel();
+  lastResult = null;
+  lastTabId = null;
+  results.replaceChildren();
+  readAloud.hidden = true;
+  checkButton.textContent = STRINGS.checkButton;
+  status.textContent = STRINGS.movedOn;
+}
+
+chrome.tabs.onUpdated.addListener((tabId, change) => {
+  if (tabId !== lastTabId || change.url === undefined || lastResult === null) return;
+  // Moving within the same page (a #part) is not a new page.
+  if (change.url.split('#')[0] !== lastResult.url.split('#')[0]) forgetResult();
+});
+// In the real side panel, switching to another tab also changes what "this page" is.
+if (!new URLSearchParams(location.search).has('tabId'))
+  chrome.tabs.onActivated.addListener(({ tabId }) => {
+    if (lastTabId !== null && tabId !== lastTabId) forgetResult();
+  });
+
 /** Asks the engine about the picture check's files; with `install`, downloads them first. */
 async function models(install: boolean): Promise<void> {
   try {

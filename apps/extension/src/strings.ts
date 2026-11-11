@@ -20,6 +20,7 @@ export const STRINGS = {
     'This page cannot be checked. Browser pages, the Web Store and some protected pages do not allow it.',
   pageNotReady: 'The page is still loading. Wait a moment and press the button again.',
   failed: 'Something went wrong while checking. Please try again.',
+  movedOn: 'You are on a different page now. Press the button to check this one.',
   itemText: 'The text on this page',
   itemImage: (n: number) => `Picture ${n}`,
   itemVideo: (n: number) => `Video ${n}`,

@@ -134,6 +134,39 @@ if (existsSync(join(cache, 'sms')))
     ['sms-ham (real messages, benign)', join(cache, 'sms', 'ham.jsonl')],
     ['sms-spam (informational)', join(cache, 'sms', 'spam.jsonl')],
   );
+// The scam rules on long human-written texts (news, essays, stories): what the extension's
+// quiet badge would do on ordinary pages. Needs the text datasets (`pnpm eval:fetch --full`).
+{
+  const items = [];
+  for (const set of ['ghostbuster', 'fdgpt', 'liang']) {
+    const path = join(cache, set, 'text.jsonl');
+    if (!existsSync(path)) continue;
+    for (const item of await loadJsonl(path))
+      if (item.truth === 'human')
+        items.push({
+          id: item.id,
+          truth: 'benign' as const,
+          category: `${set}/${item.subgroup ?? 'text'}`,
+          source: item.source,
+          text: item.text,
+        });
+  }
+  if (items.length > 0) {
+    const r = evaluateScam(
+      'long human texts (news, essays, stories; benign)',
+      SCAM_ENGINE_VERSION,
+      items,
+    );
+    json.scam.push(r);
+    const high = r.falseAlarms.filter((f) => f.risk === 'high').length;
+    sections.push(
+      scamToMarkdown(r).split('\n**False alarms')[0]!,
+      `Of the ${r.falseAlarms.length} flagged texts, ${high} are "high" (the red mark) and ${r.falseAlarms.length - high} "medium" (the amber mark).`,
+      '',
+    );
+  }
+}
+
 for (const [name, path] of scamSets) {
   const r = evaluateScam(name, SCAM_ENGINE_VERSION, await loadScamJsonl(path));
   json.scam.push(r);

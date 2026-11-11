@@ -46,6 +46,20 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     expect(await panel.getByRole('button', { name: 'Check again' }).count()).toBe(1);
   }, 60_000);
 
+  it('takes the result away when the person goes to another page', async () => {
+    const { page, panel } = await loaded.openPanelFor(`${base}/scam-page.html`);
+    await panel.getByRole('button', { name: 'Check this page' }).click();
+    await expect.poll(() => panel.locator('.scam').count(), { timeout: 30_000 }).toBe(1);
+    await page.goto(`${base}/calm-page.html`);
+    // The scam warning must not stay on screen for the page that was not checked.
+    await expect.poll(() => panel.locator('.scam').count(), { timeout: 15_000 }).toBe(0);
+    expect(await panel.locator('#status').innerText()).toContain('different page');
+    expect(await panel.getByRole('button', { name: 'Check this page' }).count()).toBe(1);
+    // And the new page can be checked.
+    await panel.getByRole('button', { name: 'Check this page' }).click();
+    await expect.poll(() => panel.locator('.scam-none').count(), { timeout: 30_000 }).toBe(1);
+  }, 90_000);
+
   it('checks the pictures on the page and skips icons', async () => {
     const { panel } = await loaded.openPanelFor(`${base}/scam-page.html`);
     await panel.getByRole('button', { name: 'Check this page' }).click();

@@ -4,8 +4,8 @@
  *
  * A video gets one number: the median raw picture-model score of its sampled frames that pass the
  * photo gate (packages/core/src/video/frames.ts). Same honest rule as for images: the threshold is
- * a conformal cut-off from held-out NON-AI videos (calibration half, each video's higher number
- * of its two versions); every reported number comes from the test half.
+ * a conformal cut-off from held-out NON-AI videos (calibration half, each video's highest number
+ * over all the ways it was scored); every reported number comes from the test half.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -31,12 +31,41 @@ export interface VideoScoreRow {
   error?: string;
 }
 
-export function loadVideoScores(path = VIDEO_SCORES_FILE): VideoScoreRow[] {
+/**
+ * The same clips scored the way the browser extension sees a PLAYING video: 6 frames about a
+ * second apart from one place in the clip (eval/reference/video_window_eval.py).
+ */
+export const VIDEO_WINDOW_SCORES_FILE = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'features',
+  'video-window-scores.v1.jsonl',
+);
+
+function readRows(path: string): VideoScoreRow[] {
   if (!existsSync(path)) return [];
   return readFileSync(path, 'utf8')
     .split('\n')
     .filter((l) => l.startsWith('{'))
     .map((l) => JSON.parse(l) as VideoScoreRow);
+}
+
+/**
+ * Every scored clip version: `original` and `reshared` (frames spread over the whole clip), and,
+ * when the second table exists, `watched` and `watched-reshared` (frames from one place, as when
+ * a video plays in the browser).
+ */
+export function loadVideoScores(
+  path = VIDEO_SCORES_FILE,
+  windowPath = VIDEO_WINDOW_SCORES_FILE,
+): VideoScoreRow[] {
+  return [
+    ...readRows(path),
+    ...readRows(windowPath).map((r) => ({
+      ...r,
+      version: r.version === 'original' ? 'watched' : 'watched-reshared',
+    })),
+  ];
 }
 
 export interface VideoRule {
@@ -73,14 +102,14 @@ export interface VideoReport {
   aiCaught: Record<string, Record<string, VideoCell>>;
 }
 
-const VERSION_ORDER = ['original', 'reshared'];
+const VERSION_ORDER = ['original', 'reshared', 'watched', 'watched-reshared'];
 
 export function evaluateVideoFrames(
   rows: readonly VideoScoreRow[],
   rule: VideoRule,
   alpha = 0.01,
 ): VideoReport {
-  // Calibration: each non-AI calibration video's higher number of its versions.
+  // Calibration: each non-AI calibration video's highest number over all its versions.
   const worst = new Map<string, number>();
   const sourceOf = new Map<string, string>();
   for (const r of rows) {
@@ -157,7 +186,12 @@ const total = (cells: Record<string, Record<string, VideoCell>>, version: string
 
 export function videoReportMarkdown(report: VideoReport, alpha = 0.01): string {
   if (report.calibrationSize === 0) return '';
-  const versions = VERSION_ORDER;
+  const present = new Set(
+    [...Object.values(report.realFlagged), ...Object.values(report.aiCaught)].flatMap((c) =>
+      Object.keys(c),
+    ),
+  );
+  const versions = VERSION_ORDER.filter((v) => present.has(v));
   const order = (cells: Record<string, unknown>) => Object.keys(cells).sort();
   const mix = Object.entries(report.calibrationSources)
     .map(([s, c]) => `${c} ${s}`)
@@ -165,7 +199,7 @@ export function videoReportMarkdown(report: VideoReport, alpha = 0.01): string {
   return [
     '## Video frame check (experimental)',
     '',
-    `A video's number is the median picture-model score of its sampled frames that pass the photo gate (gate >= ${report.rule.gateThreshold}); with fewer than ${report.rule.minChecked} such frames the video is "not checked". Flag rule: conformal score >= ${1 - alpha}, calibrated on ${report.calibrationSize} non-AI calibration videos (${mix}; each video's higher number of its two versions). Raw cut-off: ${report.cutoff.toFixed(2)}. Numbers are for the test half only.`,
+    `A video's number is the median picture-model score of its sampled frames that pass the photo gate (gate >= ${report.rule.gateThreshold}); with fewer than ${report.rule.minChecked} such frames the video is "not checked". Flag rule: conformal score >= ${1 - alpha}, calibrated on ${report.calibrationSize} non-AI calibration videos (${mix}; each video's highest number over its versions). Raw cut-off: ${report.cutoff.toFixed(2)}. Numbers are for the test half only. Versions: \`original\` and \`reshared\` take 6 frames spread over the whole clip (a video file); \`watched\` and \`watched-reshared\` take 6 frames about a second apart from one place (a video playing in the browser).`,
     '',
     `| | ${versions.join(' | ')} |`,
     `|---|${versions.map(() => '---').join('|')}|`,

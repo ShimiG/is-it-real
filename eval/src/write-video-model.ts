@@ -33,12 +33,13 @@ const mix = Object.entries(report.calibrationSources)
   .sort((a, b) => b[1] - a[1])
   .map(([s, c]) => `${c} ${s}`)
   .join(', ');
-model['id'] = 'video.frames@0.1.0';
+model['id'] = 'video.frames@0.2.0';
 model['imageModelId'] = IMAGE_CLASSIFIER_MODEL.id;
 model['gateId'] = PHOTO_GATE_MODEL.id;
 model['calibration'] = report.calibration.map((v) => Number(v.toFixed(4)));
 model['calibratedOn'] =
-  `${report.calibrationSize} non-AI videos from the calibration half (${mix}). Each video's number is the median picture-model score of ${String(model['frames'])} evenly spaced frames that pass the photo gate, taken as the file is and as a re-shared copy (at most 480 px high, H.264 CRF 30); the higher of the two is kept. ` +
+  `${report.calibrationSize} non-AI videos from the calibration half (${mix}). Each video's number is the median picture-model score of ${String(model['frames'])} frames that pass the photo gate. Every video was scored four ways: frames spread over the whole clip and frames about a second apart from one place (as when it plays in a browser), each as the file is and as a re-shared copy (at most 480 px high, H.264 CRF 30); the highest of the four is kept. ` +
+  "Frames are the decoder's raw planes converted by the core's fixed rule (video/yuv.ts). " +
   'Scores come from the float32 copy of the picture model (largest difference to the shipped file seen: 0.07).';
 writeFileSync(out, JSON.stringify(model, null, 2) + '\n');
 console.log(
