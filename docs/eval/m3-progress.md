@@ -44,6 +44,26 @@ The discrepancy is on the safe side: those files get "the signature is broken or
 
 60 photos from Open Images (validation set): all 60 come out as _No clear signs_. Average per image: provenance 17 ms, decoding 17 ms, frequency features 70 ms (4-core cloud CPU, 0.76 megapixels on average).
 
+### Real-world check: five Gemini images shared through a chat upload (2026-11-11)
+
+The project owner shared five images generated with Gemini. They reached us through a chat upload, which re-encoded each one as WebP and kept only a colour profile.
+
+|                                              | Result                                                                                                                             |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Content Credentials, XMP, generator settings | None left in any of the five files                                                                                                 |
+| Outcome                                      | _No clear signs_ for all five (correct for what arrived; it is not a miss by the checks)                                           |
+| Frequency features                           | Scattered inside the range of the 60 real photos, with no consistent pattern (5 images, and re-encoding blurs these traces anyway) |
+| Image sizes                                  | Four of five have typical generator sizes: 1024x1024, 1408x768 (twice), 768x1376                                                   |
+| Visible mark                                 | One image still shows Gemini's small sparkle logo in a corner                                                                      |
+
+What this shows:
+
+- **Re-sharing removes provenance.** Most of the AI images people will meet have passed through a chat app or social network that strips metadata, so provenance checks will often have nothing to read. This matches the research report and the first planning chat ("C2PA: high precision, low recall"). It is also why platform labels next to the image matter.
+- **Google's invisible watermark (SynthID) probably survives this, but only Google can check it.** There is no open, offline detector. Pointing users to Google's own check would be an online lookup, which ADR-0003 rules out for now.
+- **Two cheap ideas, not built:** a detector for visible generator logos (Gemini sparkle and similar) and "typical generator image size" as a weak supporting hint. Both need many more examples before they can be measured; one image is not evidence.
+
+The five files are kept locally in `eval/datasets/.cache/private/` (git-ignored) and not committed: they depict real, identifiable people and a real company's branding.
+
 ## Blocked: statistical image detection
 
 Training and measuring the frequency features, and adding a small image classifier, need two things this build environment cannot download:
