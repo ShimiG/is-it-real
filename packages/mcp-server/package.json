@@ -1,0 +1,25 @@
+{
+  "name": "@isitreal/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local MCP server exposing the Is It Real? checks to Claude.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/server.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@isitreal/c2pa-node": "workspace:*",
+    "@isitreal/core": "workspace:*",
+    "@isitreal/lm-node": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}
