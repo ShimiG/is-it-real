@@ -182,7 +182,6 @@ li {
 .quote {
   display: block;
   color: var(--muted);
-  font-size: 0.9rem;
 }
 .thumb {
   display: block;
@@ -222,7 +221,6 @@ footer {
   gap: 0.6rem;
 }
 #version {
-  font-size: 0.8rem;
   margin-top: 0.75rem;
 }
 @media (prefers-reduced-motion: reduce) {

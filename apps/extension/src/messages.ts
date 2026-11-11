@@ -74,6 +74,8 @@ export interface PictureScore {
 /** Side panel or background -> engine (the hidden extension page), over a port named ENGINE_PORT. */
 export type EngineRequest =
   | { type: 'check-page'; page: PageData }
+  /** One picture, chosen with a right-click. */
+  | { type: 'check-picture'; url: string; pageUrl: string }
   | { type: 'models-status' }
   /** `baseUrl` (developers and tests): fetch the files from this folder; the checksum still applies. */
   | { type: 'install-models'; baseUrl?: string }
@@ -86,6 +88,7 @@ export type EngineRequest =
 export type EngineEvent =
   | { type: 'progress'; done: number; total: number }
   | { type: 'result'; result: PanelResult }
+  | { type: 'picture-result'; item: PanelItem; checks: PanelResult['checks'] }
   | { type: 'models'; models: ModelsState }
   | { type: 'score'; score: PictureScore | null }
   | { type: 'video-score'; frames: PictureScore[] | null }
@@ -102,6 +105,18 @@ export type BackgroundRequest =
   | { type: 'ensure-engine' }
   /** From the page reader, once per page: set the toolbar badge from the cheap checks. */
   | { type: 'quick-scan'; page: QuickPage };
+
+/**
+ * A picture the person right-clicked and asked about. The background part leaves it in session
+ * storage (kept in memory only) and opens the side panel, which picks it up.
+ */
+export const PENDING_PICTURE = 'pendingPicture';
+export interface PendingPicture {
+  url: string;
+  pageUrl: string;
+  /** When it was asked (milliseconds), so a stale request is not run later. */
+  at: number;
+}
 
 /** Setting (chrome.storage.local): quiet checks while browsing. On unless set to false. */
 export const SETTING_BACKGROUND = 'backgroundMode';

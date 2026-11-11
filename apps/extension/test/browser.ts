@@ -71,7 +71,13 @@ export async function launchWithExtension(): Promise<Loaded> {
     mkdtempSync(join(tmpdir(), 'isitreal-chrome-')),
     {
       channel: 'chromium',
-      args: [`--disable-extensions-except=${dist}`, `--load-extension=${dist}`],
+      args: [
+        `--disable-extensions-except=${dist}`,
+        `--load-extension=${dist}`,
+        // No host but this computer can be reached: the tests double as proof that the checks
+        // need nothing from the internet (the model download is pointed at the local server).
+        '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1',
+      ],
     },
   );
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));

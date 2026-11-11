@@ -5,6 +5,7 @@ import type { PackedFrame } from '../shared/raw-frame.js';
 import {
   CAPTURE_PORT,
   ENGINE_PORT,
+  PENDING_PICTURE,
   SETTING_BACKGROUND,
   type BackgroundRequest,
   type CaptureEvent,
@@ -18,9 +19,16 @@ import {
   type PageVideo,
   type PanelItem,
   type PanelResult,
+  type PendingPicture,
 } from '../messages.js';
 import { STRINGS } from '../strings.js';
-import { renderItem, renderResult, resultToSpeech, type WatchTarget } from './render.js';
+import {
+  renderItem,
+  renderPicture,
+  renderResult,
+  resultToSpeech,
+  type WatchTarget,
+} from './render.js';
 
 const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const checkButton = byId<HTMLButtonElement>('check');
@@ -182,6 +190,47 @@ function showModels(models: ModelsState): void {
   }
 }
 
+/** Checks one picture the person chose with a right-click, and shows only that. */
+async function checkChosenPicture(picture: PendingPicture): Promise<void> {
+  checkButton.disabled = true;
+  speechSynthesis.cancel();
+  readAloud.hidden = true;
+  lastResult = null;
+  results.replaceChildren();
+  status.textContent = STRINGS.checkingPicture;
+  try {
+    let answer: Extract<EngineEvent, { type: 'picture-result' }> | null = null;
+    const engine = await connectEngine((event, close) => {
+      if (event.type === 'picture-result') {
+        answer = event;
+        close();
+      } else if (event.type === 'error') close();
+    });
+    engine.send({ type: 'check-picture', url: picture.url, pageUrl: picture.pageUrl });
+    await engine.closed;
+    if (answer === null) throw new Error('no answer for the picture');
+    const { item, checks } = answer as Extract<EngineEvent, { type: 'picture-result' }>;
+    results.replaceChildren(renderPicture(item, checks));
+    status.textContent = '';
+    results.focus();
+  } catch (err) {
+    console.error(err);
+    status.textContent = STRINGS.failed;
+  } finally {
+    checkButton.disabled = false;
+    checkButton.textContent = STRINGS.checkButton;
+  }
+}
+
+/** Runs a right-click request left by the background part, once, if it is fresh. */
+async function takePendingPicture(): Promise<void> {
+  const saved = await chrome.storage.session.get(PENDING_PICTURE);
+  const picture = saved[PENDING_PICTURE] as PendingPicture | undefined;
+  if (picture === undefined) return;
+  await chrome.storage.session.remove(PENDING_PICTURE);
+  if (Date.now() - picture.at < 60_000) await checkChosenPicture(picture);
+}
+
 const WATCH_PROBLEM: Record<CaptureProblem, string> = {
   paused: STRINGS.watchPaused,
   protected: STRINGS.watchProtected,
@@ -330,6 +379,10 @@ largeText.textContent = STRINGS.largeText;
 byId('setup-title').textContent = STRINGS.setupHeading;
 setupButton.addEventListener('click', () => void models(true));
 void models(false);
+chrome.storage.session.onChanged.addListener((changes) => {
+  if (changes[PENDING_PICTURE]?.newValue !== undefined) void takePendingPicture();
+});
+void takePendingPicture();
 checkButton.addEventListener('click', () => void check());
 readAloud.addEventListener('click', toggleReading);
 largeText.addEventListener(

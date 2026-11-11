@@ -1,5 +1,11 @@
 import { analyzeScam, matchPlatformLabels } from '@isitreal/core';
-import { SETTING_BACKGROUND, type BackgroundRequest, type QuickPage } from './messages.js';
+import {
+  PENDING_PICTURE,
+  SETTING_BACKGROUND,
+  type BackgroundRequest,
+  type PendingPicture,
+  type QuickPage,
+} from './messages.js';
 import { STRINGS } from './strings.js';
 
 /**
@@ -11,8 +17,29 @@ import { STRINGS } from './strings.js';
  */
 const ENGINE_PAGE = 'offscreen.html';
 
+const MENU_CHECK_PICTURE = 'check-picture';
+
 chrome.runtime.onInstalled.addListener(() => {
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  chrome.contextMenus.create({
+    id: MENU_CHECK_PICTURE,
+    title: STRINGS.menuCheckPicture,
+    contexts: ['image'],
+  });
+});
+
+// Right-click on a picture: open the side panel and leave the request where the panel finds it.
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId !== MENU_CHECK_PICTURE || tab?.id === undefined || !info.srcUrl) return;
+  // Opening the panel is only allowed directly in answer to the click, so it comes first.
+  void chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
+  void chrome.storage.session.set({
+    [PENDING_PICTURE]: {
+      url: info.srcUrl,
+      pageUrl: info.pageUrl ?? tab.url ?? '',
+      at: Date.now(),
+    } satisfies PendingPicture,
+  });
 });
 
 let creating: Promise<void> | null = null;

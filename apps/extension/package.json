@@ -7,7 +7,8 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "package": "node build.mjs && node package.mjs"
   },
   "dependencies": {
     "@contentauth/c2pa-utilities": "0.5.0",
@@ -20,6 +21,7 @@
     "@isitreal/image-node": "workspace:*",
     "@isitreal/video-node": "workspace:*",
     "@types/chrome": "^0.3.7",
+    "axe-core": "4.14.0",
     "esbuild": "^0.28.2",
     "playwright": "1.63.0"
   }

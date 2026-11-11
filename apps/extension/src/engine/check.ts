@@ -81,6 +81,21 @@ async function checkOneImage(
   return { ...itemFromVerdict(verdict, ref.url), ...(preview === null ? {} : { preview }) };
 }
 
+/** Checks one picture the person pointed at (right-click). */
+export async function checkPicture(
+  url: string,
+  pageUrl: string,
+  caps: EngineCapabilities,
+): Promise<{ item: PanelItem; checks: PanelResult['checks'] }> {
+  return {
+    item: await checkOneImage({ url, labels: [] }, hostOf(pageUrl), caps),
+    checks: {
+      contentCredentials: (await caps.c2pa()) !== null,
+      pictureModel: (await caps.imageCheck()) !== null,
+    },
+  };
+}
+
 /**
  * The experimental video frame check: the picture check plus its calibration on real video.
  * Null when the picture check is not set up, or when the calibration belongs to other models.

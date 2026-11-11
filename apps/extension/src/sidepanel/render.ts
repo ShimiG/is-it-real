@@ -222,6 +222,21 @@ export function renderResult(result: PanelResult, actions: CardActions = {}): HT
   return root;
 }
 
+/** The result for one picture the person chose with a right-click. */
+export function renderPicture(item: PanelItem, checks: PanelResult['checks']): HTMLElement {
+  const root = el('div', 'result');
+  const section = el('section', 'ai');
+  section.append(
+    el('h2', 'section-title', STRINGS.pictureHeading),
+    renderItem(STRINGS.itemPicture, item),
+  );
+  if (!checks.contentCredentials) section.append(el('p', 'note', STRINGS.noCredentialsCheck));
+  if (!checks.pictureModel) section.append(el('p', 'note', STRINGS.noPictureModel));
+  section.append(el('p', 'reminder', STRINGS.reminder));
+  root.append(section);
+  return root;
+}
+
 /** The same result as sentences, for reading aloud. */
 export function resultToSpeech(result: PanelResult): string {
   const parts: string[] = [STRINGS.speechScam, result.scam.headline];

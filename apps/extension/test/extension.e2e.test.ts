@@ -1,17 +1,10 @@
-import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import type { Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { IMAGE_CLASSIFIER_MODEL, PHOTO_GATE_MODEL } from '@isitreal/core';
-import {
-  browserAvailable,
-  launchWithExtension,
-  root,
-  startServer,
-  type Loaded,
-} from './browser.js';
+import { browserAvailable, launchWithExtension, startServer, type Loaded } from './browser.js';
 
 /**
  * Runs the BUILT extension in a real Chromium, the way a person uses it: open a page, press
@@ -23,10 +16,6 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
   let base = '';
 
   beforeAll(async () => {
-    const built = spawnSync(process.execPath, [join(root, 'apps', 'extension', 'build.mjs')], {
-      encoding: 'utf8',
-    });
-    if (built.status !== 0) throw new Error(built.stderr);
     const fake = mkdtempSync(join(tmpdir(), 'isitreal-fake-'));
     for (const model of [IMAGE_CLASSIFIER_MODEL, PHOTO_GATE_MODEL])
       writeFileSync(join(fake, model.file), 'not a model');
@@ -212,6 +201,29 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     expect((await badgeOf(`${base}/scam-page.html?again`)).text).toBe('');
     await panel.getByRole('button', { name: 'Quiet checks while I browse' }).click();
   }, 90_000);
+
+  it('checks one picture chosen with a right-click', async () => {
+    const { panel } = await loaded.openPanelFor(`${base}/calm-page.html`);
+    // What the right-click menu does: leave the request for the panel.
+    await loaded.worker.evaluate(
+      (picture) => chrome.storage.session.set({ pendingPicture: picture }),
+      { url: `${base}/c2pa/ai-declared.jpg`, pageUrl: `${base}/scam-page.html`, at: Date.now() },
+    );
+    await expect.poll(() => panel.locator('.ai .card').count(), { timeout: 30_000 }).toBe(1);
+    const text = await panel.locator('.ai').innerText();
+    expect(text).toContain('The picture you chose');
+    expect(text).toContain('This picture: Made with AI');
+    // Only the picture is reported: no scam card for a page that was not checked.
+    expect(await panel.locator('.scam').count()).toBe(0);
+    // The request is used once.
+    expect(
+      await loaded.worker.evaluate(async () => Object.keys(await chrome.storage.session.get(null))),
+    ).toEqual([]);
+    // The menu entry exists for pictures.
+    expect(await loaded.worker.evaluate(() => chrome.runtime.getManifest().permissions)).toContain(
+      'contextMenus',
+    );
+  }, 60_000);
 
   it('refuses model files that are not the genuine ones', async () => {
     // A folder with files of the right names and the wrong content.

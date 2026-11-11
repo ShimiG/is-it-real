@@ -10,7 +10,12 @@ import {
   type Pixels,
 } from '@isitreal/core';
 import { createWasmC2paReader } from '../engine/c2pa.js';
-import { checkPageData, checkVideoFrames, type EngineCapabilities } from '../engine/check.js';
+import {
+  checkPageData,
+  checkPicture,
+  checkVideoFrames,
+  type EngineCapabilities,
+} from '../engine/check.js';
 import { decodeImage, thumbnail } from '../engine/decode.js';
 import { fetchImageBytes } from '../engine/media.js';
 import { ModelStore } from '../engine/models.js';
@@ -153,6 +158,12 @@ chrome.runtime.onConnect.addListener((port) => {
           ...capabilities,
           onProgress: (done, total) => send({ type: 'progress', done, total }),
         }).then((result) => send({ type: 'result', result }), fail);
+        break;
+      case 'check-picture':
+        checkPicture(request.url, request.pageUrl, capabilities).then(
+          ({ item, checks }) => send({ type: 'picture-result', item, checks }),
+          fail,
+        );
         break;
       case 'models-status':
         models.state().then((state) => send({ type: 'models', models: state }), fail);

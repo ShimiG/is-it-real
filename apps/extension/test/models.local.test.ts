@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import type { Server } from 'node:http';
 import { createRequire } from 'node:module';
@@ -70,11 +69,6 @@ describe.skipIf(!ready)('picture check in Chromium with the shipped models (loca
     ) as Promise<Extract<EngineEvent, { type: T }> | Extract<EngineEvent, { type: 'error' }>>;
 
   beforeAll(async () => {
-    const built = spawnSync(process.execPath, [join(root, 'apps', 'extension', 'build.mjs')], {
-      encoding: 'utf8',
-    });
-    if (built.status !== 0) throw new Error(built.stderr);
-
     const manifest = readFileSync(manifestFile, 'utf8')
       .split('\n')
       .filter(Boolean)
