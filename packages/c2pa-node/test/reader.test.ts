@@ -173,3 +173,30 @@ describe.skipIf(!existsSync(chatgpt))('real ChatGPT download (local only)', () =
     expect(String(c2pa.details!['generators'])).toMatch(/ChatGPT/);
   });
 });
+
+/** A real Microsoft Copilot (Designer) image, downloaded by the project owner, fetched unchanged from Google Drive. Local only. */
+const copilot = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  '..',
+  'eval',
+  'datasets',
+  '.cache',
+  'private',
+  'copilot-originals',
+  'copilot-1.png',
+);
+describe.skipIf(!existsSync(copilot))('real Copilot download (local only)', () => {
+  it('is "Made with AI", noting that Microsoft\'s signature does not meet the standard', async () => {
+    const verdict = await checkImageProvenance(await readFile(copilot), reader);
+    expect(verdict).toMatchObject({
+      outcome: 'verified_ai',
+      reasons: ['c2pa_declares_ai', 'c2pa_signature_not_standard'],
+    });
+    const c2pa = verdict.signals.find((s) => s.detector.startsWith('image.c2pa'))!;
+    expect(c2pa.details).toMatchObject({ state: 'unverified', issuer: 'Microsoft Corporation' });
+    expect(String(c2pa.details!['failures'])).toBe('signingCredential.invalid, claim.malformed');
+    expect(String(c2pa.details!['aiActions'])).toMatch(/artificial intelligence/);
+  });
+});

@@ -99,6 +99,33 @@ One PNG generated with ChatGPT, shared unchanged through Google Drive. Result: *
 
 Neither invisible watermark can be checked offline: only Google and OpenAI can read their own marks. Both companies do declare them in the signed manifest, and the evidence panel can say so.
 
+### Real-world check: an ORIGINAL Copilot download (2026-11-11)
+
+One PNG generated with Microsoft Copilot (Designer), shared unchanged through Google Drive.
+
+|                                | Copilot                                                                                                                                                              |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signer                         | Microsoft Corporation                                                                                                                                                |
+| Validator says                 | Invalid: `signingCredential.invalid` ("certificate missing required EKU") and `claim.malformed` on the optional `c2pa.soft-binding` record. **No content mismatch.** |
+| History                        | Two manifests: Microsoft Designer, with an "Azure OpenAI ImageGen" image placed in it as a component                                                                 |
+| AI claim, in Microsoft's words | "Created image using artificial intelligence technology", "Generated with AI", "Content watermarked by Microsoft Responsible AI"                                     |
+| **Before the fix**             | **No clear signs: a miss** (every failure was treated as tampering)                                                                                                  |
+| **After the fix**              | **Made with AI**, with "the signature does not fully meet the standard, so we cannot confirm who signed it"                                                          |
+
+Fix: validation failures are split into tampering (claims ignored) and signer conformance (claims count, never shown as a good signature). See ADR-0010, amendment 2.
+
+**All seven real files so far:**
+
+| File                                           | Signer state                                                       | Outcome        |
+| ---------------------------------------------- | ------------------------------------------------------------------ | -------------- |
+| ChatGPT original                               | trusted (OpenAI)                                                   | Made with AI   |
+| Gemini original 2                              | trusted (Google), claim in history                                 | Made with AI   |
+| Gemini original 1                              | intact, signer not recognised (Google), claim in history, plus XMP | Made with AI   |
+| Copilot original                               | content intact, signer not up to the standard (Microsoft)          | Made with AI   |
+| Five Gemini images re-encoded by a chat upload | no manifest left                                                   | No clear signs |
+
+Three generators, three different ways of writing Content Credentials. Each original needed the checks to read it the way that company writes it. That is the main lesson: test against real files from every major generator, and keep doing so as they change.
+
 ## Blocked: statistical image detection
 
 Training and measuring the frequency features, and adding a small image classifier, need two things this build environment cannot download:
@@ -115,6 +142,6 @@ To unblock: allow `huggingface.co` (and its file hosts) and `zenodo.org` in the 
 ## Still to do in M3
 
 1. Statistical image detection (blocked, above), then calibration and fusion with provenance.
-2. Real-world signed AI images: two Gemini originals and one ChatGPT original confirm the path (above). Still worth adding: Adobe Firefly and Microsoft Designer originals, and finding out why one Google signature reports as trusted and the other does not.
+2. Real-world signed AI images: Gemini, ChatGPT and Copilot originals confirm the path (above). Still worth adding: Adobe Firefly and Meta AI originals, and finding out why one Google signature reports as trusted and the other does not.
 3. The C2PA reader for the browser (`@contentauth/c2pa-web`), needed in Phase 2.
 4. Investigate the Truepic discrepancy.

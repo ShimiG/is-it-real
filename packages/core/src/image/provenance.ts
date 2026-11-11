@@ -13,8 +13,14 @@ import type { DetectorResult, ReasonCode, Verdict } from '../types.js';
  * A declaration of AI generation gives the `verified_ai` outcome (see docs/decisions/0010).
  */
 
-/** `trusted`: intact and signed by a certificate on the trust list. `valid`: intact, signer not recognised. */
-export type C2paState = 'trusted' | 'valid' | 'invalid';
+/**
+ * - `trusted`: intact, signed by a certificate on the trust list.
+ * - `valid`: intact, signer not on the trust list.
+ * - `unverified`: the content matches the manifest, but the signer's certificate or an optional
+ *   record does not meet the C2PA standard, so we cannot confirm who signed it.
+ * - `invalid`: the content or the signature does not match: changed after signing, or forged.
+ */
+export type C2paState = 'trusted' | 'valid' | 'unverified' | 'invalid';
 
 export interface C2paSummary {
   state: C2paState;
@@ -35,6 +41,11 @@ export interface C2paSummary {
   aiDescriptions: string[];
   /** Validation failure codes, e.g. `assertion.dataHash.mismatch` (the pixels were changed). */
   failures: string[];
+}
+
+interface Failure {
+  code: string;
+  url: string;
 }
 
 /** Host-provided C2PA reader. Returns the c2pa-rs manifest store JSON, or null when there is no manifest. */
@@ -63,26 +74,48 @@ const INHERITED_RELATIONSHIPS = new Set(['parentOf', 'componentOf']);
 /** How far back to follow the history (protects against malformed or looping stores). */
 const MAX_HISTORY_DEPTH = 8;
 
-function failureCodes(v: unknown): string[] {
+function failuresOf(v: unknown): Failure[] {
   return arr(v)
-    .map((s) => (isObj(s) ? str(s['code']) : null))
-    .filter((c): c is string => c !== null && !NON_FATAL.has(c));
+    .filter(isObj)
+    .map((f) => ({ code: str(f['code']) ?? '', url: str(f['url']) ?? '' }))
+    .filter((f) => f.code !== '' && !NON_FATAL.has(f.code));
 }
 
-/** True when the validator reported any failure for this ingredient's manifest. */
+/** Certificate problems that say nothing about whether the content was changed. */
+const CREDENTIAL_CODES = new Set(['signingCredential.invalid', 'signingCredential.expired']);
+
+/**
+ * True when a failure is about conformance (who signed, or an optional record we do not use)
+ * rather than integrity (the content, the claims or the signature itself do not match).
+ * Anything not recognised here counts as an integrity failure.
+ */
+function isConformanceOnly(f: Failure): boolean {
+  if (CREDENTIAL_CODES.has(f.code)) return true;
+  if (f.code === 'claim.malformed' || f.code === 'assertion.malformed') {
+    // Only when it points at an optional assertion: not the actions we read, not a hash binding.
+    const assertion = f.url.split('c2pa.assertions/')[1] ?? '';
+    return (
+      assertion !== '' &&
+      !assertion.startsWith('c2pa.actions') &&
+      !assertion.startsWith('c2pa.hash')
+    );
+  }
+  return false;
+}
+
+const integrityFailures = (fs: Failure[]) => fs.filter((f) => !isConformanceOnly(f));
+
+/** True when the validator reported an integrity failure for this ingredient's manifest. */
 function ingredientFailed(ingredient: Json, manifestLabel: string, store: Json): boolean {
-  if (failureCodes(ingredient['validation_status']).length > 0) return true;
+  if (integrityFailures(failuresOf(ingredient['validation_status'])).length > 0) return true;
   const own = isObj(ingredient['validation_results']) ? ingredient['validation_results'] : {};
   const ownActive = isObj(own['activeManifest']) ? own['activeManifest'] : {};
-  if (failureCodes(ownActive['failure']).length > 0) return true;
+  if (integrityFailures(failuresOf(ownActive['failure'])).length > 0) return true;
   const results = isObj(store['validation_results']) ? store['validation_results'] : {};
   for (const delta of arr(results['ingredientDeltas'])) {
     if (!isObj(delta) || !isObj(delta['validationDeltas'])) continue;
-    const failed = arr(delta['validationDeltas']['failure']).some(
-      (f) =>
-        isObj(f) &&
-        !NON_FATAL.has(String(f['code'])) &&
-        String(f['url'] ?? '').includes(manifestLabel),
+    const failed = integrityFailures(failuresOf(delta['validationDeltas']['failure'])).some((f) =>
+      f.url.includes(manifestLabel),
     );
     if (failed) return true;
   }
@@ -96,14 +129,17 @@ export function summarizeManifestStore(store: unknown): C2paSummary | null {
   const active = manifests[activeLabel];
   if (!isObj(active)) return null;
 
-  const failures = failureCodes(store['validation_status']);
+  const all = failuresOf(store['validation_status']);
+  const failures = [...new Set(all.map((f) => f.code))];
   const reported = str(store['validation_state']);
   const state: C2paState =
-    failures.length > 0 || reported === 'Invalid'
+    integrityFailures(all).length > 0 || (reported === 'Invalid' && all.length === 0)
       ? 'invalid'
-      : reported === 'Trusted'
-        ? 'trusted'
-        : 'valid';
+      : all.length > 0
+        ? 'unverified'
+        : reported === 'Trusted'
+          ? 'trusted'
+          : 'valid';
 
   const sourceTypes = new Set<string>();
   const generators = new Set<string>();
@@ -183,9 +219,18 @@ export function c2paResult(summary: C2paSummary): DetectorResult {
     score = 1;
     const declared: ReasonCode =
       summary.aiDeclaredIn === 'history' ? 'c2pa_history_declares_ai' : 'c2pa_declares_ai';
-    reasons = summary.state === 'trusted' ? [declared] : [declared, 'c2pa_signer_unrecognised'];
+    const signer: ReasonCode[] =
+      summary.state === 'trusted'
+        ? []
+        : summary.state === 'unverified'
+          ? ['c2pa_signature_not_standard']
+          : ['c2pa_signer_unrecognised'];
+    reasons = [declared, ...signer];
   } else {
-    reasons = ['c2pa_present_no_ai_claim'];
+    reasons =
+      summary.state === 'unverified'
+        ? ['c2pa_present_no_ai_claim', 'c2pa_signature_not_standard']
+        : ['c2pa_present_no_ai_claim'];
   }
   return {
     status: 'assessed',

@@ -33,6 +33,7 @@ export const REASON_CODES = [
   'c2pa_present_no_ai_claim',
   'c2pa_invalid_signature',
   'c2pa_signer_unrecognised',
+  'c2pa_signature_not_standard',
   'iptc_trained_algorithmic_media',
   'generator_metadata_found',
   'platform_label_ai',

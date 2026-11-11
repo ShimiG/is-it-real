@@ -37,11 +37,14 @@ const KNOWN_DISCREPANCIES = new Set([
   'truepic-20230212-library.jpg',
 ]);
 
-function expected(file: string): 'none' | 'invalid' | 'valid' {
+function expected(file: string): 'none' | 'invalid' | 'unverified' | 'valid' {
   const name = file.replace(/^[a-z]+-\d+-/, '').replace(/\.jpe?g$/, '');
   if (name === 'A' || name === 'I') return 'none';
   if (name.startsWith('E-') || name.startsWith('X')) return 'invalid';
-  if (file.startsWith('nikon-')) return 'invalid'; // listed as "Invalid credentials" in the repository
+  // Listed as "Invalid credentials" in the repository. The current library reports only an
+  // expired signing certificate (content intact), which is our `unverified` state: we cannot
+  // confirm the signer, but nothing was changed. It is never shown as a good signature.
+  if (file.startsWith('nikon-')) return 'unverified';
   return 'valid';
 }
 

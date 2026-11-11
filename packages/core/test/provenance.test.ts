@@ -172,3 +172,64 @@ describe('history walk', () => {
     expect(s.aiDeclared).toBe(false);
   });
 });
+
+describe('tampering versus a signer that does not meet the standard', () => {
+  const AI = {
+    digitalSourceType: 'http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia',
+  };
+  const withStatus = (codes: [string, string][]) =>
+    summarizeManifestStore(
+      store(
+        {
+          validation_state: 'Invalid',
+          validation_status: codes.map(([code, url]) => ({ code, url })),
+        },
+        AI,
+      ),
+    )!;
+
+  it('keeps the AI claim when only the certificate and an optional record fail (as in Copilot images)', () => {
+    const s = withStatus([
+      ['signingCredential.untrusted', 'self#jumbf=/c2pa/m1/c2pa.signature'],
+      ['signingCredential.invalid', 'self#jumbf=/c2pa/m1/c2pa.signature'],
+      ['claim.malformed', 'self#jumbf=/c2pa/m1/c2pa.assertions/c2pa.soft-binding'],
+      ['claim.malformed', 'self#jumbf=/c2pa/m1/c2pa.assertions/c2pa.soft-binding'],
+    ]);
+    expect(s).toMatchObject({ state: 'unverified', aiDeclared: true });
+    expect(s.failures).toEqual(['signingCredential.invalid', 'claim.malformed']);
+    expect(c2paResult(s)).toMatchObject({
+      signal: { score: 1, reasons: ['c2pa_declares_ai', 'c2pa_signature_not_standard'] },
+    });
+  });
+
+  it('treats changed pixels or a bad signature as tampering, even alongside certificate problems', () => {
+    for (const code of [
+      'assertion.dataHash.mismatch',
+      'claimSignature.mismatch',
+      'assertion.hashedURI.mismatch',
+    ]) {
+      const s = withStatus([
+        ['signingCredential.invalid', 'self#jumbf=/c2pa/m1/c2pa.signature'],
+        [code, 'self#jumbf=/c2pa/m1/c2pa.assertions/c2pa.hash.data'],
+      ]);
+      expect(s.state, code).toBe('invalid');
+      expect(c2paResult(s).status === 'assessed' && c2paResult(s)).toMatchObject({
+        signal: { score: 0 },
+      });
+    }
+  });
+
+  it('treats a malformed actions record or hash binding as tampering', () => {
+    expect(
+      withStatus([['claim.malformed', 'self#jumbf=/c2pa/m1/c2pa.assertions/c2pa.actions.v2']])
+        .state,
+    ).toBe('invalid');
+    expect(
+      withStatus([['claim.malformed', 'self#jumbf=/c2pa/m1/c2pa.assertions/c2pa.hash.data']]).state,
+    ).toBe('invalid');
+  });
+
+  it('treats unknown failure codes as tampering (safe default)', () => {
+    expect(withStatus([['something.new', 'self#jumbf=/c2pa/m1']]).state).toBe('invalid');
+  });
+});
