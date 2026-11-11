@@ -28,5 +28,7 @@ jobs:
         continue-on-error: true
       - name: Evaluate
         run: pnpm eval
-      - name: Build spikes
+      - name: Build (spikes and the plugin server bundle)
         run: pnpm build
+      - name: Plugin bundle in git matches the source
+        run: git diff --exit-code -- plugin/server || (echo "Run 'pnpm build' and commit plugin/server" && exit 1)

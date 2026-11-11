@@ -24,6 +24,8 @@ pnpm check
 | `packages/lm-node`    | Node runner for the local language model                                                                            |
 | `packages/c2pa-node`  | Content Credentials (C2PA) reader for Node, with the bundled trust list                                             |
 | `packages/image-node` | Image decoding for Node                                                                                             |
+| `packages/mcp-server` | MCP server; `pnpm build` writes the bundle to `plugin/server` (commit it: CI checks it matches)                     |
+| `plugin`              | The Claude plugin                                                                                                   |
 | `eval`                | Evaluation harness (`pnpm eval`), datasets, feature table (`eval/features`), Python parity check (`eval/reference`) |
 | `spikes/*`            | Throwaway experiments that answer one question each (see `docs/spikes`)                                             |
 | `docs/decisions`      | Decision records (ADRs)                                                                                             |

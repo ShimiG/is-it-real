@@ -1,0 +1,13 @@
+{
+  "name": "is-it-real",
+  "version": "0.1.0",
+  "description": "Checks the page you are looking at for scam warning signs and AI-generated text and images. Runs on your computer; results come from fixed rules and measurements, not from an AI opinion.",
+  "author": {
+    "name": "Shimi",
+    "url": "https://github.com/ShimiG"
+  },
+  "homepage": "https://github.com/ShimiG/is-it-real",
+  "repository": "https://github.com/ShimiG/is-it-real",
+  "license": "Apache-2.0",
+  "keywords": ["scam", "ai-detection", "content-credentials", "c2pa", "accessibility"]
+}

@@ -2,11 +2,25 @@
 
 A free, open-source, on-device detector for AI-generated text, images and video, built to help people (especially older adults) spot AI-driven scams.
 
-**Status:** M2 done, M3 (images) started: scam-pattern rules, a text detector that uses a small local language model as a probability meter, and image provenance checks (Content Credentials and metadata). Measured results: [M1](docs/eval/m1-results.md), [M2](docs/eval/m2-results.md), [M3 progress](docs/eval/m3-progress.md). See [PLAN.md](PLAN.md) for the roadmap. No user-facing app yet.
+**Status:** M4 done: a Claude plugin (v0.1) you can install and try. It checks pages, messages and images for scam warning signs and AI-generated content. What it catches and misses: [EVAL.md](EVAL.md). Roadmap: [PLAN.md](PLAN.md).
 
 - **Algorithms first:** provenance (C2PA), metadata, statistics and signal processing. LLMs are used only to explain results, never to decide them.
 - **Private:** everything runs locally. No accounts, no uploads, no tracking.
 - **Honest:** four outcomes (_Made with AI_, _Likely made with AI_, _No clear signs_, _Not checked_). It never claims something is "human" or "real".
+
+## Try it (Claude plugin)
+
+In Claude Code:
+
+```
+/plugin marketplace add ShimiG/is-it-real
+```
+
+```
+/plugin install is-it-real@is-it-real
+```
+
+Then start Claude Code with Claude in Chrome (`claude --chrome`), open a page, and ask "Is this page a scam?" or "Was this picture made with AI?". Details: [plugin/README.md](plugin/README.md).
 
 ## Repository
 
@@ -15,6 +29,8 @@ A free, open-source, on-device detector for AI-generated text, images and video,
 | `packages/core`            | Detection core: contracts, outcome rules, plain-language reasons, provenance sniffers, platform-label matcher |
 | `packages/c2pa-node`       | Reads and validates Content Credentials (C2PA) with the official library                                      |
 | `packages/image-node`      | Decodes images to raw pixels in Node (sharp)                                                                  |
+| `packages/mcp-server`      | MCP server with the `check_page`, `check_text` and `check_image` tools (bundled into `plugin/server`)         |
+| `plugin`                   | The Claude plugin: server bundle, "check this page" skill, manifest                                           |
 | `packages/lm-node`         | Runs the local language model (GPT-2, ONNX Runtime) in Node                                                   |
 | `eval`                     | Evaluation harness, datasets, the committed feature table and the Python parity check                         |
 | `spikes/provenance-census` | Dev extension measuring how often AI labels and provenance markers appear while browsing                      |
