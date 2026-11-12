@@ -1,17 +1,11 @@
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ffmpegStatic from 'ffmpeg-static';
 import { describe, expect, it } from 'vitest';
-import {
-  decodeBmp,
-  extractFrames,
-  ffmpegWorks,
-  frameAt,
-  videoDuration,
-  videoFormatOf,
-} from '../src/index.js';
+import { extractFrames, ffmpegWorks, frameAt, videoDuration, videoFormatOf } from '../src/index.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const mp4 = join(here, 'fixtures', 'testsrc.mp4');
@@ -95,47 +89,37 @@ describe('ffmpeg frame reader', () => {
     writeFileSync(cut, (await import('node:fs')).readFileSync(mp4).subarray(0, 600));
     expect(await extractFrames(ffmpeg, cut, 6)).toEqual([]);
   });
-});
-
-describe('decodeBmp', () => {
-  const bmp = (width: number, height: number, rows: number[][]) => {
-    const stride = (width * 3 + 3) & ~3;
-    const buf = Buffer.alloc(54 + stride * Math.abs(height));
-    buf.write('BM');
-    buf.writeUInt32LE(54, 10);
-    buf.writeUInt32LE(40, 14);
-    buf.writeInt32LE(width, 18);
-    buf.writeInt32LE(height, 22);
-    buf.writeUInt16LE(1, 26);
-    buf.writeUInt16LE(24, 28);
-    rows.forEach((row, y) => Buffer.from(row).copy(buf, 54 + y * stride));
-    return buf;
-  };
-
-  it('reads bottom-up BGR rows into top-down RGBA', () => {
-    // 2 x 2: file rows are bottom row first. Bottom: blue, green. Top: red, white.
-    const px = decodeBmp(
-      bmp(2, 2, [
-        [255, 0, 0, 0, 255, 0],
-        [0, 0, 255, 255, 255, 255],
-      ]),
-    )!;
-    expect([px.width, px.height]).toEqual([2, 2]);
-    expect([...px.data]).toEqual([
-      255, 0, 0, 255, 255, 255, 255, 255, 0, 0, 255, 255, 0, 255, 0, 255,
-    ]);
-  });
-
-  it('rejects anything that is not a plain 24-bit bitmap of sane size', () => {
-    expect(decodeBmp(new Uint8Array(10))).toBeNull();
-    expect(
-      decodeBmp(Buffer.from('not a bitmap at all, just some text that is long enough....')),
-    ).toBeNull();
-    const huge = bmp(2, 2, []);
-    huge.writeInt32LE(100_000, 18);
-    huge.writeInt32LE(100_000, 22);
-    expect(decodeBmp(huge)).toBeNull();
-    const truncated = bmp(2, 2, []).subarray(0, 58);
-    expect(decodeBmp(truncated)).toBeNull();
-  });
+  it('reads only 8-bit 4:2:0 video; other layouts are refused, not converted by another rule', async () => {
+    const make = (name: string, pixFmt: string) => {
+      const out = join(tmp, name);
+      const r = spawnSync(
+        ffmpeg,
+        [
+          '-v',
+          'error',
+          '-y',
+          '-f',
+          'lavfi',
+          '-i',
+          'testsrc=d=1:s=64x48:r=5',
+          '-pix_fmt',
+          pixFmt,
+          '-c:v',
+          'libx264',
+          out,
+        ],
+        { encoding: 'utf8' },
+      );
+      if (r.status !== 0) throw new Error(r.stderr);
+      return out;
+    };
+    expect(await frameAt(ffmpeg, make('plain.mp4', 'yuv420p'), 0.4)).toMatchObject({
+      width: 64,
+      height: 48,
+    });
+    // Full-range video is read, with its own conversion numbers.
+    expect(await frameAt(ffmpeg, make('full.mp4', 'yuvj420p'), 0.4)).not.toBeNull();
+    expect(await frameAt(ffmpeg, make('444.mp4', 'yuv444p'), 0.4)).toBeNull();
+    expect(await frameAt(ffmpeg, make('10bit.mp4', 'yuv420p10le'), 0.4)).toBeNull();
+  }, 60_000);
 });

@@ -158,6 +158,8 @@ const videoModel: VideoFramesModel = {
   minChecked: 4,
   // 99 real videos whose middle frame score was 0.00 .. 0.49.
   calibration: Array.from({ length: 99 }, (_, i) => i / 200),
+  // Watched video: real videos reach higher numbers (0.00 .. 0.98).
+  calibrationWatched: Array.from({ length: 99 }, (_, i) => i / 100),
   calibratedOn: 'synthetic',
 };
 let classifierRuns = 0;
@@ -225,6 +227,25 @@ describe('detectVideoFrames', () => {
     expect(await detectVideoFrames(new Array(6).fill(frame(250, true, 64)), check)).toMatchObject({
       reason: 'too_short',
     });
+  });
+
+  it('judges a watched video against its own, stricter calibration', async () => {
+    // Frames scoring 0.8 are above every real video file, but not above every watched one.
+    const frames = Array.from({ length: 6 }, () => frame(204));
+    const spread = await detectVideoFrames(frames, check);
+    const watched = await detectVideoFrames(frames, check, 'watched');
+    expect(spread.status === 'assessed' && spread.signal.score).toBeGreaterThanOrEqual(0.99);
+    expect(watched.status === 'assessed' && watched.signal.score).toBeLessThan(0.99);
+    expect(watched.status === 'assessed' && watched.signal.details).toMatchObject({
+      sampling: 'watched',
+    });
+    await expect(
+      detectVideoFrames(
+        frames,
+        { ...check, model: { ...videoModel, calibrationWatched: [] } },
+        'watched',
+      ),
+    ).rejects.toThrow(/no numbers for watched/);
   });
 
   it('refuses a calibration made for a different picture model or gate', async () => {

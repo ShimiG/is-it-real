@@ -15,6 +15,7 @@ import {
   type Pixels,
   type ReasonCode,
   type VideoFrameCheck,
+  type VideoSampling,
 } from '@isitreal/core';
 import type { PageData, PanelItem, PanelResult } from '../messages.js';
 import { STRINGS } from '../strings.js';
@@ -100,10 +101,14 @@ export async function checkPicture(
  * The experimental video frame check: the picture check plus its calibration on real video.
  * Null when the picture check is not set up, or when the calibration belongs to other models.
  */
-export async function videoFrameCheck(caps: EngineCapabilities): Promise<VideoFrameCheck | null> {
+export async function videoFrameCheck(
+  caps: EngineCapabilities,
+  sampling: VideoSampling = 'spread',
+): Promise<VideoFrameCheck | null> {
   const image = await caps.imageCheck();
   const model = VIDEO_FRAMES_MODEL;
-  if (image === null || model.calibration.length === 0) return null;
+  const calibration = sampling === 'watched' ? model.calibrationWatched : model.calibration;
+  if (image === null || calibration.length === 0) return null;
   if (image.model.id !== model.imageModelId || image.gate.model.id !== model.gateId) return null;
   return { gate: image.gate, runner: image.runner, imageModel: image.model, model };
 }
@@ -171,10 +176,12 @@ export async function checkVideoFrames(
   caps: EngineCapabilities,
 ): Promise<PanelItem> {
   const hostname = hostOf(pageUrl);
-  const frameCheck = await videoFrameCheck(caps);
+  // A playing video is judged against its own calibration (frames from one place).
+  const frameCheck = await videoFrameCheck(caps, 'watched');
   const verdict = await checkVideo(
     {
       ...(frameCheck === null ? {} : { frames: async () => (frames.length > 0 ? frames : null) }),
+      sampling: 'watched',
       nearbyLabels: labels,
     },
     {

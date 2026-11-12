@@ -21,14 +21,26 @@ export interface VideoFramesModel {
   /** The picture model and gate this calibration was computed with; others are refused. */
   imageModelId: string;
   gateId: string;
-  /** How many frames a host samples, evenly spaced: frame k at (k + 0.5) / frames of the duration. */
+  /** How many frames a host samples. */
   frames: number;
   /** At least this many frames must pass the gate, otherwise the video is not assessed. */
   minChecked: number;
-  /** Median frame score of held-out real videos (worst of original and re-shared copy), ascending. */
+  /**
+   * For a video FILE (`spread`: frame k at (k + 0.5) / frames of the duration): median frame
+   * score of held-out real videos (worst of original and re-shared copy), ascending.
+   */
   calibration: number[];
+  /**
+   * For a video that is PLAYING (`watched`: frames about a second apart from wherever playback
+   * is): the same, measured that way. Frames from one place agree more with each other, so real
+   * videos reach higher numbers and the cut-off is higher.
+   */
+  calibrationWatched: number[];
   calibratedOn: string;
 }
+
+/** How the frames were taken; each way has its own calibration. */
+export type VideoSampling = 'spread' | 'watched';
 
 export const VIDEO_FRAMES_MODEL = model as unknown as VideoFramesModel;
 
@@ -48,8 +60,12 @@ export function median(values: readonly number[]): number {
 export async function detectVideoFrames(
   frames: readonly Pixels[],
   check: VideoFrameCheck,
+  sampling: VideoSampling = 'spread',
 ): Promise<DetectorResult> {
   const { gate, runner, imageModel, model: m } = check;
+  const calibration = sampling === 'watched' ? m.calibrationWatched : m.calibration;
+  if (calibration.length === 0)
+    throw new Error(`Calibration ${m.id} has no numbers for ${sampling} frames`);
   if (imageModel.id !== m.imageModelId || gate.model.id !== m.gateId)
     throw new Error(
       `Calibration ${m.id} belongs to ${m.imageModelId} and ${m.gateId}, not ${imageModel.id} and ${gate.model.id}`,
@@ -74,13 +90,14 @@ export async function detectVideoFrames(
       detector: m.id,
       modality: 'video',
       kind: 'statistical',
-      score: conformalScore(raw, m.calibration),
+      score: conformalScore(raw, calibration),
       reasons: ['video_frames_ai'],
       details: {
         raw: Number(raw.toFixed(4)),
         frames: frames.length,
         framesChecked: scores.length,
-        calibrationSize: m.calibration.length,
+        calibrationSize: calibration.length,
+        sampling,
       },
     },
   };

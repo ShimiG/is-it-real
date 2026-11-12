@@ -28,7 +28,7 @@ export interface ScamSummary {
 }
 
 /** Details that are for developers, not for the person reading the answer. */
-const HIDDEN_DETAILS = new Set(['raw', 'calibrationSize', 'format', 'fdCriterion']);
+const HIDDEN_DETAILS = new Set(['raw', 'calibrationSize', 'format', 'fdCriterion', 'sampling']);
 
 export function itemFromVerdict(v: Verdict, source: string, note?: string): ItemResult {
   const evidence: Record<string, string | number | boolean> = {};

@@ -24,7 +24,7 @@ import {
 } from './tools.js';
 
 export const SERVER_NAME = 'is-it-real';
-export const SERVER_VERSION = '0.4.0';
+export const SERVER_VERSION = '0.5.0';
 
 const link = z.object({ text: z.string().max(500), href: z.string().max(4000) });
 const labels = z
@@ -57,13 +57,6 @@ const videoRef = z.object({
       'Direct address of the video file (http or https, a plain .mp4 or .webm). Streamed video (blob: or playlist addresses) cannot be fetched.',
     ),
   path: z.string().max(4000).optional().describe('Full path of a local video file.'),
-  frame_paths: z
-    .array(z.string().max(4000))
-    .max(12)
-    .optional()
-    .describe(
-      'Fallback for streamed video: full paths of saved screenshots that show only the video picture, taken a second or more apart.',
-    ),
   nearby_labels: labels,
 });
 
@@ -167,7 +160,6 @@ export function createServer(caps: Capabilities): McpServer {
       inputSchema: {
         url: videoRef.shape.url,
         path: videoRef.shape.path,
-        frame_paths: videoRef.shape.frame_paths,
         nearby_labels: labels,
         page_url: z
           .string()

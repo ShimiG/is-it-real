@@ -373,7 +373,6 @@ export function lazyVideoCheck(
           model,
         },
         extractFrames: (file, count) => extractFrames(program, file, count),
-        decodeImage: image.decode,
       };
     })());
 }

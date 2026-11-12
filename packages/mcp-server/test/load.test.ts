@@ -36,6 +36,7 @@ describe('lazyImageCheck', () => {
     frames: 6,
     minChecked: 4,
     calibration: [0, 1, 2],
+    calibrationWatched: [0, 1, 2],
     calibratedOn: 'synthetic',
   };
   const settings = (over: Partial<LoadSettings> = {}): LoadSettings => ({

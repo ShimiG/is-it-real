@@ -104,12 +104,22 @@ export interface VideoReport {
 
 const VERSION_ORDER = ['original', 'reshared', 'watched', 'watched-reshared'];
 
+/** The two ways frames are taken; each is calibrated and reported on its own. */
+export const SAMPLING_VERSIONS = {
+  /** A video file: frames spread over the whole clip. */
+  spread: ['original', 'reshared'],
+  /** A video playing in the browser: frames about a second apart from one place. */
+  watched: ['watched', 'watched-reshared'],
+} as const;
+
 export function evaluateVideoFrames(
-  rows: readonly VideoScoreRow[],
+  allRows: readonly VideoScoreRow[],
   rule: VideoRule,
   alpha = 0.01,
+  versions: readonly string[] = SAMPLING_VERSIONS.spread,
 ): VideoReport {
-  // Calibration: each non-AI calibration video's highest number over all its versions.
+  const rows = allRows.filter((r) => versions.includes(r.version));
+  // Calibration: each non-AI calibration video's highest number over these versions.
   const worst = new Map<string, number>();
   const sourceOf = new Map<string, string>();
   for (const r of rows) {
@@ -184,7 +194,11 @@ const total = (cells: Record<string, Record<string, VideoCell>>, version: string
   return t;
 };
 
-export function videoReportMarkdown(report: VideoReport, alpha = 0.01): string {
+export function videoReportMarkdown(
+  report: VideoReport,
+  alpha = 0.01,
+  sampling: keyof typeof SAMPLING_VERSIONS = 'spread',
+): string {
   if (report.calibrationSize === 0) return '';
   const present = new Set(
     [...Object.values(report.realFlagged), ...Object.values(report.aiCaught)].flatMap((c) =>
@@ -196,10 +210,16 @@ export function videoReportMarkdown(report: VideoReport, alpha = 0.01): string {
   const mix = Object.entries(report.calibrationSources)
     .map(([s, c]) => `${c} ${s}`)
     .join(', ');
+  const how =
+    sampling === 'spread'
+      ? 'Video files: 6 frames spread over the whole clip, as the file is (`original`) and as a re-shared copy (`reshared`).'
+      : 'A video playing in the browser: 6 frames about a second apart from one place in the clip, as the file is (`watched`) and as a re-shared copy (`watched-reshared`; video sites re-encode what is uploaded).';
   return [
-    '## Video frame check (experimental)',
+    sampling === 'spread'
+      ? '## Video frame check (experimental): video files'
+      : '## Video frame check (experimental): a playing video',
     '',
-    `A video's number is the median picture-model score of its sampled frames that pass the photo gate (gate >= ${report.rule.gateThreshold}); with fewer than ${report.rule.minChecked} such frames the video is "not checked". Flag rule: conformal score >= ${1 - alpha}, calibrated on ${report.calibrationSize} non-AI calibration videos (${mix}; each video's highest number over its versions). Raw cut-off: ${report.cutoff.toFixed(2)}. Numbers are for the test half only. Versions: \`original\` and \`reshared\` take 6 frames spread over the whole clip (a video file); \`watched\` and \`watched-reshared\` take 6 frames about a second apart from one place (a video playing in the browser).`,
+    `${how} A video's number is the median picture-model score of its sampled frames that pass the photo gate (gate >= ${report.rule.gateThreshold}); with fewer than ${report.rule.minChecked} such frames the video is "not checked". Flag rule: conformal score >= ${1 - alpha}, calibrated on ${report.calibrationSize} non-AI calibration videos (${mix}; each video's higher number of its two versions). Raw cut-off: ${report.cutoff.toFixed(2)}. Numbers are for the test half only.`,
     '',
     `| | ${versions.join(' | ')} |`,
     `|---|${versions.map(() => '---').join('|')}|`,

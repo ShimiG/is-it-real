@@ -9,7 +9,7 @@ import { detectTextDeep } from './text/ensemble.js';
 import type { LanguageModel } from './text/lm.js';
 import type { DetectorResult, PageReport, Verdict } from './types.js';
 import { ENGINE_VERSION } from './version.js';
-import { detectVideoFrames, type VideoFrameCheck } from './video/frames.js';
+import { detectVideoFrames, type VideoFrameCheck, type VideoSampling } from './video/frames.js';
 import { checkVideoProvenance } from './video/provenance.js';
 
 /** Optional host-provided capabilities. Without them the checks that need them are skipped. */
@@ -118,10 +118,12 @@ export interface VideoInput {
   /** The ORIGINAL video file, when the host could get it (not a screen recording). */
   bytes?: Uint8Array;
   /**
-   * Frames for the statistical check, fetched only when needed: evenly spaced frames decoded from
-   * the file, or saved screenshots of the playing video. Null when no frames could be read.
+   * Frames for the statistical check, fetched only when needed: the decoder's frames converted by
+   * the core's rule (video/yuv.ts), never screenshots. Null when no frames could be read.
    */
   frames?: () => Promise<readonly Pixels[] | null>;
+  /** How `frames` were taken: spread over a file (default), or from a video while it played. */
+  sampling?: VideoSampling;
   /** Short strings shown next to the video on the page: badges, captions. */
   nearbyLabels?: string[];
 }
@@ -148,7 +150,7 @@ export async function checkVideo(
             detector: context.frameCheck.model.id,
             reason: 'unreadable_media',
           }
-        : await detectVideoFrames(frames, context.frameCheck);
+        : await detectVideoFrames(frames, context.frameCheck, video.sampling ?? 'spread');
   }
   const fileResults: DetectorResult[] =
     provenance === null || provenance.outcome === 'not_assessed'

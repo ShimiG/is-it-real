@@ -2,7 +2,7 @@
 
 A free, open-source, on-device detector for AI-generated text, images and video, built to help people (especially older adults) spot AI-driven scams.
 
-**Status:** M5 done: a Claude plugin (v0.4) you can install and try. It checks pages, messages, images and video files for scam warning signs and AI-generated content. What it catches and misses: [EVAL.md](EVAL.md). Roadmap: [PLAN.md](PLAN.md).
+**Status:** M6 built: a Claude plugin (v0.5) and a standalone browser extension (v0.1) that check pages, messages, pictures and video for scam warning signs and AI-generated content, on your computer. What they catch and miss: [EVAL.md](EVAL.md). Roadmap: [PLAN.md](PLAN.md).
 
 - **Algorithms first:** provenance (C2PA), metadata, statistics and signal processing. LLMs are used only to explain results, never to decide them.
 - **Private:** everything runs locally. No accounts, no uploads, no tracking.
@@ -22,6 +22,18 @@ In Claude Code:
 
 Then start Claude Code with Claude in Chrome (`claude --chrome`), open a page, and ask "Is this page a scam?" or "Was this picture made with AI?". Details: [plugin/README.md](plugin/README.md).
 
+## Try it (browser extension)
+
+```bash
+pnpm install
+```
+
+```bash
+pnpm --filter @isitreal/extension build
+```
+
+In Chrome: `chrome://extensions`, switch on Developer mode, "Load unpacked", choose `apps/extension/dist`. Then open a page, press the Is It Real? button and "Check this page". Details: [apps/extension/README.md](apps/extension/README.md).
+
 ## Repository
 
 | Path                       | What                                                                                                                 |
@@ -29,9 +41,9 @@ Then start Claude Code with Claude in Chrome (`claude --chrome`), open a page, a
 | `packages/core`            | Detection core: contracts, outcome rules, plain-language reasons, provenance sniffers, platform-label matcher        |
 | `packages/c2pa-node`       | Reads and validates Content Credentials (C2PA) with the official library                                             |
 | `packages/image-node`      | Decodes images (sharp) and runs the picture model and photo gate (ONNX Runtime) in Node                              |
-| `packages/video-node`      | Reads still frames from video files with ffmpeg, run as a separate, restricted program                               |
+| `packages/video-node`      | Reads raw frames from video files with ffmpeg, run as a separate, restricted program                                 |
 | `packages/mcp-server`      | MCP server with the `check_page`, `check_text`, `check_image` and `check_video` tools (bundled into `plugin/server`) |
-| `apps/extension`           | The standalone browser extension (in progress, M6): side panel, page reader, the same core                           |
+| `apps/extension`           | The standalone browser extension: side panel, page reader, the same core, models run in the browser                  |
 | `plugin`                   | The Claude plugin: server bundle, "check this page" skill, manifest                                                  |
 | `packages/lm-node`         | Runs the local language model (GPT-2, ONNX Runtime) in Node                                                          |
 | `eval`                     | Evaluation harness, datasets, the committed feature table and the Python parity check                                |

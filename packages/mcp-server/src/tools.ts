@@ -50,8 +50,6 @@ export interface VideoCheck {
   frameCheck: VideoFrameCheck;
   /** Frames spread evenly over a video file; empty when the file cannot be read. */
   extractFrames: (file: string, count: number) => Promise<Pixels[]>;
-  /** Decodes a saved screenshot (the fallback when the video file cannot be fetched). */
-  decodeImage: (bytes: Uint8Array) => Promise<Pixels | null>;
 }
 
 export interface ImageRef {
@@ -63,8 +61,6 @@ export interface ImageRef {
 export interface VideoRef {
   url?: string | undefined;
   path?: string | undefined;
-  /** Saved screenshots of the playing video, for video that cannot be fetched as a file. */
-  frame_paths?: string[] | undefined;
   nearby_labels?: string[] | undefined;
 }
 
@@ -79,7 +75,6 @@ export interface PageArgs {
 
 export const MAX_IMAGES = 12;
 export const MAX_VIDEOS = 2;
-export const MAX_FRAME_SCREENSHOTS = 12;
 
 async function available(caps: Capabilities): Promise<ToolResult['checks_available']> {
   return {
@@ -151,7 +146,7 @@ async function checkOneVideo(
   hostname: string | undefined,
   caps: Capabilities,
 ): Promise<ItemResult> {
-  const source = ref.url ?? ref.path ?? (ref.frame_paths?.length ? 'screenshots' : '(no source)');
+  const source = ref.url ?? ref.path ?? '(no source)';
   const labels = ref.nearby_labels ?? [];
   const notes: string[] = [];
   let loaded: LoadedVideo | null = null;
@@ -166,7 +161,6 @@ async function checkOneVideo(
   try {
     const c2pa = await caps.c2pa();
     const video = (await caps.videoCheck?.()) ?? null;
-    const shots = (ref.frame_paths ?? []).slice(0, MAX_FRAME_SCREENSHOTS);
     let frames: (() => Promise<Pixels[] | null>) | undefined;
     if (video !== null && loaded !== null) {
       const file = loaded.file;
@@ -174,22 +168,6 @@ async function checkOneVideo(
         const got = await video.extractFrames(file, video.frameCheck.model.frames);
         return got.length > 0 ? got : null;
       };
-    } else if (video !== null && shots.length > 0) {
-      frames = async () => {
-        const got: Pixels[] = [];
-        for (const path of shots) {
-          try {
-            const px = await video.decodeImage(await loadFromPath(path));
-            if (px !== null) got.push(px);
-          } catch {
-            // An unreadable screenshot is skipped.
-          }
-        }
-        return got.length > 0 ? got : null;
-      };
-      notes.push(
-        'Frames came from screenshots, which lose detail and any labels in the file; treat the result with extra care.',
-      );
     }
     const verdict = await checkVideo(
       {

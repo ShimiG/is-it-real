@@ -38769,7 +38769,7 @@ function detectTextStats(text, m = TEXT_STATS_MODEL) {
 }
 
 // ../core/src/version.ts
-var ENGINE_VERSION = "0.7.0-m5";
+var ENGINE_VERSION = "0.8.0-m6";
 
 // ../core/src/image/preprocess.ts
 var PRECISION_BITS = 32 - 8 - 2;
@@ -42619,178 +42619,342 @@ var ENSEMBLE_FEATURE_NAMES = [
 
 // ../core/src/video/video-frames.model.json
 var video_frames_model_default = {
-  id: "video.frames@0.1.0",
+  id: "video.frames@0.2.0",
   imageModelId: "image.classifier.commfor-lq@0.1.0",
   gateId: "image.photo-gate@0.2.0",
   frames: 6,
   minChecked: 4,
   calibration: [
-    -8.0264,
-    -7.1101,
-    -6.7842,
-    -6.615,
-    -6.3427,
-    -6.1981,
-    -5.868,
-    -5.7762,
-    -5.7044,
-    -5.5659,
-    -5.4952,
-    -5.3788,
-    -5.3084,
-    -5.2936,
-    -5.1825,
-    -5.1783,
-    -4.9542,
-    -4.9463,
-    -4.8909,
-    -4.8586,
-    -4.7302,
-    -4.7214,
-    -4.6339,
-    -4.4269,
-    -4.3279,
-    -4.2369,
-    -4.2166,
-    -4.146,
-    -4.1003,
-    -4.0522,
-    -3.9931,
-    -3.9846,
-    -3.9732,
-    -3.8187,
-    -3.7431,
-    -3.6968,
-    -3.6701,
-    -3.633,
-    -3.5761,
-    -3.5282,
-    -3.5091,
-    -3.4699,
-    -3.4169,
-    -3.3874,
-    -3.3613,
-    -3.2995,
-    -3.2215,
-    -3.1897,
-    -3.061,
-    -2.8927,
-    -2.8881,
-    -2.8651,
-    -2.8276,
-    -2.8083,
-    -2.8068,
-    -2.7283,
-    -2.662,
-    -2.6457,
-    -2.6334,
-    -2.6075,
-    -2.5971,
-    -2.592,
-    -2.5158,
-    -2.507,
-    -2.4772,
-    -2.4726,
-    -2.4652,
-    -2.4557,
-    -2.4364,
-    -2.393,
-    -2.3687,
-    -2.3681,
-    -2.3525,
-    -2.3079,
-    -2.2981,
-    -2.2821,
-    -2.2819,
-    -2.2732,
-    -2.2576,
-    -2.2492,
-    -2.2487,
-    -2.2351,
-    -2.1865,
-    -2.083,
-    -2.0648,
-    -1.997,
-    -1.9582,
-    -1.9483,
-    -1.8957,
-    -1.8356,
-    -1.7901,
-    -1.7813,
-    -1.7486,
-    -1.7388,
-    -1.7207,
-    -1.6902,
-    -1.6827,
-    -1.6502,
-    -1.5898,
-    -1.5772,
-    -1.5771,
-    -1.5721,
-    -1.4748,
-    -1.4163,
-    -1.4121,
-    -1.3983,
-    -1.3278,
-    -1.3039,
-    -1.2199,
-    -1.0638,
-    -0.9798,
-    -0.9052,
-    -0.9008,
-    -0.9006,
-    -0.8913,
-    -0.8899,
-    -0.7408,
-    -0.6912,
-    -0.6383,
-    -0.6307,
-    -0.5473,
-    -0.4893,
-    -0.4621,
-    -0.4286,
-    -0.4272,
-    -0.3316,
-    -0.3005,
-    -0.13,
-    0.1153,
-    0.1331,
-    0.3132,
-    0.3709,
-    0.3734,
-    0.3916,
-    0.5064,
-    0.5836,
-    0.8266,
-    0.9489,
-    0.9601,
-    0.9911,
-    1.0869,
-    1.1242,
-    1.1456,
-    1.1766,
-    1.1903,
-    1.243,
-    1.3321,
-    1.3568,
-    1.3679,
-    1.5712,
-    1.7462,
-    1.7713,
-    1.79,
-    2.0818,
-    2.6822,
-    2.7132,
-    2.8929,
-    3.0971,
-    3.4219,
-    3.962,
-    4.1129,
-    4.3392,
-    4.3398,
-    4.7402
+    -8.156,
+    -7.0774,
+    -6.6078,
+    -6.1694,
+    -5.9673,
+    -5.8483,
+    -5.7858,
+    -5.6066,
+    -5.5374,
+    -5.3245,
+    -5.1946,
+    -5.1904,
+    -5.1525,
+    -4.9209,
+    -4.9078,
+    -4.8735,
+    -4.725,
+    -4.7055,
+    -4.6288,
+    -4.5356,
+    -4.5168,
+    -4.4881,
+    -4.4083,
+    -4.3099,
+    -4.3055,
+    -4.2791,
+    -4.2097,
+    -4.202,
+    -4.1901,
+    -4.0728,
+    -4.0254,
+    -3.7923,
+    -3.7774,
+    -3.743,
+    -3.5715,
+    -3.5526,
+    -3.4775,
+    -3.2546,
+    -3.0071,
+    -2.9959,
+    -2.961,
+    -2.9497,
+    -2.9204,
+    -2.8933,
+    -2.8802,
+    -2.8548,
+    -2.8369,
+    -2.8177,
+    -2.7925,
+    -2.779,
+    -2.7238,
+    -2.6812,
+    -2.6797,
+    -2.6475,
+    -2.576,
+    -2.5458,
+    -2.5195,
+    -2.5053,
+    -2.4867,
+    -2.4423,
+    -2.4402,
+    -2.4358,
+    -2.4222,
+    -2.3692,
+    -2.3343,
+    -2.3279,
+    -2.2307,
+    -2.2268,
+    -2.1468,
+    -2.1301,
+    -2.1011,
+    -2.1006,
+    -2.085,
+    -2.0657,
+    -2.0293,
+    -2.021,
+    -2.0087,
+    -2.0074,
+    -1.9227,
+    -1.8778,
+    -1.8693,
+    -1.7866,
+    -1.7742,
+    -1.7285,
+    -1.6703,
+    -1.5777,
+    -1.5495,
+    -1.5367,
+    -1.536,
+    -1.5154,
+    -1.4896,
+    -1.4595,
+    -1.4202,
+    -1.3847,
+    -1.3628,
+    -1.3221,
+    -1.3108,
+    -1.3037,
+    -1.246,
+    -1.2451,
+    -1.2283,
+    -1.2166,
+    -1.2074,
+    -1.1646,
+    -1.1597,
+    -1.1181,
+    -1.0004,
+    -0.9306,
+    -0.8473,
+    -0.8076,
+    -0.748,
+    -0.7229,
+    -0.594,
+    -0.4617,
+    -0.4453,
+    -0.4165,
+    -0.3962,
+    -0.3798,
+    -0.366,
+    -0.3653,
+    -0.2774,
+    -0.2621,
+    -0.0666,
+    -0.0268,
+    93e-4,
+    0.0105,
+    0.2375,
+    0.3448,
+    0.3581,
+    0.4163,
+    0.4711,
+    0.5582,
+    0.6121,
+    0.6338,
+    0.6744,
+    0.8321,
+    0.9488,
+    0.9734,
+    1.1303,
+    1.1746,
+    1.1792,
+    1.204,
+    1.3872,
+    1.403,
+    1.4119,
+    1.5242,
+    1.6001,
+    1.6002,
+    1.9221,
+    2.1664,
+    2.367,
+    2.4927,
+    2.5215,
+    2.7655,
+    3.0253,
+    3.093,
+    3.1942,
+    3.3514,
+    3.7618,
+    4.3539,
+    4.3622,
+    4.5275,
+    4.586,
+    4.6538
   ],
-  calibratedOn: "164 non-AI videos from the calibration half (71 openvid, 50 dfd_real, 43 msrvtt). Each video's number is the median picture-model score of 6 evenly spaced frames that pass the photo gate, taken as the file is and as a re-shared copy (at most 480 px high, H.264 CRF 30); the higher of the two is kept. Scores come from the float32 copy of the picture model (largest difference to the shipped file seen: 0.07)."
+  calibratedOn: "Non-AI videos from the calibration half. Each video's number is the median picture-model score of 6 frames that pass the photo gate, taken as the file is and as a re-shared copy (at most 480 px high, H.264 CRF 30); the higher of the two is kept. Video files (calibration): frames spread over the whole clip, 164 videos (71 openvid, 50 dfd_real, 43 msrvtt). Playing video (calibrationWatched): frames about a second apart from one place, 162 videos (70 openvid, 50 dfd_real, 42 msrvtt). Frames are the decoder's raw planes converted by the core's fixed rule (video/yuv.ts). Scores come from the float32 copy of the picture model (largest difference to the shipped file seen: 0.07).",
+  calibrationWatched: [
+    -8.8102,
+    -7.5264,
+    -6.9886,
+    -6.635,
+    -5.983,
+    -5.693,
+    -5.6238,
+    -5.5047,
+    -5.377,
+    -5.342,
+    -5.2591,
+    -5.2392,
+    -5.2035,
+    -5.1364,
+    -4.9699,
+    -4.9251,
+    -4.7299,
+    -4.6639,
+    -4.5176,
+    -4.4405,
+    -4.4377,
+    -4.3866,
+    -4.3504,
+    -4.2421,
+    -3.986,
+    -3.9249,
+    -3.8617,
+    -3.7498,
+    -3.645,
+    -3.5389,
+    -3.5014,
+    -3.4963,
+    -3.4886,
+    -3.444,
+    -3.2919,
+    -3.2413,
+    -3.23,
+    -3.1922,
+    -3.1751,
+    -3.1641,
+    -3.1402,
+    -3.1362,
+    -3.1334,
+    -3.1263,
+    -3.048,
+    -2.9679,
+    -2.9506,
+    -2.895,
+    -2.887,
+    -2.8281,
+    -2.8127,
+    -2.7731,
+    -2.7199,
+    -2.7182,
+    -2.6914,
+    -2.6799,
+    -2.6578,
+    -2.6276,
+    -2.6052,
+    -2.5883,
+    -2.5748,
+    -2.5637,
+    -2.5525,
+    -2.5072,
+    -2.484,
+    -2.4828,
+    -2.4784,
+    -2.4425,
+    -2.4139,
+    -2.3877,
+    -2.3048,
+    -2.2789,
+    -2.2228,
+    -2.2032,
+    -2.0768,
+    -2.0481,
+    -2.0092,
+    -1.9927,
+    -1.9405,
+    -1.8845,
+    -1.8742,
+    -1.7684,
+    -1.6961,
+    -1.6437,
+    -1.6353,
+    -1.5599,
+    -1.5082,
+    -1.5017,
+    -1.4839,
+    -1.4572,
+    -1.4276,
+    -1.4097,
+    -1.3115,
+    -1.1515,
+    -1.0779,
+    -1.0157,
+    -1.0102,
+    -0.9598,
+    -0.9352,
+    -0.7891,
+    -0.7695,
+    -0.7597,
+    -0.7287,
+    -0.7275,
+    -0.6459,
+    -0.6068,
+    -0.5644,
+    -0.5207,
+    -0.5058,
+    -0.5009,
+    -0.4243,
+    -0.4212,
+    -0.3337,
+    -0.2275,
+    -0.189,
+    -0.1357,
+    -0.0578,
+    -0.0476,
+    -68e-4,
+    95e-4,
+    0.035,
+    0.043,
+    0.1234,
+    0.1434,
+    0.1754,
+    0.3972,
+    0.4741,
+    0.5347,
+    0.6124,
+    0.6308,
+    0.7789,
+    0.7949,
+    0.7979,
+    0.9224,
+    1.0398,
+    1.0794,
+    1.0867,
+    1.0929,
+    1.2254,
+    1.286,
+    1.3881,
+    1.4345,
+    1.4493,
+    1.5806,
+    1.697,
+    1.7968,
+    1.8963,
+    1.9862,
+    2.0669,
+    2.2055,
+    2.3428,
+    2.4596,
+    2.5729,
+    2.8079,
+    3.0057,
+    3.149,
+    3.7694,
+    4.9528,
+    5.1887,
+    5.3404,
+    5.6383,
+    6.2107
+  ]
 };
 
 // ../core/src/video/frames.ts
@@ -42800,8 +42964,11 @@ function median(values) {
   const mid = s.length >> 1;
   return s.length % 2 === 1 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
-async function detectVideoFrames(frames, check2) {
+async function detectVideoFrames(frames, check2, sampling = "spread") {
   const { gate, runner, imageModel, model: m } = check2;
+  const calibration = sampling === "watched" ? m.calibrationWatched : m.calibration;
+  if (calibration.length === 0)
+    throw new Error(`Calibration ${m.id} has no numbers for ${sampling} frames`);
   if (imageModel.id !== m.imageModelId || gate.model.id !== m.gateId)
     throw new Error(
       `Calibration ${m.id} belongs to ${m.imageModelId} and ${m.gateId}, not ${imageModel.id} and ${gate.model.id}`
@@ -42826,13 +42993,14 @@ async function detectVideoFrames(frames, check2) {
       detector: m.id,
       modality: "video",
       kind: "statistical",
-      score: conformalScore(raw, m.calibration),
+      score: conformalScore(raw, calibration),
       reasons: ["video_frames_ai"],
       details: {
         raw: Number(raw.toFixed(4)),
         frames: frames.length,
         framesChecked: scores.length,
-        calibrationSize: m.calibration.length
+        calibrationSize: calibration.length,
+        sampling
       }
     }
   };
@@ -42936,7 +43104,7 @@ async function checkVideo(video, context = {}) {
       status: "not_assessed",
       detector: context.frameCheck.model.id,
       reason: "unreadable_media"
-    } : await detectVideoFrames(frames, context.frameCheck);
+    } : await detectVideoFrames(frames, context.frameCheck, video.sampling ?? "spread");
   }
   const fileResults = provenance === null || provenance.outcome === "not_assessed" ? [] : provenance.signals.map((signal) => ({ status: "assessed", signal }));
   return resolveOutcome("video", [
@@ -43613,7 +43781,7 @@ var commfor_low_quality_model_default = {
 var IMAGE_CLASSIFIER_MODEL = commfor_low_quality_model_default;
 
 // ../core/src/present.ts
-var HIDDEN_DETAILS = /* @__PURE__ */ new Set(["raw", "calibrationSize", "format", "fdCriterion"]);
+var HIDDEN_DETAILS = /* @__PURE__ */ new Set(["raw", "calibrationSize", "format", "fdCriterion", "sampling"]);
 function itemFromVerdict(v, source, note) {
   const evidence = {};
   for (const s of v.signals) {
@@ -43646,6 +43814,78 @@ function scamFromReport(report, evidence) {
     })),
     advice: report.scamRisk === "high" || report.scamRisk === "medium" ? SCAM_ADVICE : []
   };
+}
+
+// ../core/src/video/yuv.ts
+var yuvMatrixFor = (width, height) => width >= 1280 || height > 576 ? "bt709" : "bt601";
+var COEFFICIENTS = {
+  bt601: {
+    limited: [76309, 104597, -25675, -53279, 132201, 16],
+    full: [65536, 91881, -22553, -46802, 116130, 0]
+  },
+  bt709: {
+    limited: [76309, 117489, -13975, -34925, 138438, 16],
+    full: [65536, 103206, -12276, -30679, 121609, 0]
+  }
+};
+var clamp = (v) => v < 0 ? 0 : v > 255 ? 255 : v;
+function yuv420ToPixels(frame) {
+  const { width: w, height: h, y, u, v } = frame;
+  const cw = w + 1 >> 1;
+  const ch = h + 1 >> 1;
+  if (y.length < w * h || u.length < cw * ch || v.length < cw * ch)
+    throw new Error("YUV planes are smaller than the frame");
+  const [ky, krv, kgu, kgv, kbu, offset] = COEFFICIENTS[yuvMatrixFor(w, h)][frame.fullRange ? "full" : "limited"];
+  const data = new Uint8Array(w * h * 4);
+  for (let py = 0; py < h; py++) {
+    const j = py >> 1;
+    const j2 = Math.min(ch - 1, Math.max(0, (py & 1) === 1 ? j + 1 : j - 1));
+    const row = j * cw;
+    const row2 = j2 * cw;
+    for (let px = 0; px < w; px++) {
+      const i = px >> 1;
+      const i2 = Math.min(cw - 1, Math.max(0, (px & 1) === 1 ? i + 1 : i - 1));
+      const cb = (9 * u[row + i] + 3 * u[row + i2] + 3 * u[row2 + i] + u[row2 + i2] + 8 >> 4) - 128;
+      const cr = (9 * v[row + i] + 3 * v[row + i2] + 3 * v[row2 + i] + v[row2 + i2] + 8 >> 4) - 128;
+      const luma = ky * (y[py * w + px] - offset) + 32768;
+      const at = (py * w + px) * 4;
+      data[at] = clamp(luma + krv * cr >> 16);
+      data[at + 1] = clamp(luma + kgu * cb + kgv * cr >> 16);
+      data[at + 2] = clamp(luma + kbu * cb >> 16);
+      data[at + 3] = 255;
+    }
+  }
+  return { width: w, height: h, data };
+}
+function parseY4mFrame(buf) {
+  const lineEnd = buf.indexOf(10);
+  if (lineEnd < 0 || lineEnd > 512) return null;
+  const header = new TextDecoder("latin1").decode(buf.subarray(0, lineEnd));
+  if (!header.startsWith("YUV4MPEG2 ")) return null;
+  let width = 0;
+  let height = 0;
+  let chroma = "420";
+  let fullRange = false;
+  for (const field of header.split(" ").slice(1)) {
+    if (field.startsWith("W")) width = Number(field.slice(1));
+    else if (field.startsWith("H")) height = Number(field.slice(1));
+    else if (field.startsWith("C")) chroma = field.slice(1);
+    else if (field === "XCOLORRANGE=FULL") fullRange = true;
+  }
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0)
+    return null;
+  if (!["420", "420jpeg", "420mpeg2", "420paldv"].includes(chroma)) return null;
+  const frameEnd = buf.indexOf(10, lineEnd + 1);
+  if (frameEnd < 0 || !new TextDecoder("latin1").decode(buf.subarray(lineEnd + 1, frameEnd)).startsWith("FRAME"))
+    return null;
+  const cw = width + 1 >> 1;
+  const ch = height + 1 >> 1;
+  const start = frameEnd + 1;
+  if (start + width * height + 2 * cw * ch > buf.length) return null;
+  const y = buf.subarray(start, start + width * height);
+  const u = buf.subarray(start + width * height, start + width * height + cw * ch);
+  const v = buf.subarray(start + width * height + cw * ch, start + width * height + 2 * cw * ch);
+  return { width, height, y, u, v, fullRange };
 }
 
 // src/load.ts
@@ -96009,30 +96249,6 @@ async function videoDuration(ffmpeg, file2, opts = {}) {
   const seconds = Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]);
   return seconds > 0 ? seconds : null;
 }
-function decodeBmp(buf) {
-  if (buf.length < 54 || buf[0] !== 66 || buf[1] !== 77) return null;
-  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
-  const offset = view.getUint32(10, true);
-  const width = view.getInt32(18, true);
-  const rawHeight = view.getInt32(22, true);
-  const height = Math.abs(rawHeight);
-  if (view.getUint16(28, true) !== 24 || view.getUint32(30, true) !== 0) return null;
-  if (width <= 0 || height <= 0 || width * height > MAX_FRAME_PIXELS) return null;
-  const stride = width * 3 + 3 & ~3;
-  if (offset + stride * height > buf.length) return null;
-  const data = new Uint8ClampedArray(width * height * 4);
-  for (let y = 0; y < height; y++) {
-    let src = offset + (rawHeight > 0 ? height - 1 - y : y) * stride;
-    let dst = y * width * 4;
-    for (let x = 0; x < width; x++, src += 3, dst += 4) {
-      data[dst] = buf[src + 2];
-      data[dst + 1] = buf[src + 1];
-      data[dst + 2] = buf[src];
-      data[dst + 3] = 255;
-    }
-  }
-  return { width, height, data };
-}
 async function frameAt(ffmpeg, file2, seconds, opts = {}) {
   const format = await videoFormatOf(file2);
   if (format === "unknown") return null;
@@ -96048,17 +96264,16 @@ async function frameAt(ffmpeg, file2, seconds, opts = {}) {
       "-frames:v",
       "1",
       "-f",
-      "image2pipe",
-      "-vcodec",
-      "bmp",
-      "-pix_fmt",
-      "bgr24",
+      "yuv4mpegpipe",
       "-"
     ],
-    MAX_FRAME_PIXELS * 3 + 4096,
+    // Luma plus two quarter-size colour planes, and the text header.
+    MAX_FRAME_PIXELS * 1.5 + 4096,
     opts.timeoutMs ?? 3e4
   );
-  return r.stdout.length === 0 ? null : decodeBmp(r.stdout);
+  const frame = parseY4mFrame(r.stdout);
+  if (frame === null || frame.width * frame.height > MAX_FRAME_PIXELS) return null;
+  return yuv420ToPixels(frame);
 }
 async function extractFrames(ffmpeg, file2, count2, opts = {}) {
   const duration3 = await videoDuration(ffmpeg, file2, opts);
@@ -96309,8 +96524,7 @@ function lazyVideoCheck(settings, imageCheck, model = VIDEO_FRAMES_MODEL) {
         imageModel: image.model,
         model
       },
-      extractFrames: (file2, count2) => extractFrames(program, file2, count2),
-      decodeImage: image.decode
+      extractFrames: (file2, count2) => extractFrames(program, file2, count2)
     };
   })();
 }
@@ -96537,7 +96751,6 @@ async function loadVideo(ref, opts = {}) {
 // src/tools.ts
 var MAX_IMAGES = 12;
 var MAX_VIDEOS = 2;
-var MAX_FRAME_SCREENSHOTS = 12;
 async function available(caps) {
   return {
     content_credentials: await caps.c2pa() !== null,
@@ -96590,7 +96803,7 @@ async function checkOneImage(ref, hostname3, caps) {
 }
 var EXPERIMENTAL_NOTE = 'The frame check for video is experimental: it looks at a few still frames, catches only some AI video, and cannot detect a face swap (a real face put on another video, a "deepfake").';
 async function checkOneVideo(ref, hostname3, caps) {
-  const source = ref.url ?? ref.path ?? (ref.frame_paths?.length ? "screenshots" : "(no source)");
+  const source = ref.url ?? ref.path ?? "(no source)";
   const labels2 = ref.nearby_labels ?? [];
   const notes = [];
   let loaded = null;
@@ -96605,7 +96818,6 @@ async function checkOneVideo(ref, hostname3, caps) {
   try {
     const c2pa = await caps.c2pa();
     const video = await caps.videoCheck?.() ?? null;
-    const shots = (ref.frame_paths ?? []).slice(0, MAX_FRAME_SCREENSHOTS);
     let frames;
     if (video !== null && loaded !== null) {
       const file2 = loaded.file;
@@ -96613,21 +96825,6 @@ async function checkOneVideo(ref, hostname3, caps) {
         const got = await video.extractFrames(file2, video.frameCheck.model.frames);
         return got.length > 0 ? got : null;
       };
-    } else if (video !== null && shots.length > 0) {
-      frames = async () => {
-        const got = [];
-        for (const path of shots) {
-          try {
-            const px = await video.decodeImage(await loadFromPath(path));
-            if (px !== null) got.push(px);
-          } catch {
-          }
-        }
-        return got.length > 0 ? got : null;
-      };
-      notes.push(
-        "Frames came from screenshots, which lose detail and any labels in the file; treat the result with extra care."
-      );
     }
     const verdict = await checkVideo(
       {
@@ -96757,7 +96954,7 @@ async function checkVideoTool(args, caps) {
 
 // src/server.ts
 var SERVER_NAME = "is-it-real";
-var SERVER_VERSION = "0.4.0";
+var SERVER_VERSION = "0.5.0";
 var link = external_exports.object({ text: external_exports.string().max(500), href: external_exports.string().max(4e3) });
 var labels = external_exports.array(external_exports.string().max(200)).max(50).optional().describe(
   'Short texts shown right next to the item (badges, captions, alt text), e.g. "AI info".'
@@ -96772,9 +96969,6 @@ var videoRef = external_exports.object({
     "Direct address of the video file (http or https, a plain .mp4 or .webm). Streamed video (blob: or playlist addresses) cannot be fetched."
   ),
   path: external_exports.string().max(4e3).optional().describe("Full path of a local video file."),
-  frame_paths: external_exports.array(external_exports.string().max(4e3)).max(12).optional().describe(
-    "Fallback for streamed video: full paths of saved screenshots that show only the video picture, taken a second or more apart."
-  ),
   nearby_labels: labels
 });
 var json2 = (result) => ({
@@ -96837,7 +97031,6 @@ function createServer(caps) {
       inputSchema: {
         url: videoRef.shape.url,
         path: videoRef.shape.path,
-        frame_paths: videoRef.shape.frame_paths,
         nearby_labels: labels,
         page_url: external_exports.string().max(4e3).optional().describe("Page the video is on, so the site's own AI labels can be recognised.")
       },

@@ -24,6 +24,7 @@ import { FEATURES_FILE, loadFeatureRows } from './features.js';
 import { evaluate, toMarkdown, type DetectorReport } from './run.js';
 import { evaluateScam, loadScamJsonl, scamToMarkdown, type ScamReport } from './scam.js';
 import {
+  SAMPLING_VERSIONS,
   evaluateVideoFrames,
   loadVideoScores,
   videoReportMarkdown,
@@ -58,6 +59,7 @@ const json: {
   imageModels?: ImageModelReport[];
   imageModelsUngated?: ImageModelReport[];
   videoFrames?: VideoReport;
+  videoFramesWatched?: VideoReport;
 } = { text: [], scam: [] };
 
 // Harness sanity check on the toy set.
@@ -110,17 +112,20 @@ if (existsSync(FEATURES_FILE)) {
   }
 }
 
-// Video frame check, from the committed score table (numbers only).
+// Video frame check, from the committed score tables (numbers only): once for video files and
+// once for a video playing in the browser. Each way has its own calibration.
 {
   const rows = loadVideoScores();
-  if (rows.length > 0) {
-    const report = evaluateVideoFrames(
-      rows,
-      { gateThreshold: PHOTO_GATE_MODEL.threshold, minChecked: VIDEO_FRAMES_MODEL.minChecked },
-      alpha,
-    );
-    json.videoFrames = report;
-    sections.push(videoReportMarkdown(report, alpha));
+  const rule = {
+    gateThreshold: PHOTO_GATE_MODEL.threshold,
+    minChecked: VIDEO_FRAMES_MODEL.minChecked,
+  };
+  for (const sampling of ['spread', 'watched'] as const) {
+    const report = evaluateVideoFrames(rows, rule, alpha, SAMPLING_VERSIONS[sampling]);
+    if (report.calibrationSize === 0) continue;
+    if (sampling === 'spread') json.videoFrames = report;
+    else json.videoFramesWatched = report;
+    sections.push(videoReportMarkdown(report, alpha, sampling));
   }
 }
 

@@ -1,6 +1,12 @@
 import { spawn } from 'node:child_process';
 import { open } from 'node:fs/promises';
-import { detectVideoFormat, type Pixels, type VideoFormat } from '@isitreal/core';
+import {
+  detectVideoFormat,
+  parseY4mFrame,
+  yuv420ToPixels,
+  type Pixels,
+  type VideoFormat,
+} from '@isitreal/core';
 
 /**
  * Reads frames from a video file with ffmpeg, run as a separate program.
@@ -11,10 +17,10 @@ import { detectVideoFormat, type Pixels, type VideoFormat } from '@isitreal/core
  *   never interpreted;
  * - it may only open local files, has no terminal input, and is killed after a time limit;
  * - output size is capped before it is decoded.
- * Frames come out as BMP on a pipe; nothing is written to disk.
+ * Frames come out on a pipe as the decoder's raw planes; nothing is written to disk.
  *
- * The evaluation (eval/reference/video_eval.py) uses the same ffmpeg arguments, so the shipped
- * check sees the same pixels as the measurements.
+ * The evaluation (eval/reference/video_eval.py) reads frames the same way and uses the same
+ * conversion to RGB, so the shipped check sees the same pixels as the measurements.
  */
 
 /** Refuse frames larger than this (width x height). */
@@ -118,34 +124,13 @@ export async function videoDuration(
   return seconds > 0 ? seconds : null;
 }
 
-/** Decodes the BMP that ffmpeg writes (24-bit, uncompressed) into RGBA pixels. */
-export function decodeBmp(buf: Uint8Array): Pixels | null {
-  if (buf.length < 54 || buf[0] !== 0x42 || buf[1] !== 0x4d) return null;
-  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
-  const offset = view.getUint32(10, true);
-  const width = view.getInt32(18, true);
-  const rawHeight = view.getInt32(22, true);
-  const height = Math.abs(rawHeight);
-  if (view.getUint16(28, true) !== 24 || view.getUint32(30, true) !== 0) return null;
-  if (width <= 0 || height <= 0 || width * height > MAX_FRAME_PIXELS) return null;
-  const stride = (width * 3 + 3) & ~3;
-  if (offset + stride * height > buf.length) return null;
-  const data = new Uint8ClampedArray(width * height * 4);
-  for (let y = 0; y < height; y++) {
-    // Rows are stored bottom-up unless the height is negative.
-    let src = offset + (rawHeight > 0 ? height - 1 - y : y) * stride;
-    let dst = y * width * 4;
-    for (let x = 0; x < width; x++, src += 3, dst += 4) {
-      data[dst] = buf[src + 2]!;
-      data[dst + 1] = buf[src + 1]!;
-      data[dst + 2] = buf[src]!;
-      data[dst + 3] = 255;
-    }
-  }
-  return { width, height, data };
-}
-
-/** The frame shown at `seconds` into the video; null when ffmpeg gives nothing. */
+/**
+ * The frame shown at `seconds` into the video; null when ffmpeg gives nothing, or when the video
+ * is not 8-bit 4:2:0 (nearly all web video is).
+ *
+ * ffmpeg only decodes: it hands over the raw YUV planes, and the core turns them into RGB with
+ * the project's one fixed rule (packages/core/src/video/yuv.ts), the same in every host.
+ */
 export async function frameAt(
   ffmpeg: string,
   file: string,
@@ -166,17 +151,16 @@ export async function frameAt(
       '-frames:v',
       '1',
       '-f',
-      'image2pipe',
-      '-vcodec',
-      'bmp',
-      '-pix_fmt',
-      'bgr24',
+      'yuv4mpegpipe',
       '-',
     ],
-    MAX_FRAME_PIXELS * 3 + 4096,
+    // Luma plus two quarter-size colour planes, and the text header.
+    MAX_FRAME_PIXELS * 1.5 + 4096,
     opts.timeoutMs ?? 30_000,
   );
-  return r.stdout.length === 0 ? null : decodeBmp(r.stdout);
+  const frame = parseY4mFrame(r.stdout);
+  if (frame === null || frame.width * frame.height > MAX_FRAME_PIXELS) return null;
+  return yuv420ToPixels(frame);
 }
 
 /**

@@ -153,20 +153,19 @@ const frameCheck: VideoFrameCheck = {
     frames: 6,
     minChecked: 4,
     calibration: Array.from({ length: 99 }, (_, i) => i / 200),
+    calibrationWatched: Array.from({ length: 99 }, (_, i) => i / 200),
     calibratedOn: 'synthetic',
   },
 };
 const here = dirname(fileURLToPath(import.meta.url));
 const clip = join(here, '..', '..', 'video-node', 'test', 'fixtures', 'testsrc.mp4');
 const signedClip = join(here, '..', '..', 'c2pa-node', 'test', 'fixtures', 'ai-declared.mp4');
-const still = join(here, '..', '..', 'c2pa-node', 'test', 'fixtures', 'plain.jpg');
 
 describe('check_video', () => {
   const withFrames = (frames: Pixels[], log: string[] = []): Capabilities => {
     const video: VideoCheck = {
       frameCheck,
       extractFrames: async (file, count) => (log.push(`extract ${count} from ${file}`), frames),
-      decodeImage: async () => (log.push('decode'), frames[0] ?? null),
     };
     return { ...noC2pa, videoCheck: async () => video };
   };
@@ -221,19 +220,15 @@ describe('check_video', () => {
     expect(labelled.items[0]!.outcome).toBe('verified_ai');
   });
 
-  it('falls back to saved screenshots, with a warning', async () => {
+  it('does not judge a streamed video: there is no file, and screenshots are not accepted', async () => {
     const log: string[] = [];
     const r = await checkVideoTool(
-      { url: 'blob:https://example.com/abc', frame_paths: [still, still, still, still] },
+      { url: 'blob:https://example.com/abc' },
       withFrames([flat(204)], log),
     );
-    expect(log).toEqual(['decode', 'decode', 'decode', 'decode']);
-    expect(r.items[0]).toMatchObject({
-      outcome: 'likely_ai',
-      evidence: { frames: 4, framesChecked: 4 },
-    });
-    expect(r.items[0]!.note).toMatch(/screenshots/);
-    expect(r.items[0]!.note).toMatch(/experimental/);
+    expect(log).toEqual([]);
+    expect(r.items[0]).toMatchObject({ kind: 'video', outcome: 'not_assessed' });
+    expect(r.items[0]!.note).toMatch(/streamed in pieces/);
   });
 
   it('says so when frames cannot be checked on this computer', async () => {
