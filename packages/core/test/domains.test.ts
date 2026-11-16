@@ -66,6 +66,64 @@ describe('checkLinkMismatch', () => {
     );
     expect(checkLinkMismatch('Open PayPal', 'https://www.paypal.com/signin')).toBeNull();
   });
+
+  it('follows a site\'s own "you are leaving" link to the real destination', () => {
+    // Reported from real use: an address in a YouTube description goes through youtube.com.
+    const viaYouTube =
+      'https://www.youtube.com/redirect?event=video_description&redir_token=abc&q=https%3A%2F%2Fgoa.hu%2Ftour';
+    expect(checkLinkMismatch('goa.hu', viaYouTube, 'www.youtube.com')).toBeNull();
+    expect(checkLinkMismatch('goa.hu/tour', viaYouTube)).toBeNull();
+    // The written address and the destination inside the redirect still have to agree.
+    expect(checkLinkMismatch('www.chase.com', viaYouTube, 'www.youtube.com')).toBe(
+      'www.chase.com -> goa.hu',
+    );
+    expect(
+      checkLinkMismatch(
+        'example.org',
+        'https://l.facebook.com/l.php?u=https%3A%2F%2Fexample.org%2F',
+        'www.facebook.com',
+      ),
+    ).toBeNull();
+  });
+
+  it("does not treat a page's own buttons and links as a mismatch", () => {
+    // Reported from real use: a "Facebook" share button on a news site that leads to the site itself.
+    expect(
+      checkLinkMismatch(
+        'Facebook',
+        'https://www.theguardian.com/share?to=facebook',
+        'www.theguardian.com',
+      ),
+    ).toBeNull();
+    // On a page, a button that only names a brand is not judged, wherever it goes.
+    expect(
+      checkLinkMismatch(
+        'Share on Facebook',
+        'https://sharing.example.net/fb',
+        'www.theguardian.com',
+      ),
+    ).toBeNull();
+    // A platform's own short links, on that platform.
+    expect(checkLinkMismatch('example.org/article', 'https://t.co/AbC123', 'x.com')).toBeNull();
+    // In a message there is no page: the same short link with a written address is a mismatch.
+    expect(checkLinkMismatch('example.org/article', 'https://t.co/AbC123')).toBe(
+      'example.org -> t.co',
+    );
+  });
+
+  it("still catches a fake login page that writes a brand's address over a link to itself", () => {
+    expect(
+      checkLinkMismatch(
+        'https://www.paypal.com/login',
+        'https://secure-check.example/steal',
+        'secure-check.example',
+      ),
+    ).toBe('www.paypal.com -> secure-check.example');
+    // And a written address that leads to a third site.
+    expect(
+      checkLinkMismatch('www.mybank-online.com', 'https://collect.example/x', 'news.example.org'),
+    ).toBe('www.mybank-online.com -> collect.example');
+  });
 });
 
 describe('editDistance', () => {

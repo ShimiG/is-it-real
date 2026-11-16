@@ -29,6 +29,8 @@ In total 84 of 1,065. The model calls about a third of human-made cartoons and d
 
 Memes were first counted as photos. The picture model then wrongly flagged 7 of 108, so pictures with added text are kept out as well.
 
+**A separate cut-off for pictures that are not photos was measured and rejected** (2026-11-16, after a report from real use; `python3 -I eval/reference/image_art_analysis.py`). Judging non-photo pictures against human-made non-photo pictures instead of refusing them: a cut-off of 11.52 (from 504 calibration pictures) catches 28% of the AI pictures the gate keeps out, and flags 4 of 512 human-made test pictures, but 3 of those 4 are among the 89 digital paintings (3.4%). A cut-off set on digital paintings alone (13.89) still flags 2 of 89 and catches 7%. Human digital paintings and AI pictures share the top of the scale. Such pictures are reported as _Not checked_, with the reason.
+
 Share of held-out images the gate lets through (all three versions):
 
 | Plain photos             | Passes | Everything else | Passes |

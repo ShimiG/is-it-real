@@ -14,10 +14,11 @@ import {
   type PageReport,
   type Pixels,
   type ReasonCode,
+  type Verdict,
   type VideoFrameCheck,
   type VideoSampling,
 } from '@isitreal/core';
-import type { PageData, PanelItem, PanelResult } from '../messages.js';
+import type { ItemDebug, PageData, PanelItem, PanelResult } from '../messages.js';
 import { STRINGS } from '../strings.js';
 
 /** Images checked per page, largest first. */
@@ -66,7 +67,10 @@ async function checkOneImage(
       { bytes: new Uint8Array(0), nearbyLabels: ref.labels },
       where,
     );
-    return itemFromVerdict(fromLabels, ref.url, STRINGS.noteImageUnreadable);
+    return {
+      ...itemFromVerdict(fromLabels, ref.url, STRINGS.noteImageUnreadable),
+      debug: debugOf(fromLabels, ref.labels),
+    };
   }
   const c2pa = await caps.c2pa();
   const statistical = await caps.imageCheck();
@@ -79,7 +83,26 @@ async function checkOneImage(
     },
   );
   const preview = (await caps.thumbnail?.(bytes)) ?? null;
-  return { ...itemFromVerdict(verdict, ref.url), ...(preview === null ? {} : { preview }) };
+  return {
+    ...itemFromVerdict(verdict, ref.url),
+    ...(preview === null ? {} : { preview }),
+    debug: debugOf(verdict, ref.labels),
+  };
+}
+
+/** The full numbers behind a verdict, for the developer report. */
+function debugOf(verdict: Verdict, labels: readonly string[]): ItemDebug {
+  return {
+    labels: [...labels],
+    checks: verdict.signals
+      .filter((s) => s.kind !== 'scam_rule')
+      .map((s) => ({
+        detector: s.detector,
+        kind: s.kind,
+        score: s.score,
+        ...(s.details === undefined ? {} : { details: s.details }),
+      })),
+  };
 }
 
 /** Checks one picture the person pointed at (right-click). */
@@ -162,6 +185,7 @@ async function checkOneVideo(
   return {
     ...itemFromVerdict(verdict, source, notes.length > 0 ? notes.join(' ') : undefined),
     ...(watch ? { watch: { frameId: ref.frameId, index: ref.index, labels: ref.labels } } : {}),
+    debug: debugOf(verdict, ref.labels),
   };
 }
 
@@ -193,7 +217,10 @@ export async function checkVideoFrames(
     frameCheck === null ? STRINGS.noteVideoNoFrames : STRINGS.noteVideoWatched,
     ...(frameCheck === null ? [] : [STRINGS.noteVideoExperimental]),
   ];
-  return itemFromVerdict(verdict, STRINGS.sourceStream, notes.join(' '));
+  return {
+    ...itemFromVerdict(verdict, STRINGS.sourceStream, notes.join(' ')),
+    debug: debugOf(verdict, labels),
+  };
 }
 
 /**
@@ -271,6 +298,7 @@ export async function checkPageData(
       pictureModel: (await caps.imageCheck()) !== null,
     },
     notChecked: Math.max(0, page.images.length - MAX_IMAGES) + page.skippedImages,
+    labelsSeen: page.pageLabels,
     engine: ENGINE_VERSION,
   };
 }

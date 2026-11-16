@@ -4,15 +4,16 @@ import {
   VIDEO_FRAMES_MODEL,
   conformalScore,
 } from '@isitreal/core';
-import type { ModelsState, PanelResult, PictureScore } from '../messages.js';
+import type { ItemDebug, ModelsState, PanelResult, PictureScore } from '../messages.js';
 
 /**
  * A report for the developer: what was checked and the numbers behind each result, so that a
  * surprising answer ("why was this picture not marked?") can be explained. The person saves it
  * as a file and decides whether to pass it on; the extension sends nothing.
  *
- * It holds the page's address, the addresses of its pictures and videos, the results, and the
- * short phrases the scam rules matched. It does not hold the page's text or the pictures.
+ * It holds the page's address, the addresses of its pictures and videos, the results, the short
+ * phrases the scam rules matched, and the short label-like texts found on the page (the kind
+ * sites use for "AI" labels). It does not hold the page's text or the pictures.
  */
 export interface DebugReport {
   what: string;
@@ -27,6 +28,8 @@ export interface DebugReport {
   /** A raw number must be above these to give "Likely made with AI". */
   cutOffs: { picture: number; photoGate: number; videoFile: number; videoPlaying: number };
   scam: PanelResult['scam'];
+  /** Short texts anywhere on the page that mention AI or similar words: candidates for a site's own label. */
+  labelLikeTextsOnPage: string[];
   items: {
     kind: string;
     source: string;
@@ -34,6 +37,9 @@ export interface DebugReport {
     reasons: string[];
     note?: string;
     evidence?: Record<string, string | number | boolean>;
+    /** Short texts next to the item, and the full numbers of each check that ran. */
+    textsNextToIt?: string[];
+    checks?: ItemDebug['checks'];
     /** For pictures, when the picture check is set up: size and the two raw numbers. */
     numbers?: PictureScore & { photoLike: boolean; scoreAgainstRealPhotos: number };
     numbersProblem?: string;
@@ -66,6 +72,9 @@ export async function buildReport(
       reasons: item.reasons.map((r) => r.code),
       ...(item.note === undefined ? {} : { note: item.note }),
       ...(item.evidence === undefined ? {} : { evidence: item.evidence }),
+      ...(item.debug === undefined
+        ? {}
+        : { textsNextToIt: item.debug.labels, checks: item.debug.checks }),
     };
     if (pictures.includes(item) && result.checks.pictureModel) {
       try {
@@ -85,7 +94,7 @@ export async function buildReport(
     items.push(entry);
   }
   return {
-    what: 'Is It Real? report for the developer. It holds addresses and results, not page text or pictures.',
+    what: 'Is It Real? report for the developer. It holds addresses, results and short label-like texts, not the page text or the pictures.',
     extension: chrome.runtime.getManifest().version,
     engine: result.engine,
     savedAt: new Date().toISOString(),
@@ -101,6 +110,7 @@ export async function buildReport(
       videoPlaying: cutOff(VIDEO_FRAMES_MODEL.calibrationWatched),
     },
     scam: result.scam,
+    labelLikeTextsOnPage: result.labelsSeen,
     items,
     picturesNotChecked: result.notChecked,
   };

@@ -109,6 +109,8 @@ export function extractPage(doc: Document = document): PageData {
       const url = img.currentSrc || img.src;
       if (seen.has(url)) return false;
       seen.add(url);
+      // Vector drawings (SVG) are icons and diagrams, not pictures a camera or a generator made.
+      if (/^data:image\/svg|\.svg(?:[?#]|$)/i.test(url)) return false;
       const ok = /^(https?:|data:image\/)/.test(url);
       if (!ok) skippedImages++;
       return ok;

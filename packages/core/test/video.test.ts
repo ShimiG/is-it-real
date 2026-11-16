@@ -289,13 +289,14 @@ describe('checkVideo', () => {
       { bytes: MP4, frames: async () => null },
       { frameCheck: check },
     );
-    expect(noFrames).toMatchObject({ outcome: 'no_clear_signs', reasons: ['unreadable_media'] });
+    // "Not checked", not "No clear signs": the frames were asked for and could not be judged.
+    expect(noFrames).toMatchObject({ outcome: 'not_assessed', reasons: ['unreadable_media'] });
     const graphics = await checkVideo(
       { bytes: MP4, frames: async () => new Array<Pixels>(6).fill(frame(250, false)) },
       { frameCheck: check },
     );
     expect(graphics).toMatchObject({
-      outcome: 'no_clear_signs',
+      outcome: 'not_assessed',
       reasons: ['video_not_plain_footage'],
     });
   });

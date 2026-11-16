@@ -36678,15 +36678,14 @@ function resolveOutcome(modality, results, thresholds = DEFAULT_THRESHOLDS) {
   if (statistical.length === 0) {
     const checked = signals.filter((s) => s.kind === "provenance" || s.kind === "platform_label");
     const notAssessed = results.flatMap((r) => r.status === "not_assessed" ? [r.reason] : []);
-    if (checked.length > 0) {
+    if (checked.length > 0 && notAssessed.length === 0) {
       return {
         modality,
         outcome: "no_clear_signs",
         confidence: null,
         alert: false,
         signals,
-        // Also say why a further check was skipped (e.g. the picture model does not judge drawings).
-        reasons: unique([...checked.flatMap((s) => s.reasons), ...notAssessed])
+        reasons: unique(checked.flatMap((s) => s.reasons))
       };
     }
     return {
@@ -36695,7 +36694,10 @@ function resolveOutcome(modality, results, thresholds = DEFAULT_THRESHOLDS) {
       confidence: null,
       alert: false,
       signals,
-      reasons: unique(notAssessed.length > 0 ? notAssessed : ["unreadable_media"])
+      reasons: unique([
+        ...notAssessed.length > 0 ? notAssessed : ["unreadable_media"],
+        ...checked.flatMap((s) => s.reasons)
+      ])
     };
   }
   const top = statistical.reduce((a, b) => b.score > a.score ? b : a);
@@ -36775,8 +36777,8 @@ var REASON_TEXT = {
   unsupported_language: "This language is not supported yet.",
   unreadable_media: "We could not read this item.",
   uncalibrated_bucket: "We have not tested this kind of content enough to judge it.",
-  not_a_photo: "This looks like a drawing, a screenshot or a picture with added text. Our picture check only works on plain photos.",
-  video_not_plain_footage: "This video looks animated, or has text or graphics over the picture. Our frame check only works on plain camera-style video."
+  not_a_photo: "This looks like a drawing, a painting, a screenshot or a picture with added text. Our picture check cannot tell human-made pictures of this kind from AI-made ones, so it does not judge them.",
+  video_not_plain_footage: "This video looks animated, or has text or graphics over the picture. Our frame check cannot judge video of this kind; it only works on plain camera-style video."
 };
 var SCAM_ADVICE = [
   "Do not pay, and do not share codes or passwords.",
@@ -36922,7 +36924,9 @@ var PLATFORM_LABEL_RULES = [
   {
     platform: "youtube",
     hosts: ["youtube.com"],
-    patterns: [/^altered or synthetic content$/i, /^how this content was made$/i]
+    // Since May 2026 the label sits on the video itself; the element can carry a little more
+    // text after the label ("Learn more"), so only the start is fixed.
+    patterns: [/^altered or synthetic content\b.{0,40}$/i, /^how this content was made$/i]
   },
   {
     platform: "tiktok",
@@ -37126,21 +37130,57 @@ function checkLookalike(host) {
   }
   return null;
 }
-function checkLinkMismatch(linkText, href) {
-  let target;
+var OWN_SHORT_LINKS = {
+  "t.co": ["x.com", "twitter.com"],
+  "lnkd.in": ["linkedin.com"],
+  "fb.me": ["facebook.com"],
+  "redd.it": ["reddit.com"],
+  "youtu.be": ["youtube.com"]
+};
+var DESTINATION_PARAMS = ["q", "u", "url", "target", "to", "dest", "destination"];
+function linkDestination(href) {
+  let url2;
   try {
-    target = registrableDomain(new URL(href).hostname);
+    url2 = new URL(href);
   } catch {
     return null;
   }
+  for (const name of DESTINATION_PARAMS) {
+    const value = url2.searchParams.get(name);
+    if (value === null || !/^https?:\/\//i.test(value)) continue;
+    try {
+      return new URL(value);
+    } catch {
+    }
+  }
+  return url2;
+}
+function checkLinkMismatch(linkText, href, pageHost) {
+  const destination = linkDestination(href);
+  if (destination === null) return null;
+  const target = registrableDomain(destination.hostname);
+  let direct;
+  try {
+    direct = registrableDomain(new URL(href).hostname);
+  } catch {
+    return null;
+  }
+  const page = pageHost === void 0 ? null : registrableDomain(pageHost);
+  if (page !== null && OWN_SHORT_LINKS[direct]?.includes(page) === true) return null;
   const shown = extractHosts(linkText)[0];
-  if (shown !== void 0 && registrableDomain(shown) !== target) return `${shown} -> ${target}`;
+  const named = shown === void 0 ? null : registrableDomain(shown);
+  const namesBrand = named !== null && BRANDS.some((b) => b.domains.includes(named));
+  if (page !== null && target === page && !namesBrand) return null;
+  if (named !== null) {
+    return named === target || named === direct ? null : `${shown} -> ${target}`;
+  }
+  if (page !== null) return null;
   const text = linkText.toLowerCase();
   for (const brand of BRANDS) {
-    const named = new RegExp(`\\b${brand.name.toLowerCase().replace(/\s+/g, "\\s*")}\\b`).test(
+    const named2 = new RegExp(`\\b${brand.name.toLowerCase().replace(/\s+/g, "\\s*")}\\b`).test(
       text
     );
-    if (named && !brand.domains.includes(target)) return `${brand.name} -> ${target}`;
+    if (named2 && !brand.domains.includes(target)) return `${brand.name} -> ${target}`;
   }
   return null;
 }
@@ -37315,7 +37355,7 @@ var REPORTING_SPEECH = /\b(?:scams?|scammers?|fraudsters?|con artists?|beware|re
 var NEGATION = /\b(?:never|no (?:real|legitimate|one|business|agency)|will not|won'?t|does not|doesn'?t|do not|don'?t|no such thing|is not|isn'?t|not (?:a )?(?:real|legitimate))\b/;
 
 // ../core/src/scam/engine.ts
-var SCAM_ENGINE_VERSION = "scam-rules@0.1.1";
+var SCAM_ENGINE_VERSION = "scam-rules@0.1.2";
 var SCAM_THRESHOLDS = { high: 4, medium: 2.5 };
 function analyzeScam(input2) {
   const text = normalizeText(input2.text).replace(/\bu\b/gi, "you").replace(/\bur\b/gi, "your").replace(/\b2day\b/gi, "today");
@@ -37368,7 +37408,7 @@ function analyzeScam(input2) {
     }
   }
   for (const link2 of input2.links ?? []) {
-    const mismatch = checkLinkMismatch(link2.text, link2.href);
+    const mismatch = checkLinkMismatch(link2.text, link2.href, input2.pageHost);
     if (mismatch !== null) {
       add({ rule: "link_mismatch", reason: "scam_link_mismatch", weight: 2.5, evidence: mismatch });
       break;
@@ -38772,7 +38812,7 @@ function detectTextStats(text, m = TEXT_STATS_MODEL) {
 }
 
 // ../core/src/version.ts
-var ENGINE_VERSION = "0.8.1-m6";
+var ENGINE_VERSION = "0.8.2-m6";
 
 // ../core/src/image/preprocess.ts
 var PRECISION_BITS = 32 - 8 - 2;
@@ -96957,7 +96997,7 @@ async function checkVideoTool(args, caps) {
 
 // src/server.ts
 var SERVER_NAME = "is-it-real";
-var SERVER_VERSION = "0.5.1";
+var SERVER_VERSION = "0.5.2";
 var link = external_exports.object({ text: external_exports.string().max(500), href: external_exports.string().max(4e3) });
 var labels = external_exports.array(external_exports.string().max(200)).max(50).optional().describe(
   'Short texts shown right next to the item (badges, captions, alt text), e.g. "AI info".'

@@ -33,10 +33,21 @@ export interface PageVideo extends VideoRef {
   area: number;
 }
 
+export interface ItemDebug {
+  /** Short texts next to the item on the page (where sites put their own labels). */
+  labels: string[];
+  checks: { detector: string; kind: string; score: number; details?: Record<string, unknown> }[];
+}
+
 /** One checked item as the side panel shows it. */
 export interface PanelItem extends ItemResult {
   /** A small copy of the picture (a data: address) to show next to the result. */
   preview?: string;
+  /**
+   * For the developer report only (never shown): the short texts found next to the item, and
+   * the full numbers of each check.
+   */
+  debug?: ItemDebug;
   /** For a video whose frames were not looked at: where it is, so it can be watched while it plays. */
   watch?: VideoRef & { labels: string[] };
 }
@@ -49,6 +60,8 @@ export interface PanelResult {
   checks: { contentCredentials: boolean; pictureModel: boolean };
   /** Images on the page beyond the limit per check. */
   notChecked: number;
+  /** For the developer report: label-like short texts found anywhere on the page. */
+  labelsSeen: string[];
   engine: string;
 }
 

@@ -47,6 +47,8 @@
     .sort((a, b) => b.naturalWidth * b.naturalHeight - a.naturalWidth * a.naturalHeight)
     .filter((img) => {
       const url = img.currentSrc || img.src;
+      // Vector drawings (SVG) are icons and diagrams, not pictures to check.
+      if (/^data:image\/svg|\.svg(?:[?#]|$)/i.test(url)) return false;
       const ok = /^(https?:|data:image\/)/.test(url);
       if (!ok) skipped++;
       return ok;

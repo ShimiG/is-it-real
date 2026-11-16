@@ -85,7 +85,14 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
       pictureCheckFiles: string;
       cutOffs: { picture: number; videoFile: number; videoPlaying: number };
       scam: { risk: string; reasons: { code: string; evidence?: string }[] };
-      items: { kind: string; source: string; outcome: string; reasons: string[] }[];
+      labelLikeTextsOnPage: string[];
+      items: {
+        kind: string;
+        source: string;
+        outcome: string;
+        reasons: string[];
+        textsNextToIt?: string[];
+      }[];
     };
     expect(report.page).toBe(`${base}/scam-page.html`);
     expect(report.pictureCheckFiles).toBe('absent');
@@ -94,6 +101,11 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     expect(report.scam.risk).toBe('high');
     expect(report.scam.reasons[0]!.evidence).toBeTruthy();
     expect(report.items.filter((i) => i.kind === 'image')).toHaveLength(3);
+    // What the page reader saw as possible site labels, and the texts next to each picture.
+    expect(Array.isArray(report.labelLikeTextsOnPage)).toBe(true);
+    expect(report.items.find((i) => i.outcome === 'verified_ai')!.textsNextToIt).toContain(
+      'Our agent',
+    );
     expect(report.items.find((i) => i.outcome === 'verified_ai')!.reasons).toContain(
       'c2pa_declares_ai',
     );
@@ -123,7 +135,8 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
       .poll(() => panel.locator('.ai .card').count(), { timeout: 90_000 })
       .toBeGreaterThan(0);
     const text = await panel.locator('.ai').innerText();
-    // Three real pictures: the picture shown as a 16-pixel icon and the broken one are not content.
+    // Three real pictures: the picture shown as a 16-pixel icon, the broken one and the vector
+    // drawing (SVG) are not content.
     expect(text).not.toContain('Picture 4');
     // The signed AI picture is named first, with the reason from its Content Credentials.
     const first = panel.locator('.ai .card').first();

@@ -180,7 +180,8 @@ describe('photo gate', () => {
       model,
     };
     const verdict = await checkImage({ bytes: new Uint8Array(await png(255, 0)) }, { statistical });
-    expect(verdict.outcome).toBe('no_clear_signs');
+    // "Not checked", not "No clear signs": nothing looked at the picture itself.
+    expect(verdict.outcome).toBe('not_assessed');
     expect(verdict.reasons).toContain('not_a_photo');
     expect(verdict.signals.some((s) => s.kind === 'statistical')).toBe(false);
   });
@@ -240,7 +241,7 @@ describe.skipIf(
       { bytes: new Uint8Array(await readFile(perchance)) },
       { statistical },
     );
-    expect(verdict.outcome).toBe('no_clear_signs');
+    expect(verdict.outcome).toBe('not_assessed');
     expect(verdict.reasons).toContain('not_a_photo');
   }, 60_000);
 

@@ -204,16 +204,82 @@ export function checkLookalike(host: string): LookalikeHit | null {
   return null;
 }
 
-/** Link whose visible text names a different site (or brand) than where it really goes. */
-export function checkLinkMismatch(linkText: string, href: string): string | null {
-  let target: string;
+/** Short-link services of big platforms, and the sites on which they are just how links look. */
+const OWN_SHORT_LINKS: Record<string, string[]> = {
+  't.co': ['x.com', 'twitter.com'],
+  'lnkd.in': ['linkedin.com'],
+  'fb.me': ['facebook.com'],
+  'redd.it': ['reddit.com'],
+  'youtu.be': ['youtube.com'],
+};
+
+/** Query parameters in which sites carry the real destination of an outgoing link. */
+const DESTINATION_PARAMS = ['q', 'u', 'url', 'target', 'to', 'dest', 'destination'];
+
+/**
+ * Where a link really goes. Big sites route outgoing links through their own "you are leaving"
+ * address (youtube.com/redirect?q=..., l.facebook.com/l.php?u=..., google.com/url?q=...); the
+ * destination is then in a query parameter.
+ */
+export function linkDestination(href: string): URL | null {
+  let url: URL;
   try {
-    target = registrableDomain(new URL(href).hostname);
+    url = new URL(href);
   } catch {
     return null;
   }
+  for (const name of DESTINATION_PARAMS) {
+    const value = url.searchParams.get(name);
+    if (value === null || !/^https?:\/\//i.test(value)) continue;
+    try {
+      return new URL(value);
+    } catch {
+      // Not an address after all.
+    }
+  }
+  return url;
+}
+
+/**
+ * Link whose visible text names a different site (or brand) than where it really goes.
+ *
+ * `pageHost` is the site the link is ON, when the text comes from a web page and not from a
+ * message. On a page, two everyday cases are not a mismatch:
+ * - the link goes to the page's own site (a site's "Facebook" button that leads to its own share
+ *   page; an address in a video description that the video site routes through itself);
+ * - the text only names a brand ("Facebook", "PayPal"). Pages are full of such buttons. In a
+ *   message, a link called "PayPal" that goes elsewhere is a warning sign, and stays one.
+ * A written address that leads to a different site is a mismatch everywhere.
+ */
+export function checkLinkMismatch(
+  linkText: string,
+  href: string,
+  pageHost?: string,
+): string | null {
+  const destination = linkDestination(href);
+  if (destination === null) return null;
+  const target = registrableDomain(destination.hostname);
+  let direct: string;
+  try {
+    direct = registrableDomain(new URL(href).hostname);
+  } catch {
+    return null;
+  }
+  const page = pageHost === undefined ? null : registrableDomain(pageHost);
+  // A platform's own short links, on that platform: where they lead cannot be read from them.
+  if (page !== null && OWN_SHORT_LINKS[direct]?.includes(page) === true) return null;
   const shown = extractHosts(linkText)[0];
-  if (shown !== undefined && registrableDomain(shown) !== target) return `${shown} -> ${target}`;
+  const named = shown === undefined ? null : registrableDomain(shown);
+  // A link that stays on the page's own site is ordinary, unless it is written as the address
+  // of a well-known brand: "www.paypal.com" leading back into the same unknown site is the
+  // classic trick of a fake login page.
+  const namesBrand = named !== null && BRANDS.some((b) => b.domains.includes(named));
+  if (page !== null && target === page && !namesBrand) return null;
+  if (named !== null) {
+    // The written address is where the link ends up (possibly through the site's own redirect).
+    return named === target || named === direct ? null : `${shown} -> ${target}`;
+  }
+  if (page !== null) return null;
   const text = linkText.toLowerCase();
   for (const brand of BRANDS) {
     const named = new RegExp(`\\b${brand.name.toLowerCase().replace(/\s+/g, '\\s*')}\\b`).test(

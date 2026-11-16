@@ -1,6 +1,6 @@
 # Evaluation
 
-What "Is It Real?" catches, what it misses, and how that was measured. Version: engine `0.8.1-m6`, plugin 0.5.1, browser extension 0.1.1 (2026-11-16).
+What "Is It Real?" catches, what it misses, and how that was measured. Version: engine `0.8.2-m6`, plugin 0.5.2, browser extension 0.1.2 (2026-11-16).
 
 Every number here can be reproduced: `pnpm eval:fetch` downloads the public datasets (pinned commits), `pnpm eval` prints the report. Details: [M1](docs/eval/m1-results.md), [M2](docs/eval/m2-results.md), [M3 labels](docs/eval/m3-progress.md), [M3 picture model](docs/eval/m3-results.md), [M5 video](docs/eval/m5-results.md), [M6 browser extension](docs/eval/m6-results.md).
 
@@ -65,7 +65,7 @@ A pretrained detector (MIT licence) that only judges **plain photos**. A second 
 | OpenAI gpt-image-2.5               | 24% (34%)    | 24%               | 12%            |
 | Z-Image-Turbo (free open model)    | 39.5% (24%)  | 26.5%             | 17%            |
 
-Honest summary: it catches a useful share of unlabelled AI photos as published, few after re-sharing, and it stays quiet on real pictures. AI-made drawings, posters and memes without a label are not judged at all. On the owner's real downloads it flags 2 of 5 re-shared Gemini copies; the Perchance anime image is "not checked". Details: [M3 picture model](docs/eval/m3-results.md).
+Honest summary: it catches a useful share of unlabelled AI photos as published, few after re-sharing, and it stays quiet on real pictures. AI-made drawings, paintings, posters and memes without a label are not judged at all, and are reported as _Not checked_: the model scores human digital paintings as high as AI pictures, so no cut-off separates them (measured again after a report from real use). On the owner's real downloads it flags 2 of 5 re-shared Gemini copies; the Perchance anime image is "not checked". Details: [M3 picture model](docs/eval/m3-results.md).
 
 ## AI video (experimental)
 

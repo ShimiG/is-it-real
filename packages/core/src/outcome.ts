@@ -10,8 +10,10 @@ const isDeclaredAi = (s: Signal): boolean =>
  *
  * Rules (ADR-0002, ADR-0006):
  * 1. Any provenance or platform label that declares AI generation -> `verified_ai` (hard override).
- * 2. Otherwise, with no statistical signal: `no_clear_signs` when provenance was checked and
- *    declared nothing, `not_assessed` when no detector could assess the item.
+ * 2. Otherwise, with no statistical signal: `not_assessed` when a detector was asked and could
+ *    not judge the item (a drawing, an animated video, a short text), or when nothing could be
+ *    checked at all; `no_clear_signs` only when provenance was checked, declared nothing, and
+ *    no other check was refused.
  * 3. Otherwise the strongest statistical score is compared with the conformal threshold:
  *    at/above -> `likely_ai`; below -> `no_clear_signs`. Either way, what provenance found
  *    without declaring AI (a broken signature, a record with no AI claim) is kept as a reason.
@@ -40,28 +42,34 @@ export function resolveOutcome(
 
   const statistical = signals.filter((s) => s.kind === 'statistical');
   if (statistical.length === 0) {
-    // Provenance was checked and nothing declared AI: an honest "no clear signs", with whatever
-    // the check did find (e.g. a manifest with no AI claim, or a broken signature) as context.
     const checked = signals.filter((s) => s.kind === 'provenance' || s.kind === 'platform_label');
     const notAssessed = results.flatMap((r) => (r.status === 'not_assessed' ? [r.reason] : []));
-    if (checked.length > 0) {
+    // Labels and signatures were checked, nothing declared AI, and no other check was asked to
+    // look: an honest "no clear signs", with whatever was found (a signature with no AI claim, a
+    // broken signature) as context.
+    if (checked.length > 0 && notAssessed.length === 0) {
       return {
         modality,
         outcome: 'no_clear_signs',
         confidence: null,
         alert: false,
         signals,
-        // Also say why a further check was skipped (e.g. the picture model does not judge drawings).
-        reasons: unique([...checked.flatMap((s) => s.reasons), ...notAssessed]),
+        reasons: unique(checked.flatMap((s) => s.reasons)),
       };
     }
+    // A check was asked to look and could not (the picture is a drawing, the video is animated,
+    // the text is too short). Finding no label does not make that "no clear signs": to a person
+    // that reads as "we looked and it seems fine". It was not checked, and the answer says why.
     return {
       modality,
       outcome: 'not_assessed',
       confidence: null,
       alert: false,
       signals,
-      reasons: unique(notAssessed.length > 0 ? notAssessed : ['unreadable_media']),
+      reasons: unique([
+        ...(notAssessed.length > 0 ? notAssessed : (['unreadable_media'] as ReasonCode[])),
+        ...checked.flatMap((s) => s.reasons),
+      ]),
     };
   }
 

@@ -1,6 +1,6 @@
 # M6 results: the browser extension
 
-**Date:** 2026-11-11 · Extension 0.1.1 (`apps/extension`), engine `0.8.1-m6` · Decision record: [0013](../decisions/0013-extension-architecture.md) · Working notes: [m6-progress.md](../m6-progress.md)
+**Date:** 2026-11-11 · Extension 0.1.2 (`apps/extension`), engine `0.8.2-m6` · Decision record: [0013](../decisions/0013-extension-architecture.md) · Working notes: [m6-progress.md](../m6-progress.md)
 
 The extension runs the same detection core as the Claude plugin. So this page does not measure detection again (that is in [EVAL.md](../../EVAL.md)); it checks the one thing that could make those numbers untrue in a browser: **does the browser give the checks the same input and the same numbers?** And it reports what is specific to the extension: accessibility, working offline, speed, and the quiet background check.
 
@@ -61,7 +61,16 @@ This is why the extension does not interrupt with a banner or a pop-up: on a wro
 The owner tried version 0.1.0 on everyday pages and reported two things.
 
 1. **A video page was marked for the words "explained in 20 minutes".** The scam rules counted any "in N minutes" as time pressure, and the panel showed one weak sign in warning colours. Fixed in 0.1.1 (scam rules 0.1.1): a time limit now counts only next to a main sign (a request, a threat, an unusual payment, a bad link), and one small sign on its own is shown calmly, like "nothing found", with the sign named. Every scam in the test sets is still caught (40 of 40, 25 of 25); the regression is a test.
-2. **Pictures on an AI image generator's site got "No clear signs".** Not explained yet. Possible reasons, all within the measured limits: the picture check was not switched on (then only labels and signatures are read, and the census shows such sites add none); the pictures are illustrations (not judged); or the picture model missed them (it catches between a quarter and two thirds of unlabelled AI photos). To tell these apart, 0.1.1 adds **Save a report for the developer**: a file with the numbers behind each result.
+2. **Pictures on an AI image generator's site got "No clear signs".** Version 0.1.1 added **Save a report for the developer** (a file with the numbers behind each result), and the owner sent three reports. They showed:
+   - **Five of the six generator pictures are in a painted or illustrated style.** The photo gate kept them out (gate scores 0.00 to 0.21), although the picture model scored most of them very high (11 to 14; the cut-off for photos is 6.27). The sixth looked like a photo and scored 4.5: a miss, within the measured miss rate.
+   - **Could such pictures be judged against a higher cut-off of their own?** Measured (`python3 -I eval/reference/image_art_analysis.py`): a cut-off from all human-made drawings, paintings, screenshots and memes (11.52) catches 28% of AI pictures of this kind but flags 3 of 89 human digital paintings; a cut-off that tries to protect digital paintings (13.89) still flags 2 of 89 and catches 7%. At the top of the scale human digital paintings and AI pictures score the same. Wrongly calling a human artist's work AI is a harm this project will not trade for detection, so these pictures stay unjudged.
+   - **The real fault was the wording.** An unjudged picture was shown as _No clear signs_, which reads as "we looked and found nothing". From 0.1.2 a picture or video that a check refused to judge is _Not checked_, with the reason ("cannot tell human-made pictures of this kind from AI-made ones").
+   - **Five icon files (SVG) were listed as pictures that could not be read.** Vector drawings are now left out.
+3. **Two ordinary pages got "some warning signs" for a link.** A newspaper's own "Facebook" button, and an address in a YouTube description that YouTube routes through itself, were read as "a link says one address but goes somewhere else". From scam rules 0.1.2: a link that stays on the page's own site is not a mismatch (unless it is written as a well-known brand's address, the fake-login trick); a site's "you are leaving" link is followed to its real destination; on a page, a button that only names a brand is not judged. In a message all of it still counts. Every scam in the test sets is still caught.
+4. **A YouTube Short with a visible AI label was not recognised.** Open. The frame check looked at the video while it played and found nothing (it catches about 8% of such video), and the label matcher did not find the label. YouTube changed its label in May 2026 and its exact text could not be confirmed from here, so the report now lists the label-like texts the page reader saw; the next report will show what to match.
+5. On the newspaper page, the one picture that was flagged (score 13.9, photo-like) illustrates an article about AI-made pictures.
+
+**What this says about the measurements above:** the quiet check was estimated on long texts, not on real pages with their buttons and links, and that estimate was too kind. Two of the first three real pages were wrongly marked. The link fixes remove those two; real pages remain the thing to measure.
 
 ## Limits
 

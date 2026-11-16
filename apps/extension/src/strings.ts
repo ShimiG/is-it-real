@@ -77,7 +77,7 @@ export const STRINGS = {
     'When this is on, each page is checked for scam warning signs and for the site\'s own "AI" labels as it opens. A mark appears on the Is It Real? button if something is found. Nothing is sent anywhere, and no pictures are fetched.',
   reportButton: 'Save a report for the developer',
   reportAbout:
-    'If a result looks wrong, this saves a file with the address of the page, the addresses of its pictures and the numbers behind each result. Nothing is sent: you decide whether to pass the file on.',
+    'If a result looks wrong, this saves a file with the address of the page, the addresses of its pictures, short label texts found on the page, and the numbers behind each result. Nothing is sent: you decide whether to pass the file on.',
   reportPreparing: (done: number, total: number) =>
     `Preparing the report: picture ${done} of ${total}…`,
   reportSaved: 'The report was saved with your downloads.',

@@ -9,7 +9,7 @@ import {
 } from './domains.js';
 import { FAMILY_EMERGENCY, NEGATION, REPORTING_SPEECH, SCAM_RULES } from './rules.js';
 
-export const SCAM_ENGINE_VERSION = 'scam-rules@0.1.1';
+export const SCAM_ENGINE_VERSION = 'scam-rules@0.1.2';
 
 export interface ScamInput {
   /** Visible text of the message or page. */
@@ -100,7 +100,7 @@ export function analyzeScam(input: ScamInput): ScamResult {
     }
   }
   for (const link of input.links ?? []) {
-    const mismatch = checkLinkMismatch(link.text, link.href);
+    const mismatch = checkLinkMismatch(link.text, link.href, input.pageHost);
     if (mismatch !== null) {
       add({ rule: 'link_mismatch', reason: 'scam_link_mismatch', weight: 2.5, evidence: mismatch });
       break;

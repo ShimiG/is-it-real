@@ -1,6 +1,6 @@
 # Is It Real? (browser extension)
 
-Checks the page you are looking at for **scam warning signs** and for **AI-made text, pictures and video**. It works on its own, without Claude. Version 0.1.1, for Chrome and other Chromium browsers (version 120 or newer).
+Checks the page you are looking at for **scam warning signs** and for **AI-made text, pictures and video**. It works on its own, without Claude. Version 0.1.2, for Chrome and other Chromium browsers (version 120 or newer).
 
 - Everything runs on your computer. Nothing about the pages you visit is sent anywhere.
 - The answers come from fixed rules and measurements, the same ones as in the Claude plugin. What they catch and miss: [EVAL.md](../../EVAL.md).
@@ -29,7 +29,7 @@ Other buttons in the panel:
 - **Set up the picture check:** a one-time download of about 220 MB (two model files). After that, photos without any label can be checked too, and still nothing leaves your computer.
 - **Check this video while it plays:** shown under a video that is streamed (YouTube and similar). Press play on the video, then the button; it looks at a few frames.
 - **Read the result aloud**, **Larger text**.
-- **Save a report for the developer:** if a result looks wrong, this saves a file with the page's address, the addresses of its pictures and the numbers behind each result. Nothing is sent; you decide whether to pass the file on.
+- **Save a report for the developer:** if a result looks wrong, this saves a file with the page's address, the addresses of its pictures, short label texts found on the page, and the numbers behind each result. Nothing is sent; you decide whether to pass the file on.
 - **Quiet checks while I browse:** as each page opens, it is checked for scam warning signs and for the site's own "AI" labels. If something is found, a mark appears on the toolbar button. It never interrupts.
 
 ## What it checks

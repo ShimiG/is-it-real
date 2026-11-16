@@ -25,7 +25,9 @@ export const PLATFORM_LABEL_RULES: PlatformLabelRule[] = [
   {
     platform: 'youtube',
     hosts: ['youtube.com'],
-    patterns: [/^altered or synthetic content$/i, /^how this content was made$/i],
+    // Since May 2026 the label sits on the video itself; the element can carry a little more
+    // text after the label ("Learn more"), so only the start is fixed.
+    patterns: [/^altered or synthetic content\b.{0,40}$/i, /^how this content was made$/i],
   },
   {
     platform: 'tiktok',

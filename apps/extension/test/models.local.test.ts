@@ -176,7 +176,9 @@ describe.skipIf(!ready)('picture check in Chromium with the shipped models (loca
     const text = await panel.locator('.ai').innerText();
     expect(text).toContain('Likely made with AI');
     expect(text).toContain('A picture-checking model found features typical of AI images.');
-    expect(text).toContain('Our picture check only works on plain photos.');
+    // The drawing is "Not checked", with the reason, never "No clear signs".
+    expect(text).toMatch(/Picture \d: Not checked/);
+    expect(text).toContain('cannot tell human-made pictures of this kind from AI-made ones');
     expect(text).not.toContain('The picture check is not set up yet');
     // Each result shows a small copy of its picture.
     expect(await panel.locator('.ai img.thumb').count()).toBe(3);

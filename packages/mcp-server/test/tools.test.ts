@@ -238,7 +238,8 @@ describe('check_video', () => {
     expect(r.checks_available.video_frames).toBe(false);
     const graphics = await checkVideoTool({ path: clip }, withFrames(six(250, 0)));
     expect(graphics.items[0]).toMatchObject({
-      outcome: 'no_clear_signs',
+      outcome: 'not_assessed',
+      title: 'Not checked',
       reasons: [{ code: 'video_not_plain_footage' }],
     });
     const unreadable = await checkVideoTool({ path: clip }, withFrames([]));

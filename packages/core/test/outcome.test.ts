@@ -36,6 +36,37 @@ describe('resolveOutcome', () => {
     expect(v.reasons).toEqual(['platform_label_ai']);
   });
 
+  it('says "not checked" when a check was asked to look and could not', () => {
+    // Reported from real use: AI pictures in a drawn style showed "No clear signs", which
+    // reads as "we looked and found nothing". Nothing had looked at the picture itself.
+    const noLabel: DetectorResult = {
+      status: 'assessed',
+      signal: {
+        detector: 'test.metadata@0',
+        modality: 'image',
+        kind: 'provenance',
+        score: 0,
+        reasons: [],
+      },
+    };
+    const refused: DetectorResult = {
+      status: 'not_assessed',
+      detector: 'test.classifier@0',
+      reason: 'not_a_photo',
+    };
+    expect(resolveOutcome('image', [noLabel, refused])).toMatchObject({
+      outcome: 'not_assessed',
+      reasons: ['not_a_photo'],
+    });
+    // With only the label check asked, nothing found is "no clear signs" as before.
+    expect(resolveOutcome('image', [noLabel])).toMatchObject({
+      outcome: 'no_clear_signs',
+      reasons: [],
+    });
+    // A declaration still wins over everything.
+    expect(resolveOutcome('image', [label(1), refused]).outcome).toBe('verified_ai');
+  });
+
   it('keeps what the signature check found when a statistical check also ran', () => {
     const broken: DetectorResult = {
       status: 'assessed',
