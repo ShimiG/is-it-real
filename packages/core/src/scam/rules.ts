@@ -22,6 +22,12 @@ export interface ScamRule {
    * with gift cards"). Off for rules whose patterns are themselves negations (secrecy).
    */
   negatable: boolean;
+  /**
+   * A supporting sign counts only when the text also carries a main sign (a request, a threat,
+   * an unusual payment, a bad link). On its own it is everyday language: "explained in 20
+   * minutes" and "dinner is ready in 30 minutes" are time limits, not pressure.
+   */
+  supporting?: boolean;
 }
 
 const GIFT = String.raw`(?:gift ?cards?|prepaid (?:debit |visa )?cards?|(?:apple|itunes|google play|steam|ebay|amazon|target|walmart|visa|razer gold|vanilla)(?: gift)? cards?)`;
@@ -125,6 +131,7 @@ export const SCAM_RULES: ScamRule[] = [
     reason: 'scam_urgency',
     weight: 1,
     negatable: false,
+    supporting: true,
     patterns: [
       /\bwithin (?:the next )?\d+ (?:hours?|minutes?)\b|\bin \d+ (?:hours?|minutes?)\b/,
       /\b(?:immediately|right away|act now|urgent(?:ly)?|asap|hurry|final (?:notice|reminder|warning)|last (?:chance|warning))\b/,

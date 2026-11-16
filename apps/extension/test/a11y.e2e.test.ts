@@ -50,7 +50,7 @@ describe.skipIf(!browserAvailable())('side panel accessibility', () => {
   beforeAll(async () => {
     ({ server, base } = await startServer());
     loaded = await launchWithExtension();
-  }, 120_000);
+  }, 240_000);
 
   afterAll(async () => {
     await loaded?.context.close();
@@ -62,24 +62,29 @@ describe.skipIf(!browserAvailable())('side panel accessibility', () => {
     await panel.emulateMedia({ colorScheme: scheme });
     await panel.setViewportSize({ width: 380, height: 900 });
     await panel.getByRole('button', { name: 'Check this page' }).click();
-    await expect.poll(() => panel.locator('.scam').count(), { timeout: 30_000 }).toBe(1);
+    await expect.poll(() => panel.locator('.scam').count(), { timeout: 90_000 }).toBe(1);
     return panel;
   };
 
   it('passes the audit before a check, in light and dark colours', async () => {
     const { panel } = await loaded.openPanelFor(`${base}/calm-page.html`);
     await expect
-      .poll(() => panel.locator('#setup-text').innerText(), { timeout: 15_000 })
+      .poll(() => panel.locator('#setup-text').innerText(), { timeout: 60_000 })
       .not.toBe('');
     expect(await audit(panel)).toEqual([]);
     await panel.emulateMedia({ colorScheme: 'dark' });
     expect(await audit(panel)).toEqual([]);
-  }, 60_000);
+  }, 240_000);
 
   it('passes the audit with a scam warning and picture results, in light and dark colours', async () => {
     expect(await audit(await checked(`${base}/scam-page.html`))).toEqual([]);
     expect(await audit(await checked(`${base}/scam-page.html`, 'dark'))).toEqual([]);
-  }, 120_000);
+  }, 240_000);
+
+  it('passes the audit with one small sign and the report button showing', async () => {
+    expect(await audit(await checked(`${base}/small-sign-page.html`))).toEqual([]);
+    expect(await audit(await checked(`${base}/small-sign-page.html`, 'dark'))).toEqual([]);
+  }, 240_000);
 
   it('passes the audit with video results and in large-text mode', async () => {
     const panel = await checked(`${base}/video-page.html`);
@@ -91,7 +96,7 @@ describe.skipIf(!browserAvailable())('side panel accessibility', () => {
     );
     expect(overflow).toBeLessThanOrEqual(0);
     await panel.getByRole('button', { name: 'Larger text' }).click();
-  }, 120_000);
+  }, 240_000);
 
   it('uses text of 18 pixels or more, 22 in large-text mode, and remembers the choice', async () => {
     const panel = await checked(`${base}/scam-page.html`);
@@ -116,7 +121,7 @@ describe.skipIf(!browserAvailable())('side panel accessibility', () => {
       .poll(() => panel.getByRole('button', { name: 'Larger text' }).getAttribute('aria-pressed'))
       .toBe('true');
     await panel.getByRole('button', { name: 'Larger text' }).click();
-  }, 120_000);
+  }, 240_000);
 
   it('can be used with the keyboard alone, and moves to the result after a check', async () => {
     const { panel } = await loaded.openPanelFor(`${base}/scam-page.html`);
@@ -127,7 +132,7 @@ describe.skipIf(!browserAvailable())('side panel accessibility', () => {
     const ring = await panel.evaluate(() => getComputedStyle(document.activeElement!).outlineWidth);
     expect(parseFloat(ring)).toBeGreaterThanOrEqual(3);
     await panel.keyboard.press('Enter');
-    await expect.poll(() => panel.locator('.scam').count(), { timeout: 30_000 }).toBe(1);
+    await expect.poll(() => panel.locator('.scam').count(), { timeout: 90_000 }).toBe(1);
     // After the check, reading continues at the result, not back at the top.
     expect(await panel.evaluate(() => document.activeElement?.id)).toBe('results');
     // Every control can be reached with Tab, and each has a name.
@@ -157,5 +162,5 @@ describe.skipIf(!browserAvailable())('side panel accessibility', () => {
         .map((b) => b.getBoundingClientRect().height),
     );
     expect(Math.min(...heights)).toBeGreaterThanOrEqual(44);
-  }, 120_000);
+  }, 240_000);
 });

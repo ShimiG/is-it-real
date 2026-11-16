@@ -9,7 +9,7 @@ import {
 } from './domains.js';
 import { FAMILY_EMERGENCY, NEGATION, REPORTING_SPEECH, SCAM_RULES } from './rules.js';
 
-export const SCAM_ENGINE_VERSION = 'scam-rules@0.1.0';
+export const SCAM_ENGINE_VERSION = 'scam-rules@0.1.1';
 
 export interface ScamInput {
   /** Visible text of the message or page. */
@@ -120,6 +120,10 @@ export function analyzeScam(input: ScamInput): ScamResult {
       });
     }
   }
+
+  // Supporting signs (time pressure) only count next to a main sign; alone they are dropped.
+  const supporting = new Set(SCAM_RULES.filter((r) => r.supporting === true).map((r) => r.id));
+  if ([...best.keys()].every((rule) => supporting.has(rule))) best.clear();
 
   const hits = [...best.values()].sort((a, b) => b.weight - a.weight);
   const score = hits.reduce((s, h) => s + h.weight, 0);

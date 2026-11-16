@@ -1,6 +1,6 @@
 # Spike (c): provenance census
 
-**Date:** 2026-11-09 · **Status:** first data in (2026-11-11); **provisional decision**, more data welcome · **Feeds:** background-mode alert rules (M6)
+**Date:** 2026-11-09 · **Status:** two rounds in (2026-11-16); decision confirmed for the extension, more data welcome · **Feeds:** background-mode alert rules (M6)
 
 ## Question
 
@@ -79,4 +79,27 @@ Three days of the owner's normal browsing. Only totals are recorded here: the ex
 - One person, three days. Older adults' browsing (Facebook, WhatsApp web, news) may look quite different.
 - The real-file tests in M3 show why the rate is low: most images on the web have been re-encoded by the site and have lost their labels.
 
-**Next round:** more days, ideally including social media, or a second person's browsing. The decision is revisited before M6 (the extension).
+## Results, round 2 (2026-11-09 to 2026-11-16, running total)
+
+The same browser, one week in all. Totals only, as before.
+
+|                               | Count                                           |
+| ----------------------------- | ----------------------------------------------- |
+| Pages counted                 | 382 (another 16 skipped by the never-scan list) |
+| Different sites               | 42                                              |
+| Images checked                | 1,196                                           |
+| Images that could not be read | 23 (1.9%)                                       |
+| Videos seen                   | 11                                              |
+| Content Credentials           | **0**                                           |
+| IPTC "made by AI" label       | **0**                                           |
+| Image-generator settings      | **0**                                           |
+| Platform AI labels            | **0** real ones (see below)                     |
+
+- The census counted 4 "generic label" hits. All four are search-result pages for the words "ai generated image": the pattern matched the words of the search, not a label. They are false hits of the census's loose pattern (the product's own label matcher only knows the real labels of named platforms).
+- One of the pages was an AI image generator's own site. Its pictures carried no signature, no metadata label and no generator settings either.
+- Zero real hits in 382 pages puts the rate very likely below about 1 in 130 pages, and below about 0.25% of images.
+- The mix is still work browsing: code hosting, search and job sites make up about 85% of the pages; 18 pages were on social or video sites.
+
+**Decision, confirmed:** in everyday browsing, markers in files are too rare to build alerts on. The extension's background mode marks the toolbar button quietly and does not interrupt (ADR-0013). Finding AI pictures in the wild rests on the picture model, with the limits measured in [EVAL.md](../../EVAL.md).
+
+**Still open:** browsing that is mostly social media, and a second person's browsing.

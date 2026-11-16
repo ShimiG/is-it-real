@@ -196,7 +196,11 @@ describe.skipIf(!existsSync(copilot))('real Copilot download (local only)', () =
     });
     const c2pa = verdict.signals.find((s) => s.detector.startsWith('image.c2pa'))!;
     expect(c2pa.details).toMatchObject({ state: 'unverified', issuer: 'Microsoft Corporation' });
-    expect(String(c2pa.details!['failures'])).toBe('signingCredential.invalid, claim.malformed');
+    // The first code depends on the date: "invalid" while Microsoft's certificate was current,
+    // "expired" since it ran out in November 2026. The answer to the person is the same.
+    expect(String(c2pa.details!['failures'])).toMatch(
+      /^signingCredential\.(invalid|expired), claim\.malformed$/,
+    );
     expect(String(c2pa.details!['aiActions'])).toMatch(/artificial intelligence/);
   });
 });

@@ -43,3 +43,5 @@ pnpm --filter @isitreal/extension build
 ```
 
 Then in Chrome: `chrome://extensions`, switch on Developer mode, "Load unpacked", choose `apps/extension/dist`. Open a page, click the extension's button, press "Check this page".
+
+- **First report from real use (2026-11-16):** a time limit alone ("explained in 20 minutes") was shown as a scam sign; fixed in extension 0.1.1 / plugin 0.5.1. Pictures on an AI image generator's site were not marked; a report export was added to find out why. See [M6 results](eval/m6-results.md).

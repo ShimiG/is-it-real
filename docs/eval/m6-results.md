@@ -1,6 +1,6 @@
 # M6 results: the browser extension
 
-**Date:** 2026-11-11 · Extension 0.1.0 (`apps/extension`), engine `0.8.0-m6` · Decision record: [0013](../decisions/0013-extension-architecture.md) · Working notes: [m6-progress.md](../m6-progress.md)
+**Date:** 2026-11-11 · Extension 0.1.1 (`apps/extension`), engine `0.8.1-m6` · Decision record: [0013](../decisions/0013-extension-architecture.md) · Working notes: [m6-progress.md](../m6-progress.md)
 
 The extension runs the same detection core as the Claude plugin. So this page does not measure detection again (that is in [EVAL.md](../../EVAL.md)); it checks the one thing that could make those numbers untrue in a browser: **does the browser give the checks the same input and the same numbers?** And it reports what is specific to the extension: accessibility, working offline, speed, and the quiet background check.
 
@@ -55,6 +55,13 @@ The background mode runs the scam rules and the site-label matcher on each page'
 | Amber mark ("some warning signs")                                  | 21 (0.56%)                                            |
 
 This is why the extension does not interrupt with a banner or a pop-up: on a wrong mark, nothing is lost; a wrong interruption costs trust. Real web pages (shop pages, bank pages, forums) were not measured.
+
+## First report from real use (2026-11-16)
+
+The owner tried version 0.1.0 on everyday pages and reported two things.
+
+1. **A video page was marked for the words "explained in 20 minutes".** The scam rules counted any "in N minutes" as time pressure, and the panel showed one weak sign in warning colours. Fixed in 0.1.1 (scam rules 0.1.1): a time limit now counts only next to a main sign (a request, a threat, an unusual payment, a bad link), and one small sign on its own is shown calmly, like "nothing found", with the sign named. Every scam in the test sets is still caught (40 of 40, 25 of 25); the regression is a test.
+2. **Pictures on an AI image generator's site got "No clear signs".** Not explained yet. Possible reasons, all within the measured limits: the picture check was not switched on (then only labels and signatures are read, and the census shows such sites add none); the pictures are illustrations (not judged); or the picture model missed them (it catches between a quarter and two thirds of unlabelled AI photos). To tell these apart, 0.1.1 adds **Save a report for the developer**: a file with the numbers behind each result.
 
 ## Limits
 

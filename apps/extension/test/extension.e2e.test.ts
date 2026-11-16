@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import type { Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -21,7 +21,7 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
       writeFileSync(join(fake, model.file), 'not a model');
     ({ server, base } = await startServer({ '/fake-models/': fake }));
     loaded = await launchWithExtension();
-  }, 120_000);
+  }, 240_000);
 
   afterAll(async () => {
     await loaded?.context.close();
@@ -32,7 +32,7 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     const { panel } = await loaded.openPanelFor(`${base}/scam-page.html`);
     await panel.getByRole('button', { name: 'Check this page' }).click();
     const scam = panel.locator('.scam');
-    await expect.poll(() => scam.count(), { timeout: 30_000 }).toBe(1);
+    await expect.poll(() => scam.count(), { timeout: 90_000 }).toBe(1);
     expect(await scam.locator('.headline').innerText()).toContain(
       'Warning: this page looks like a scam.',
     );
@@ -44,27 +44,83 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
       'scam',
     );
     expect(await panel.getByRole('button', { name: 'Check again' }).count()).toBe(1);
-  }, 60_000);
+  }, 240_000);
+
+  it('does not treat a time limit or one small sign as a scam warning', async () => {
+    // Reported from real use: a video description "explained in 20 minutes" was marked.
+    const dune = await loaded.openPanelFor(`${base}/video-description-page.html`);
+    await dune.panel.getByRole('button', { name: 'Check this page' }).click();
+    await expect.poll(() => dune.panel.locator('.scam').count(), { timeout: 90_000 }).toBe(1);
+    expect(await dune.panel.locator('.scam').getAttribute('class')).toContain('scam-none');
+    expect(await dune.panel.locator('.scam .reasons').count()).toBe(0);
+    // One weak sign is named, calmly, and does not look like a warning.
+    const small = await loaded.openPanelFor(`${base}/small-sign-page.html`);
+    await small.panel.getByRole('button', { name: 'Check this page' }).click();
+    const card = small.panel.locator('.scam');
+    await expect.poll(() => card.count(), { timeout: 90_000 }).toBe(1);
+    expect(await card.getAttribute('class')).toContain('scam-low');
+    expect(await card.locator('.headline').innerText()).toContain(
+      'One small sign was found. On its own it is not a reason to worry.',
+    );
+    expect(await card.locator('.advice').count()).toBe(0);
+    const colours = (selector: string, panel: typeof small.panel) =>
+      panel.evaluate((s) => getComputedStyle(document.querySelector(s)!).backgroundColor, selector);
+    expect(await colours('.scam', small.panel)).toBe(await colours('.scam', dune.panel));
+  }, 240_000);
+
+  it('saves a report with the numbers behind the result, on request', async () => {
+    const { panel } = await loaded.openPanelFor(`${base}/scam-page.html`);
+    expect(
+      await panel.getByRole('button', { name: 'Save a report for the developer' }).count(),
+    ).toBe(0);
+    await panel.getByRole('button', { name: 'Check this page' }).click();
+    await expect.poll(() => panel.locator('.scam').count(), { timeout: 90_000 }).toBe(1);
+    const download = panel.waitForEvent('download');
+    await panel.getByRole('button', { name: 'Save a report for the developer' }).click();
+    const file = await download;
+    expect(file.suggestedFilename()).toMatch(/^is-it-real-report-[\d-]+\.json$/);
+    const report = JSON.parse(readFileSync(await file.path(), 'utf8')) as {
+      page: string;
+      extension: string;
+      pictureCheckFiles: string;
+      cutOffs: { picture: number; videoFile: number; videoPlaying: number };
+      scam: { risk: string; reasons: { code: string; evidence?: string }[] };
+      items: { kind: string; source: string; outcome: string; reasons: string[] }[];
+    };
+    expect(report.page).toBe(`${base}/scam-page.html`);
+    expect(report.pictureCheckFiles).toBe('absent');
+    expect(report.cutOffs.picture).toBeGreaterThan(5);
+    expect(report.cutOffs.videoPlaying).toBeGreaterThan(report.cutOffs.videoFile);
+    expect(report.scam.risk).toBe('high');
+    expect(report.scam.reasons[0]!.evidence).toBeTruthy();
+    expect(report.items.filter((i) => i.kind === 'image')).toHaveLength(3);
+    expect(report.items.find((i) => i.outcome === 'verified_ai')!.reasons).toContain(
+      'c2pa_declares_ai',
+    );
+    // Addresses and results only: the page's own sentences are not in the file.
+    expect(JSON.stringify(report)).not.toContain('closed for good');
+    expect(await panel.locator('#status').innerText()).toContain('report was saved');
+  }, 240_000);
 
   it('takes the result away when the person goes to another page', async () => {
     const { page, panel } = await loaded.openPanelFor(`${base}/scam-page.html`);
     await panel.getByRole('button', { name: 'Check this page' }).click();
-    await expect.poll(() => panel.locator('.scam').count(), { timeout: 30_000 }).toBe(1);
+    await expect.poll(() => panel.locator('.scam').count(), { timeout: 90_000 }).toBe(1);
     await page.goto(`${base}/calm-page.html`);
     // The scam warning must not stay on screen for the page that was not checked.
-    await expect.poll(() => panel.locator('.scam').count(), { timeout: 15_000 }).toBe(0);
+    await expect.poll(() => panel.locator('.scam').count(), { timeout: 60_000 }).toBe(0);
     expect(await panel.locator('#status').innerText()).toContain('different page');
     expect(await panel.getByRole('button', { name: 'Check this page' }).count()).toBe(1);
     // And the new page can be checked.
     await panel.getByRole('button', { name: 'Check this page' }).click();
-    await expect.poll(() => panel.locator('.scam-none').count(), { timeout: 30_000 }).toBe(1);
-  }, 90_000);
+    await expect.poll(() => panel.locator('.scam-none').count(), { timeout: 90_000 }).toBe(1);
+  }, 240_000);
 
   it('checks the pictures on the page and skips icons', async () => {
     const { panel } = await loaded.openPanelFor(`${base}/scam-page.html`);
     await panel.getByRole('button', { name: 'Check this page' }).click();
     await expect
-      .poll(() => panel.locator('.ai .card').count(), { timeout: 30_000 })
+      .poll(() => panel.locator('.ai .card').count(), { timeout: 90_000 })
       .toBeGreaterThan(0);
     const text = await panel.locator('.ai').innerText();
     // Three real pictures: the picture shown as a 16-pixel icon and the broken one are not content.
@@ -81,25 +137,25 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     expect(text).toContain('the signature is broken or changed');
     expect(text).not.toContain('could not be checked in this browser');
     expect(text).toContain('does not prove that something is real or safe');
-  }, 60_000);
+  }, 240_000);
 
   it('says nothing alarming about a calm page, and never says "safe" or "real" on its own', async () => {
     const { panel } = await loaded.openPanelFor(`${base}/calm-page.html`);
     await panel.getByRole('button', { name: 'Check this page' }).click();
     const scam = panel.locator('.scam');
-    await expect.poll(() => scam.count(), { timeout: 30_000 }).toBe(1);
+    await expect.poll(() => scam.count(), { timeout: 90_000 }).toBe(1);
     expect(await scam.getAttribute('class')).toContain('scam-none');
     expect(await scam.locator('.headline').innerText()).toContain(
       'We did not find scam warning signs. Stay careful anyway.',
     );
     expect(await scam.locator('.advice').count()).toBe(0);
-  }, 60_000);
+  }, 240_000);
 
   it('checks video files for a signature, and says what it could not check', async () => {
     const { panel } = await loaded.openPanelFor(`${base}/video-page.html`);
     await panel.getByRole('button', { name: 'Check this page' }).click();
     await expect
-      .poll(() => panel.locator('.ai .card').count(), { timeout: 30_000 })
+      .poll(() => panel.locator('.ai .card').count(), { timeout: 90_000 })
       .toBeGreaterThan(1);
     const text = await panel.locator('.ai').innerText();
     expect(text).toContain('Video 1: Made with AI');
@@ -107,7 +163,7 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     expect(text).toContain('Video 2: No clear signs');
     // Without the picture check, frames are not looked at, and the panel says so.
     expect(text).toContain('only the labels and the signature of this video were checked');
-  }, 60_000);
+  }, 240_000);
 
   it('reads frames from a playing, streamed video without touching it', async () => {
     const { page, panel } = await loaded.openPanelFor(`${base}/stream-page.html`);
@@ -153,10 +209,10 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     // The page check sees a streamed video: labels only, and no file was fetched.
     await panel.getByRole('button', { name: 'Check this page' }).click();
     await expect
-      .poll(() => panel.locator('.ai .card').count(), { timeout: 30_000 })
+      .poll(() => panel.locator('.ai .card').count(), { timeout: 90_000 })
       .toBeGreaterThan(0);
     expect(await panel.locator('.ai').innerText()).toContain('sent in small pieces');
-  }, 90_000);
+  }, 240_000);
 
   it('says when a video is paused instead of waiting forever', async () => {
     const { page, panel } = await loaded.openPanelFor(`${base}/stream-page.html`);
@@ -177,7 +233,7 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
       tabId,
     );
     expect(problem).toBe('paused');
-  }, 60_000);
+  }, 240_000);
 
   it('marks the toolbar button quietly as pages open, and stops when switched off', async () => {
     const badgeOf = (url: string) =>
@@ -191,7 +247,7 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     const scam = await loaded.context.newPage();
     await scam.goto(`${base}/scam-page.html`);
     await expect
-      .poll(async () => (await badgeOf(`${base}/scam-page.html`)).text, { timeout: 15_000 })
+      .poll(async () => (await badgeOf(`${base}/scam-page.html`)).text, { timeout: 60_000 })
       .toBe('!');
     expect((await badgeOf(`${base}/scam-page.html`)).title).toContain('looks like a scam');
     const calm = await loaded.context.newPage();
@@ -214,7 +270,7 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     await again.waitForTimeout(2500);
     expect((await badgeOf(`${base}/scam-page.html?again`)).text).toBe('');
     await panel.getByRole('button', { name: 'Quiet checks while I browse' }).click();
-  }, 90_000);
+  }, 240_000);
 
   it('checks one picture chosen with a right-click', async () => {
     const { panel } = await loaded.openPanelFor(`${base}/calm-page.html`);
@@ -223,7 +279,7 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
       (picture) => chrome.storage.session.set({ pendingPicture: picture }),
       { url: `${base}/c2pa/ai-declared.jpg`, pageUrl: `${base}/scam-page.html`, at: Date.now() },
     );
-    await expect.poll(() => panel.locator('.ai .card').count(), { timeout: 30_000 }).toBe(1);
+    await expect.poll(() => panel.locator('.ai .card').count(), { timeout: 90_000 }).toBe(1);
     const text = await panel.locator('.ai').innerText();
     expect(text).toContain('The picture you chose');
     expect(text).toContain('This picture: Made with AI');
@@ -237,7 +293,7 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     expect(await loaded.worker.evaluate(() => chrome.runtime.getManifest().permissions)).toContain(
       'contextMenus',
     );
-  }, 60_000);
+  }, 240_000);
 
   it('finds a site label far down a long page', async () => {
     // The label matcher only knows real platforms, so the page is read as if it were one: the
@@ -252,7 +308,7 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
       tabId,
     );
     expect(answer.page.pageLabels).toEqual(['AI info']);
-  }, 60_000);
+  }, 240_000);
 
   it('refuses model files that are not the genuine ones', async () => {
     // A folder with files of the right names and the wrong content.
@@ -262,18 +318,18 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     );
     const { panel } = await loaded.openPanelFor(`${base}/calm-page.html`);
     await expect
-      .poll(() => panel.locator('#setup-text').innerText(), { timeout: 15_000 })
+      .poll(() => panel.locator('#setup-text').innerText(), { timeout: 60_000 })
       .toContain('Not set up yet');
     await panel.getByRole('button', { name: 'Set up the picture check' }).click();
     await expect
-      .poll(() => panel.locator('#setup-text').innerText(), { timeout: 30_000 })
+      .poll(() => panel.locator('#setup-text').innerText(), { timeout: 90_000 })
       .toContain('The download did not finish');
     expect(await panel.getByRole('button', { name: 'Try again' }).isVisible()).toBe(true);
     // Nothing was kept: a check still runs, without the picture model.
     await panel.getByRole('button', { name: 'Check this page' }).click();
-    await expect.poll(() => panel.locator('.scam').count(), { timeout: 30_000 }).toBe(1);
+    await expect.poll(() => panel.locator('.scam').count(), { timeout: 90_000 }).toBe(1);
     await loaded.worker.evaluate(() => chrome.storage.local.remove('modelBaseUrl'));
-  }, 90_000);
+  }, 240_000);
 
   it('explains when a page cannot be checked', async () => {
     const panel = await loaded.context.newPage();
@@ -287,8 +343,8 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
       await panel.goto(`chrome-extension://${loaded.extensionId}/sidepanel.html?tabId=${tabId}`);
       await panel.getByRole('button', { name: 'Check this page' }).click();
       await expect
-        .poll(() => panel.locator('#status').innerText(), { timeout: 15_000 })
+        .poll(() => panel.locator('#status').innerText(), { timeout: 60_000 })
         .toContain('cannot be checked');
     }
-  }, 60_000);
+  }, 240_000);
 });

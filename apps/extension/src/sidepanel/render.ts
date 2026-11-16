@@ -10,7 +10,7 @@ import { STRINGS } from '../strings.js';
 const MAX_REASONS = 3;
 
 /** Symbols carry the meaning together with the words, for people who do not see the colours. */
-const SCAM_SYMBOL: Record<ScamRisk, string> = { high: '⚠', medium: '⚠', low: '!', none: '•' };
+const SCAM_SYMBOL: Record<ScamRisk, string> = { high: '⚠', medium: '⚠', low: '•', none: '•' };
 const OUTCOME_SYMBOL: Record<Outcome, string> = {
   verified_ai: 'AI',
   likely_ai: 'AI?',

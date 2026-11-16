@@ -28,7 +28,7 @@ export const OUTCOME_TEXT: Record<Outcome, { title: string; body: string }> = {
 export const SCAM_TEXT: Record<ScamRisk, string> = {
   high: 'Warning: this page looks like a scam.',
   medium: 'Be careful: this page has some warning signs.',
-  low: 'A small warning sign was found.',
+  low: 'One small sign was found. On its own it is not a reason to worry.',
   none: 'We did not find scam warning signs. Stay careful anyway.',
 };
 

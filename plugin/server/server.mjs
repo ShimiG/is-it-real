@@ -36736,7 +36736,7 @@ var OUTCOME_TEXT = {
 var SCAM_TEXT = {
   high: "Warning: this page looks like a scam.",
   medium: "Be careful: this page has some warning signs.",
-  low: "A small warning sign was found.",
+  low: "One small sign was found. On its own it is not a reason to worry.",
   none: "We did not find scam warning signs. Stay careful anyway."
 };
 var REASON_TEXT = {
@@ -37246,6 +37246,7 @@ var SCAM_RULES = [
     reason: "scam_urgency",
     weight: 1,
     negatable: false,
+    supporting: true,
     patterns: [
       /\bwithin (?:the next )?\d+ (?:hours?|minutes?)\b|\bin \d+ (?:hours?|minutes?)\b/,
       /\b(?:immediately|right away|act now|urgent(?:ly)?|asap|hurry|final (?:notice|reminder|warning)|last (?:chance|warning))\b/,
@@ -37314,7 +37315,7 @@ var REPORTING_SPEECH = /\b(?:scams?|scammers?|fraudsters?|con artists?|beware|re
 var NEGATION = /\b(?:never|no (?:real|legitimate|one|business|agency)|will not|won'?t|does not|doesn'?t|do not|don'?t|no such thing|is not|isn'?t|not (?:a )?(?:real|legitimate))\b/;
 
 // ../core/src/scam/engine.ts
-var SCAM_ENGINE_VERSION = "scam-rules@0.1.0";
+var SCAM_ENGINE_VERSION = "scam-rules@0.1.1";
 var SCAM_THRESHOLDS = { high: 4, medium: 2.5 };
 function analyzeScam(input2) {
   const text = normalizeText(input2.text).replace(/\bu\b/gi, "you").replace(/\bur\b/gi, "your").replace(/\b2day\b/gi, "today");
@@ -37385,6 +37386,8 @@ function analyzeScam(input2) {
       });
     }
   }
+  const supporting = new Set(SCAM_RULES.filter((r) => r.supporting === true).map((r) => r.id));
+  if ([...best.keys()].every((rule) => supporting.has(rule))) best.clear();
   const hits = [...best.values()].sort((a, b) => b.weight - a.weight);
   const score = hits.reduce((s, h) => s + h.weight, 0);
   const risk = score >= SCAM_THRESHOLDS.high ? "high" : score >= SCAM_THRESHOLDS.medium ? "medium" : score > 0 ? "low" : "none";
@@ -38769,7 +38772,7 @@ function detectTextStats(text, m = TEXT_STATS_MODEL) {
 }
 
 // ../core/src/version.ts
-var ENGINE_VERSION = "0.8.0-m6";
+var ENGINE_VERSION = "0.8.1-m6";
 
 // ../core/src/image/preprocess.ts
 var PRECISION_BITS = 32 - 8 - 2;
@@ -96954,7 +96957,7 @@ async function checkVideoTool(args, caps) {
 
 // src/server.ts
 var SERVER_NAME = "is-it-real";
-var SERVER_VERSION = "0.5.0";
+var SERVER_VERSION = "0.5.1";
 var link = external_exports.object({ text: external_exports.string().max(500), href: external_exports.string().max(4e3) });
 var labels = external_exports.array(external_exports.string().max(200)).max(50).optional().describe(
   'Short texts shown right next to the item (badges, captions, alt text), e.g. "AI info".'

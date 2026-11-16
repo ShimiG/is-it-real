@@ -139,9 +139,9 @@ progress {
   border: 2px solid currentColor;
   border-radius: 0.4rem;
 }
+/* One small sign on its own is not a warning: it looks like "nothing found", with the sign named. */
 .scam-high,
-.scam-medium,
-.scam-low {
+.scam-medium {
   border-color: var(--warn);
   background: var(--warn-bg);
 }
@@ -152,8 +152,7 @@ progress {
 .scam-high .headline {
   color: var(--danger);
 }
-.scam-medium .headline,
-.scam-low .headline {
+.scam-medium .headline {
   color: var(--warn);
 }
 .outcome-verified_ai,

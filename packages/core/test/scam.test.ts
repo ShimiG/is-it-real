@@ -24,10 +24,29 @@ describe('analyzeScam', () => {
   });
 
   it('does not flag a store selling gift cards', () => {
+    // "Ends tonight" is a time limit, which on its own is everyday language.
     expect(
       analyzeScam({ text: 'Buy a $50 gift card and get a $10 bonus card. Offer ends tonight.' })
         .risk,
-    ).toBe('low');
+    ).toBe('none');
+  });
+
+  it('counts a time limit only next to a request or a threat', () => {
+    // Reported from real use: a YouTube description was marked for "in 20 minutes".
+    for (const text of [
+      "Frank Herbert's Children of Dune explained in 20 minutes",
+      'Dinner is ready in 30 minutes. Recipe below.',
+      'Hurry, the sale ends today or tomorrow at the latest.',
+    ]) {
+      const r = analyzeScam({ text, pageHost: 'www.youtube.com' });
+      expect(r.risk, text).toBe('none');
+      expect(r.hits, text).toEqual([]);
+    }
+    const withThreat = analyzeScam({
+      text: 'Respond within 24 hours or your account will be closed.',
+    });
+    expect(withThreat.risk).toBe('medium');
+    expect(withThreat.reasons).toEqual(['scam_threat', 'scam_urgency']);
   });
 
   it('ignores warnings that say what a bank will never do', () => {

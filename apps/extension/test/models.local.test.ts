@@ -180,6 +180,24 @@ describe.skipIf(!ready)('picture check in Chromium with the shipped models (loca
     expect(text).not.toContain('The picture check is not set up yet');
     // Each result shows a small copy of its picture.
     expect(await panel.locator('.ai img.thumb').count()).toBe(3);
+    // The report for the developer holds the numbers behind each picture.
+    const download = panel.waitForEvent('download');
+    await panel.getByRole('button', { name: 'Save a report for the developer' }).click();
+    const report = JSON.parse(readFileSync(await (await download).path(), 'utf8')) as {
+      pictureCheckFiles: string;
+      items: {
+        kind: string;
+        outcome: string;
+        numbers?: { gate: number; raw: number; photoLike: boolean; scoreAgainstRealPhotos: number };
+      }[];
+    };
+    expect(report.pictureCheckFiles).toBe('ready');
+    const pictures = report.items.filter((i) => i.kind === 'image');
+    expect(pictures.every((p) => p.numbers !== undefined)).toBe(true);
+    const flagged = pictures.find((p) => p.outcome === 'likely_ai')!;
+    expect(flagged.numbers).toMatchObject({ photoLike: true });
+    expect(flagged.numbers!.scoreAgainstRealPhotos).toBeGreaterThanOrEqual(0.99);
+    expect(pictures.some((p) => p.numbers!.photoLike === false)).toBe(true);
   }, 180_000);
 
   it('reads video frames to the same numbers as the plugin', async () => {

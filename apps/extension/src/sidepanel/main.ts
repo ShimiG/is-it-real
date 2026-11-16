@@ -20,8 +20,10 @@ import {
   type PanelItem,
   type PanelResult,
   type PendingPicture,
+  type PictureScore,
 } from '../messages.js';
 import { STRINGS } from '../strings.js';
+import { buildReport, saveReport } from './report.js';
 import {
   renderItem,
   renderPicture,
@@ -38,12 +40,15 @@ const results = byId<HTMLDivElement>('results');
 const readAloud = byId<HTMLButtonElement>('read-aloud');
 const largeText = byId<HTMLButtonElement>('large-text');
 const quietChecks = byId<HTMLButtonElement>('quiet-checks');
+const reportButton = byId<HTMLButtonElement>('report');
+const reportAbout = byId<HTMLParagraphElement>('report-about');
 const setupText = byId<HTMLParagraphElement>('setup-text');
 const setupProgress = byId<HTMLProgressElement>('setup-progress');
 const setupButton = byId<HTMLButtonElement>('setup-button');
 
 let lastResult: PanelResult | null = null;
 let lastTabId: number | null = null;
+let lastModels: ModelsState | null = null;
 
 class UserMessage extends Error {}
 
@@ -171,6 +176,7 @@ async function runEngine(page: PageData): Promise<PanelResult> {
 const MB = 1024 * 1024;
 
 function showModels(models: ModelsState): void {
+  lastModels = models;
   setupProgress.hidden = models.state !== 'downloading';
   setupButton.hidden = models.state === 'downloading' || models.state === 'ready';
   if (models.state === 'absent') {
@@ -190,11 +196,50 @@ function showModels(models: ModelsState): void {
   }
 }
 
+/** One picture's raw numbers from the engine (for the report). */
+async function scorePicture(url: string): Promise<PictureScore | null> {
+  let score: PictureScore | null = null;
+  let failure: string | null = null;
+  const engine = await connectEngine((event, close) => {
+    if (event.type === 'score') {
+      score = event.score;
+      close();
+    } else if (event.type === 'error') {
+      failure = event.message;
+      close();
+    }
+  });
+  engine.send({ type: 'score-picture', url });
+  await engine.closed;
+  if (failure !== null) throw new Error(failure);
+  return score;
+}
+
+/** Saves a file with the numbers behind the last result, for explaining a surprising answer. */
+async function saveDebugReport(): Promise<void> {
+  if (lastResult === null) return;
+  reportButton.disabled = true;
+  try {
+    const report = await buildReport(lastResult, lastModels, scorePicture, (done, total) => {
+      status.textContent = STRINGS.reportPreparing(done, total);
+    });
+    saveReport(report);
+    status.textContent = STRINGS.reportSaved;
+  } catch (err) {
+    console.error(err);
+    status.textContent = STRINGS.failed;
+  } finally {
+    reportButton.disabled = false;
+  }
+}
+
 /** Checks one picture the person chose with a right-click, and shows only that. */
 async function checkChosenPicture(picture: PendingPicture): Promise<void> {
   checkButton.disabled = true;
   speechSynthesis.cancel();
   readAloud.hidden = true;
+  reportButton.hidden = true;
+  reportAbout.hidden = true;
   lastResult = null;
   results.replaceChildren();
   status.textContent = STRINGS.checkingPicture;
@@ -306,6 +351,8 @@ function forgetResult(): void {
   lastTabId = null;
   results.replaceChildren();
   readAloud.hidden = true;
+  reportButton.hidden = true;
+  reportAbout.hidden = true;
   checkButton.textContent = STRINGS.checkButton;
   status.textContent = STRINGS.movedOn;
 }
@@ -350,6 +397,8 @@ async function check(): Promise<void> {
   checkButton.disabled = true;
   speechSynthesis.cancel();
   readAloud.hidden = true;
+  reportButton.hidden = true;
+  reportAbout.hidden = true;
   results.replaceChildren();
   status.textContent = STRINGS.checking;
   try {
@@ -360,6 +409,8 @@ async function check(): Promise<void> {
     results.replaceChildren(renderResult(lastResult, { onWatch: (t) => void watch(t) }));
     status.textContent = '';
     readAloud.hidden = false;
+    reportButton.hidden = false;
+    reportAbout.hidden = false;
     // Move reading position to the result for keyboard and screen-reader users.
     results.focus();
   } catch (err) {
@@ -415,6 +466,9 @@ largeText.addEventListener(
   'click',
   () => void setLargeText(largeText.getAttribute('aria-pressed') !== 'true', true),
 );
+reportButton.textContent = STRINGS.reportButton;
+reportAbout.textContent = STRINGS.reportAbout;
+reportButton.addEventListener('click', () => void saveDebugReport());
 quietChecks.textContent = STRINGS.quietChecks;
 byId('quiet-about').textContent = STRINGS.quietChecksAbout;
 quietChecks.addEventListener('click', () => {
