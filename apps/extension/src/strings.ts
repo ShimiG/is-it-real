@@ -7,6 +7,8 @@ export const STRINGS = {
   appName: 'Is It Real?',
   tagline:
     'Checks this page for scam warning signs and AI-made content. Everything stays on your computer.',
+  disclaimer:
+    'Is It Real? works by algorithms: fixed rules and measurements. It is not 100% accurate. It can miss things and it can be wrong, so treat a result as a hint, not as proof.',
   checkButton: 'Check this page',
   checkAgain: 'Check again',
   checking: 'Checking the page…',

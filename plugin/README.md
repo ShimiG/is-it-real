@@ -1,6 +1,8 @@
 # Is It Real? (Claude plugin)
 
-Checks the page you are looking at, a message, an image or a video file for **scam warning signs** and for **AI-generated text, images and video**. Version 0.5.5.
+Checks the page you are looking at, a message, an image or a video file for **scam warning signs** and for **AI-generated text, images and video**. Version 0.5.6.
+
+> **Disclaimer:** Is It Real? works by algorithms: fixed rules and measurements. It is not 100% accurate. It can miss things and it can be wrong, so treat a result as a hint, not as proof.
 
 - Runs on your computer. Nothing is uploaded; the only network use is downloading the page's own images and video files (and, once, the libraries and model files listed below).
 - The answers come from fixed rules and measurements, not from an AI opinion. Claude collects the page, calls the tools and explains the results.

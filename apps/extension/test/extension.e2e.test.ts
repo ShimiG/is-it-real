@@ -173,6 +173,8 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
         textsNextToIt?: string[];
       }[];
     };
+    // The panel always says what kind of tool this is.
+    expect(await panel.locator('#disclaimer').innerText()).toContain('It is not 100% accurate');
     expect(report.page).toBe(`${base}/scam-page.html`);
     // Picture addresses are saved without what follows the "?" (often a key to the file).
     for (const item of report.items) expect(item.source).not.toMatch(/[?#]/);

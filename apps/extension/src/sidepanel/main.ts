@@ -449,6 +449,7 @@ async function setLargeText(on: boolean, save: boolean): Promise<void> {
 
 byId('app-name').textContent = STRINGS.appName;
 byId('tagline').textContent = STRINGS.tagline;
+byId('disclaimer').textContent = STRINGS.disclaimer;
 byId('version').textContent = STRINGS.version(chrome.runtime.getManifest().version, ENGINE_VERSION);
 checkButton.textContent = STRINGS.checkButton;
 readAloud.textContent = STRINGS.readAloud;

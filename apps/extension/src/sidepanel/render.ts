@@ -274,5 +274,6 @@ export function resultToSpeech(result: PanelResult): string {
   else if (quiet > 0) parts.push(STRINGS.speechOthers(quiet));
   if (result.pageSays.length > 0)
     parts.push(`${STRINGS.pageSaysHeading}:`, ...result.pageSays.map((t) => `${t}.`));
+  parts.push(STRINGS.disclaimer);
   return parts.join(' ');
 }

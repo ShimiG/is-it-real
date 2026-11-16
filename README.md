@@ -2,6 +2,8 @@
 
 A free, open-source, on-device detector for AI-generated text, images and video, built to help people (especially older adults) spot AI-driven scams.
 
+> **Disclaimer:** Is It Real? works by algorithms: fixed rules and measurements. It is not 100% accurate. It can miss things and it can be wrong, so treat a result as a hint, not as proof.
+
 **Status:** M6 built: a Claude plugin (v0.5) and a standalone browser extension (v0.1) that check pages, messages, pictures and video for scam warning signs and AI-generated content, on your computer. What they catch and miss: [EVAL.md](EVAL.md). Roadmap: [PLAN.md](PLAN.md).
 
 - **Algorithms first:** provenance (C2PA), metadata, statistics and signal processing. LLMs are used only to explain results, never to decide them.
