@@ -24,6 +24,7 @@ const page = (over: Partial<PageData> = {}): PageData => ({
   images: [],
   videos: [],
   pageLabels: [],
+  videoPage: false,
   skippedImages: 0,
   ...over,
 });
@@ -126,6 +127,38 @@ describe('checkPageData', () => {
     // already labels as AI needs no second look.
     expect(r.items[0]!.watch).toEqual({ frameId: 0, index: 0, labels: [] });
     expect(r.items[1]!.watch).toBeUndefined();
+  });
+
+  it("puts the site's label on the video when the page is that video's own page", async () => {
+    // Reported from real use: a Facebook reel was "Made with AI" in a separate line while its
+    // own card said "Not checked".
+    const reel = page({
+      url: 'https://www.facebook.com/reel/1138576875316387',
+      videoPage: true,
+      videos: [
+        { labels: ['Video player'], frameId: 0, index: 0, area: 9 },
+        { labels: ['Video player'], frameId: 0, index: 1, area: 9 },
+      ],
+      pageLabels: ['תוכן שנוצר באמצעות AI'],
+    });
+    const r = await checkPageData(reel, caps());
+    expect(r.items.map((i) => `${i.kind}:${i.outcome}`)).toEqual([
+      'video:verified_ai',
+      'video:not_assessed',
+    ]);
+    expect(r.items[0]!.evidence).toMatchObject({ label: 'תוכן שנוצר באמצעות AI' });
+    // A labelled video needs no second look.
+    expect(r.items[0]!.watch).toBeUndefined();
+    // On a feed the label cannot be tied to one video: it stays a line of its own.
+    const feed = await checkPageData(
+      { ...reel, url: 'https://www.facebook.com/', videoPage: false },
+      caps(),
+    );
+    expect(feed.items.map((i) => `${i.kind}:${i.outcome}`)).toEqual([
+      'video:not_assessed',
+      'video:not_assessed',
+      'page:verified_ai',
+    ]);
   });
 
   it('reports the label a site shows for the whole page', async () => {

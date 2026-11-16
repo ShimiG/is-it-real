@@ -15,6 +15,8 @@ export interface PageData {
   videos: PageVideo[];
   /** Short texts anywhere on the page that may be the site's own AI labels. */
   pageLabels: string[];
+  /** The page is one video's own page on a video site (a reel, a short, a watch page). */
+  videoPage: boolean;
   /** Images that could not be passed on (for example images the page drew itself). */
   skippedImages: number;
 }
@@ -111,7 +113,7 @@ export type EngineEvent =
 export const ENGINE_PORT = 'isitreal-engine';
 
 /** What the quiet background check looks at: text and links only. No pictures are fetched. */
-export type QuickPage = Pick<PageData, 'url' | 'text' | 'links' | 'pageLabels'>;
+export type QuickPage = Pick<PageData, 'url' | 'text' | 'links' | 'pageLabels' | 'videoPage'>;
 
 /** Extension page or content script -> background service worker. */
 export type BackgroundRequest =

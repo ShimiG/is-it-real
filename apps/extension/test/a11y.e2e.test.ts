@@ -53,7 +53,7 @@ describe.skipIf(!browserAvailable())('side panel accessibility', () => {
   }, 240_000);
 
   afterAll(async () => {
-    await loaded?.context.close();
+    await loaded?.close();
     server?.close();
   });
 

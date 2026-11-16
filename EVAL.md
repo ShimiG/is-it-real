@@ -1,6 +1,6 @@
 # Evaluation
 
-What "Is It Real?" catches, what it misses, and how that was measured. Version: engine `0.8.4-m6`, plugin 0.5.4, browser extension 0.1.4 (2026-11-16).
+What "Is It Real?" catches, what it misses, and how that was measured. Version: engine `0.8.5-m6`, plugin 0.5.5, browser extension 0.1.5 (2026-11-16).
 
 Every number here can be reproduced: `pnpm eval:fetch` downloads the public datasets (pinned commits), `pnpm eval` prints the report. Details: [M1](docs/eval/m1-results.md), [M2](docs/eval/m2-results.md), [M3 labels](docs/eval/m3-progress.md), [M3 picture model](docs/eval/m3-results.md), [M5 video](docs/eval/m5-results.md), [M6 browser extension](docs/eval/m6-results.md).
 

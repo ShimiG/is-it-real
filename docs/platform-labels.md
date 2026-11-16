@@ -36,6 +36,19 @@ From "How AI-generated content is identified on Meta products" (Meta Help Centre
 | "Not all AI content contains the information needed to identify it"                                                          | Meta's labels miss content too; no label is never proof                                                                                    |
 | Meta offers its own checker for a photo or video (meta.ai/identification)                                                    | The tool works offline and does not send content anywhere (ADR-0003), so it does not use it. People can try it themselves                  |
 
+## Where the label sits, and what the tool can see
+
+Instagram's help page ("Labeling AI content", read 2026-11-16) says the same as Meta's, and adds where the label is shown:
+
+| Instagram says                                                                                                | For this tool                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Content made with Meta AI tools, or with "created with AI" signals, is labeled "above or on the content"      | Read when the label is on the page                                                                                                                                              |
+| Information about AI use "can be found by clicking the Options menu on any post, story, reel or thread"       | **Not seen.** The tool reads the page as it is and never clicks. If the person opens that menu or the "about" panel first and then checks, the label is on the page and is read |
+| People add the label with an "Add AI label" switch when they post; a profile can carry "AI-generated profile" | Both wordings are recognised                                                                                                                                                    |
+| Meta may add the label itself when it detects AI content that was not labeled                                 | Same label, read the same way                                                                                                                                                   |
+
+On a video's own page (a reel, a short, a watch page) a label found anywhere on the page is reported on that video. On a feed it cannot be tied to one post and is reported as a line of its own.
+
 ## Any other site
 
 There is no rule for unknown sites. A short text "AI-generated" on some site is the word of whoever runs it, not a platform's label. Next to a picture or video it is read as a hint (_Likely made with AI_, decision record 0014).

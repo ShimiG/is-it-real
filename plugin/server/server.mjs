@@ -36777,8 +36777,8 @@ var REASON_TEXT = {
   text_ai_phrasing: "It uses words and phrases that AI writing tools often overuse.",
   text_uniform_style: "The writing style is unusually even and predictable.",
   image_spectral_artifacts: "The picture has hidden patterns that AI image tools often leave.",
-  image_classifier_ai: "A picture-checking model found features typical of AI images.",
-  video_frames_ai: "A picture-checking model found features typical of AI images in most of the frames we looked at.",
+  image_classifier_ai: "A picture-checking model found features typical of AI images. About 1 real photo in 100 gets this result by mistake.",
+  video_frames_ai: "A picture-checking model found features typical of AI images in most of the frames we looked at. About 1 real video in 100 gets this result by mistake.",
   video_temporal_inconsistency: "The video flickers or changes in ways real cameras usually do not.",
   scam_urgency: "It pressures you to act fast or threatens you.",
   scam_unusual_payment: "It asks for payment by gift cards, crypto or wire transfer.",
@@ -38843,7 +38843,7 @@ function detectTextStats(text, m = TEXT_STATS_MODEL) {
 }
 
 // ../core/src/version.ts
-var ENGINE_VERSION = "0.8.4-m6";
+var ENGINE_VERSION = "0.8.5-m6";
 
 // ../core/src/image/preprocess.ts
 var PRECISION_BITS = 32 - 8 - 2;
@@ -97109,7 +97109,7 @@ async function checkVideoTool(args, caps) {
 
 // src/server.ts
 var SERVER_NAME = "is-it-real";
-var SERVER_VERSION = "0.5.4";
+var SERVER_VERSION = "0.5.5";
 var link = external_exports.object({ text: external_exports.string().max(500), href: external_exports.string().max(4e3) });
 var labels = external_exports.array(external_exports.string().max(200)).max(50).optional().describe(
   'Short texts shown right next to the item (badges, captions, alt text), e.g. "AI info".'

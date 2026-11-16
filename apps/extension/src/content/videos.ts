@@ -3,13 +3,52 @@ import { packFrame, rawFrameOf, type PackedFrame } from '../shared/raw-frame.js'
 /** Smaller players are previews and adverts in a corner, not the video being watched. */
 const MIN_SIDE = 128;
 
-/** The videos shown in this frame of the page, largest first. The order is the video's number. */
+/** A video that is actually running right now. */
+export const isPlaying = (video: HTMLVideoElement): boolean =>
+  !video.paused && !video.ended && video.readyState >= 2;
+
+/** How much of a box is inside the window (in square pixels). */
+function areaOnScreen(rect: DOMRect, view: Window): number {
+  const width = Math.min(rect.right, view.innerWidth) - Math.max(rect.left, 0);
+  const height = Math.min(rect.bottom, view.innerHeight) - Math.max(rect.top, 0);
+  return width > 0 && height > 0 ? width * height : 0;
+}
+
+/**
+ * The videos in this frame of the page, the one being watched first: most of it on screen, then
+ * playing before paused, then largest. The order is the video's number. Reel and short-video
+ * pages keep the next clips loaded but paused, at the same size, just outside the window.
+ */
 export function visibleVideos(doc: Document = document): HTMLVideoElement[] {
+  const view = doc.defaultView ?? window;
   return [...doc.querySelectorAll('video')]
-    .map((video) => ({ video, rect: video.getBoundingClientRect() }))
+    .map((video) => {
+      const rect = video.getBoundingClientRect();
+      return { video, rect, shown: areaOnScreen(rect, view) };
+    })
     .filter(({ rect }) => rect.width >= MIN_SIDE && rect.height >= MIN_SIDE)
-    .sort((a, b) => b.rect.width * b.rect.height - a.rect.width * a.rect.height)
+    .sort(
+      (a, b) =>
+        b.shown - a.shown ||
+        Number(isPlaying(b.video)) - Number(isPlaying(a.video)) ||
+        b.rect.width * b.rect.height - a.rect.width * a.rect.height,
+    )
     .map(({ video }) => video);
+}
+
+/**
+ * The video to watch for a "check this video while it plays" request. The page may have changed
+ * since it was checked (the person scrolled to the next clip), so the number is only a first
+ * guess: if that video is not running and another one is, the running one is meant.
+ */
+export function videoToWatch(
+  index: number,
+  doc: Document = document,
+): HTMLVideoElement | undefined {
+  const videos = visibleVideos(doc);
+  const asked = videos[index];
+  if (asked !== undefined && isPlaying(asked)) return asked;
+  return videos.find(isPlaying) ?? asked;
 }
 
 /** The address of a video, if it has one. Streamed video has a `blob:` address or none. */

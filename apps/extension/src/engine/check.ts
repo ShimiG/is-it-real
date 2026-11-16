@@ -264,31 +264,35 @@ export async function checkPageData(
     items.push(await checkOneImage(ref, hostname, caps));
     step();
   }
-  for (const ref of videos) {
-    items.push(await checkOneVideo(ref, hostname, caps));
+  // The site's own label, found anywhere on the page. On a video's own page (a reel, a short) it
+  // is about that video, so it is reported there and not as a separate line.
+  const hits = hostname === undefined ? [] : matchPlatformLabels(hostname, page.pageLabels);
+  const labelOnVideo = hits.length > 0 && page.videoPage && videos.length > 0;
+  for (const [index, ref] of videos.entries()) {
+    const withLabel =
+      labelOnVideo && index === 0 ? { ...ref, labels: [...ref.labels, hits[0]!.text] } : ref;
+    items.push(await checkOneVideo(withLabel, hostname, caps));
     step();
   }
-  if (hostname !== undefined && page.pageLabels.length > 0) {
-    const hits = matchPlatformLabels(hostname, page.pageLabels);
-    if (hits.length > 0)
-      items.push(
-        itemFromVerdict(
-          resolveOutcome('page', [
-            {
-              status: 'assessed',
-              signal: {
-                detector: 'page.platform-label',
-                modality: 'page',
-                kind: 'platform_label',
-                score: 1,
-                reasons: ['platform_label_ai'],
-                details: { platform: hits[0]!.platform, label: hits[0]!.text },
-              },
+  if (hits.length > 0 && !labelOnVideo) {
+    items.push(
+      itemFromVerdict(
+        resolveOutcome('page', [
+          {
+            status: 'assessed',
+            signal: {
+              detector: 'page.platform-label',
+              modality: 'page',
+              kind: 'platform_label',
+              score: 1,
+              reasons: ['platform_label_ai'],
+              details: { platform: hits[0]!.platform, label: hits[0]!.text },
             },
-          ]),
-          STRINGS.sourcePageLabel,
-        ),
-      );
+          },
+        ]),
+        STRINGS.sourcePageLabel,
+      ),
+    );
   }
   return {
     url: page.url,

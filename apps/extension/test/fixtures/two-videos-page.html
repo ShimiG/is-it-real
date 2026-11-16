@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Reels</title>
+  </head>
+  <body>
+    <main>
+      <p>A reel that plays, and the next one, loaded but not started, as reel pages do.</p>
+      <video id="next" width="320" height="240" muted playsinline preload="auto"></video>
+      <video id="current" width="320" height="240" muted loop playsinline></video>
+    </main>
+    <script>
+      fetch('/video/testsrc.mp4')
+        .then((r) => r.blob())
+        .then((blob) => {
+          document.getElementById('next').src = URL.createObjectURL(blob);
+          const current = document.getElementById('current');
+          current.src = URL.createObjectURL(blob);
+          return current.play();
+        });
+    </script>
+  </body>
+</html>

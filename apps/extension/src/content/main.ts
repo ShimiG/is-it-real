@@ -7,7 +7,7 @@ import {
 } from '../messages.js';
 import { SETTING_BACKGROUND, type BackgroundRequest } from '../messages.js';
 import { extractPage, extractQuick, listVideos } from './extract.js';
-import { captureFrames, visibleVideos } from './videos.js';
+import { captureFrames, videoToWatch } from './videos.js';
 
 /**
  * Content script: answers "what is on this page?" when the side panel asks, and, when asked,
@@ -69,7 +69,7 @@ if (window.__isItRealContent !== true) {
     });
     port.onMessage.addListener((request: CaptureRequest) => {
       if (request?.type !== 'start' || stop !== null) return;
-      const video = visibleVideos()[request.index];
+      const video = videoToWatch(request.index);
       if (video === undefined) return send({ type: 'done', problem: 'gone' });
       stop = captureFrames(video, request.count, {
         frame: (frame, count) => send({ type: 'frame', frame, count }),

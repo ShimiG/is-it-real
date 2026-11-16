@@ -33,6 +33,22 @@ const NOT_TEXT = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE']);
 const VIDEO_SITES =
   /(?:^|\.)(?:youtube\.com|tiktok\.com|instagram\.com|facebook\.com|x\.com|twitter\.com|vimeo\.com|dailymotion\.com)$/;
 
+/** Addresses that are one video's own page: a label on such a page is about that video. */
+const VIDEO_PAGES: [RegExp, RegExp][] = [
+  [/(?:^|\.)youtube\.com$/, /^\/(?:watch|shorts\/)/],
+  [/(?:^|\.)facebook\.com$/, /^\/(?:reel\/|watch|share\/[rv]\/|[^/]+\/videos\/)/],
+  [/(?:^|\.)instagram\.com$/, /^\/(?:[^/]+\/)?(?:reels?|p|tv)\//],
+  [/(?:^|\.)tiktok\.com$/, /\/video\//],
+  [/(?:^|\.)(?:x|twitter)\.com$/, /\/status\//],
+  [/(?:^|\.)threads\.(?:net|com)$/, /\/post\//],
+];
+
+export function isVideoPage(location: { hostname: string; pathname: string }): boolean {
+  return VIDEO_PAGES.some(
+    ([host, path]) => host.test(location.hostname) && path.test(location.pathname),
+  );
+}
+
 function shortTexts(root: Element): string[] {
   const out = new Set<string>();
   for (const el of [root, ...root.querySelectorAll('*')]) {
@@ -109,7 +125,13 @@ export function extractQuick(doc: Document = document): QuickPage {
     const t = clean(a.innerText || a.getAttribute('aria-label')).slice(0, 200);
     if (t !== '') links.push({ text: t, href: a.href });
   }
-  return { url: doc.location.href, text, links, pageLabels: labelLikeTexts(doc) };
+  return {
+    url: doc.location.href,
+    text,
+    links,
+    pageLabels: labelLikeTexts(doc),
+    videoPage: isVideoPage(doc.location),
+  };
 }
 
 export function extractPage(doc: Document = document): PageData {

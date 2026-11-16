@@ -106,7 +106,7 @@ describe.skipIf(!ready)('picture check in Chromium with the shipped models (loca
   }, 180_000);
 
   afterAll(async () => {
-    await loaded?.context.close();
+    await loaded?.close();
     server?.close();
   });
 

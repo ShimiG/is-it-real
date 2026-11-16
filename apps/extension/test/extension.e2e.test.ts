@@ -24,7 +24,7 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
   }, 240_000);
 
   afterAll(async () => {
-    await loaded?.context.close();
+    await loaded?.close();
     server?.close();
   });
 
@@ -245,6 +245,32 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
       .poll(() => panel.locator('.ai .card').count(), { timeout: 90_000 })
       .toBeGreaterThan(0);
     expect(await panel.locator('.ai').innerText()).toContain('streamed in small pieces');
+  }, 240_000);
+
+  it('watches the video that is playing, not a loaded one that has not started', async () => {
+    // Reported from real use: on a Facebook reel the check said "the video is not playing".
+    // Reel pages keep the next clip loaded at the same size; it was picked instead.
+    const { page, panel } = await loaded.openPanelFor(`${base}/two-videos-page.html`);
+    await page.waitForFunction(
+      () => (document.getElementById('current') as HTMLVideoElement).currentTime > 0.2,
+    );
+    const tabId = Number(new URL(panel.url()).searchParams.get('tabId'));
+    for (const index of [0, 1]) {
+      const got = await panel.evaluate(
+        ([tab, wanted]) =>
+          new Promise<{ frames: number; problem?: string }>((resolve) => {
+            let frames = 0;
+            const port = chrome.tabs.connect(tab!, { name: 'isitreal-capture', frameId: 0 });
+            port.onMessage.addListener((event: { type: string; problem?: string }) => {
+              if (event.type === 'frame') frames++;
+              else resolve({ frames, ...(event.problem ? { problem: event.problem } : {}) });
+            });
+            port.postMessage({ type: 'start', index: wanted, count: 2 });
+          }),
+        [tabId, index] as const,
+      );
+      expect(got, `asked for video ${index}`).toEqual({ frames: 2 });
+    }
   }, 240_000);
 
   it('says when a video is paused instead of waiting forever', async () => {

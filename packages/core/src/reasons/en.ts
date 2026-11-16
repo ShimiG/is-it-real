@@ -53,9 +53,10 @@ export const REASON_TEXT: Record<ReasonCode, string> = {
   text_ai_phrasing: 'It uses words and phrases that AI writing tools often overuse.',
   text_uniform_style: 'The writing style is unusually even and predictable.',
   image_spectral_artifacts: 'The picture has hidden patterns that AI image tools often leave.',
-  image_classifier_ai: 'A picture-checking model found features typical of AI images.',
+  image_classifier_ai:
+    'A picture-checking model found features typical of AI images. About 1 real photo in 100 gets this result by mistake.',
   video_frames_ai:
-    'A picture-checking model found features typical of AI images in most of the frames we looked at.',
+    'A picture-checking model found features typical of AI images in most of the frames we looked at. About 1 real video in 100 gets this result by mistake.',
   video_temporal_inconsistency:
     'The video flickers or changes in ways real cameras usually do not.',
   scam_urgency: 'It pressures you to act fast or threatens you.',

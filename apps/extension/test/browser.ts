@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
@@ -65,30 +65,35 @@ export interface Loaded {
   context: BrowserContext;
   worker: Worker;
   extensionId: string;
+  /** Closes the browser and deletes its profile folder. */
+  close(): Promise<void>;
   /** Opens a web page, then the side panel pointed at it (as a tab, which behaves the same). */
   openPanelFor(url: string): Promise<{ page: Page; panel: Page }>;
 }
 
 export async function launchWithExtension(): Promise<Loaded> {
-  const context = await chromium.launchPersistentContext(
-    mkdtempSync(join(tmpdir(), 'isitreal-chrome-')),
-    {
-      channel: 'chromium',
-      args: [
-        `--disable-extensions-except=${dist}`,
-        `--load-extension=${dist}`,
-        // No host but this computer can be reached: the tests double as proof that the checks
-        // need nothing from the internet (the model download is pointed at the local server).
-        '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1',
-      ],
-    },
-  );
+  const profile = mkdtempSync(join(tmpdir(), 'isitreal-chrome-'));
+  const context = await chromium.launchPersistentContext(profile, {
+    channel: 'chromium',
+    args: [
+      `--disable-extensions-except=${dist}`,
+      `--load-extension=${dist}`,
+      // No host but this computer can be reached: the tests double as proof that the checks
+      // need nothing from the internet (the model download is pointed at the local server).
+      '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1',
+    ],
+  });
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
   const extensionId = new URL(worker.url()).host;
   return {
     context,
     worker,
     extensionId,
+    async close() {
+      await context.close();
+      // The profile holds the downloaded model files (220 MB in the tests that use them).
+      rmSync(profile, { recursive: true, force: true });
+    },
     async openPanelFor(url) {
       const page = await context.newPage();
       await page.goto(url);
