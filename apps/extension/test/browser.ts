@@ -32,6 +32,15 @@ const TYPES: Record<string, string> = {
   '.mp4': 'video/mp4',
 };
 
+/**
+ * A video site's name that the test browser resolves to this computer, so that a test page can
+ * be opened at an address the extension treats as one post's own page.
+ */
+export const POST_SITE = 'www.instagram.com';
+
+/** The local server's address under that name. */
+export const asPostSite = (base: string): string => base.replace('127.0.0.1', POST_SITE);
+
 /** Serves test pages from test/fixtures, and images from the other packages' fixtures under /c2pa/. */
 export async function startServer(
   extra: Record<string, string> = {},
@@ -46,8 +55,18 @@ export async function startServer(
     const path = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);
     // /as/<any name>: the same plain picture under whatever file name a test needs.
     const renamed = path.startsWith('/as/');
-    const mount = renamed ? '/c2pa/' : Object.keys(mounts).find((m) => path.startsWith(m))!;
-    const name = renamed ? 'plain.jpg' : path.slice(mount.length);
+    // /p/<name>/: the test page <name>.html at an address shaped like one post's own page.
+    const post = /^\/p\/([\w-]+)\/$/.exec(path);
+    const mount = renamed
+      ? '/c2pa/'
+      : post !== null
+        ? '/'
+        : Object.keys(mounts).find((m) => path.startsWith(m))!;
+    const name = renamed
+      ? 'plain.jpg'
+      : post !== null
+        ? `${post[1]}.html`
+        : path.slice(mount.length);
     try {
       if (name.includes('..')) throw new Error('no');
       const body = await readFile(join(mounts[mount]!, name));
@@ -80,7 +99,8 @@ export async function launchWithExtension(): Promise<Loaded> {
       `--load-extension=${dist}`,
       // No host but this computer can be reached: the tests double as proof that the checks
       // need nothing from the internet (the model download is pointed at the local server).
-      '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1',
+      // The one name that does resolve is a stand-in that points back at this computer.
+      `--host-resolver-rules=MAP ${POST_SITE} 127.0.0.1, MAP * ~NOTFOUND, EXCLUDE 127.0.0.1`,
     ],
   });
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));

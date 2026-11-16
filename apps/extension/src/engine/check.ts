@@ -5,6 +5,7 @@ import {
   checkImage,
   checkVideo,
   detectTextStats,
+  findPageClaim,
   itemFromVerdict,
   matchPlatformLabels,
   resolveOutcome,
@@ -58,6 +59,8 @@ async function checkOneImage(
   caps: EngineCapabilities,
 ): Promise<PanelItem> {
   const where = hostname === undefined ? {} : { hostname };
+  const still = ref.stillOfVideo === true ? [STRINGS.noteStillOfVideo] : [];
+  const stillMark = ref.stillOfVideo === true ? { stillOfVideo: true } : {};
   let bytes: Uint8Array;
   try {
     bytes = await caps.fetchBytes(ref.url);
@@ -68,8 +71,8 @@ async function checkOneImage(
       where,
     );
     return {
-      ...itemFromVerdict(fromLabels, ref.url, STRINGS.noteImageUnreadable),
-      debug: debugOf(fromLabels, ref.labels),
+      ...itemFromVerdict(fromLabels, ref.url, [STRINGS.noteImageUnreadable, ...still].join(' ')),
+      debug: { ...debugOf(fromLabels, ref.labels), ...stillMark },
     };
   }
   const c2pa = await caps.c2pa();
@@ -84,9 +87,9 @@ async function checkOneImage(
   );
   const preview = (await caps.thumbnail?.(bytes)) ?? null;
   return {
-    ...itemFromVerdict(verdict, ref.url),
+    ...itemFromVerdict(verdict, ref.url, still[0]),
     ...(preview === null ? {} : { preview }),
-    debug: debugOf(verdict, ref.labels),
+    debug: { ...debugOf(verdict, ref.labels), ...stillMark },
   };
 }
 
@@ -224,6 +227,31 @@ export async function checkVideoFrames(
   };
 }
 
+/** How many of the page's own sentences about AI are shown. */
+export const MAX_PAGE_SAYS = 3;
+
+/**
+ * What one post's own page says about AI away from any single picture or video: a caption, the
+ * uploader's tags. Nobody can tell from the page alone who wrote the words or what they are
+ * about (a viewer's comment looks the same), so they are shown as they are and change no result
+ * (ADR-0014, amendment). Words already counted next to an item are not repeated.
+ */
+function writtenOnPage(page: PageData): string[] {
+  if (!page.videoPage) return [];
+  const counted = new Set([
+    ...page.images.flatMap((i) => i.labels),
+    ...page.videos.flatMap((v) => v.labels),
+  ]);
+  const said = new Set<string>();
+  for (const words of page.pageWords) {
+    if (said.size >= MAX_PAGE_SAYS) break;
+    if (counted.has(words)) continue;
+    const claim = findPageClaim([words]);
+    if (claim !== null) said.add(claim.text);
+  }
+  return [...said];
+}
+
 /**
  * Checks one page: scam warning signs first (ADR-0007), then the text, each image and the site's
  * own AI labels. The same core and the same wording as the Claude plugin.
@@ -303,7 +331,9 @@ export async function checkPageData(
       pictureModel: (await caps.imageCheck()) !== null,
     },
     notChecked: Math.max(0, page.images.length - MAX_IMAGES) + page.skippedImages,
+    pageSays: writtenOnPage(page),
     labelsSeen: page.pageLabels,
+    wordsSeen: page.pageWords.map((w) => (w.length > 120 ? `${w.slice(0, 117)}...` : w)),
     engine: ENGINE_VERSION,
   };
 }

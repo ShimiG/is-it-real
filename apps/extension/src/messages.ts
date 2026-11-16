@@ -9,12 +9,17 @@ export interface PageData {
   /** Main text of the page. */
   text: string;
   links: { text: string; href: string }[];
-  /** The largest visible images, largest first, with the short texts shown next to each. */
-  images: { url: string; labels: string[] }[];
+  /**
+   * Visible images with the short texts shown next to each: those on screen first, then the
+   * largest. `stillOfVideo` marks the still picture a video player shows for its video.
+   */
+  images: { url: string; labels: string[]; stillOfVideo?: boolean }[];
   /** The largest videos, largest first. */
   videos: PageVideo[];
   /** Short texts anywhere on the page that may be the site's own AI labels. */
   pageLabels: string[];
+  /** Captions, descriptions and tags anywhere on the page that mention AI (not the words of links). */
+  pageWords: string[];
   /** The page is one video's own page on a video site (a reel, a short, a watch page). */
   videoPage: boolean;
   /** Images that could not be passed on (for example images the page drew itself). */
@@ -38,6 +43,8 @@ export interface PageVideo extends VideoRef {
 export interface ItemDebug {
   /** Short texts next to the item on the page (where sites put their own labels). */
   labels: string[];
+  /** The picture is the still of a video player. */
+  stillOfVideo?: boolean;
   checks: { detector: string; kind: string; score: number; details?: Record<string, unknown> }[];
 }
 
@@ -62,8 +69,15 @@ export interface PanelResult {
   checks: { contentCredentials: boolean; pictureModel: boolean };
   /** Images on the page beyond the limit per check. */
   notChecked: number;
+  /**
+   * On one post's own page: what is written there about AI, away from any one picture or video
+   * (a caption, a tag). Shown as it is, without a verdict (ADR-0014).
+   */
+  pageSays: string[];
   /** For the developer report: label-like short texts found anywhere on the page. */
   labelsSeen: string[];
+  /** For the developer report: the texts `pageSays` was chosen from, shortened. */
+  wordsSeen: string[];
   engine: string;
 }
 

@@ -3,7 +3,13 @@ import type { Server } from 'node:http';
 import { createRequire } from 'node:module';
 import type { Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { browserAvailable, launchWithExtension, startServer, type Loaded } from './browser.js';
+import {
+  asPostSite,
+  browserAvailable,
+  launchWithExtension,
+  startServer,
+  type Loaded,
+} from './browser.js';
 
 /**
  * Accessibility of the side panel, checked in a real Chromium (PLAN.md section 7): an automated
@@ -88,6 +94,13 @@ describe.skipIf(!browserAvailable())('side panel accessibility', () => {
 
   it('passes the audit with pictures the page describes as AI-made', async () => {
     expect(await audit(await checked(`${base}/claims-page.html`))).toEqual([]);
+  }, 240_000);
+
+  it("passes the audit with a post's own words about AI showing", async () => {
+    const panel = await checked(`${asPostSite(base)}/p/post-page/`);
+    expect(await panel.locator('.page-says').count()).toBe(1);
+    expect(await audit(panel)).toEqual([]);
+    expect(await audit(await checked(`${asPostSite(base)}/p/post-page/`, 'dark'))).toEqual([]);
   }, 240_000);
 
   it('passes the audit with video results and in large-text mode', async () => {

@@ -24,6 +24,7 @@ const page = (over: Partial<PageData> = {}): PageData => ({
   images: [],
   videos: [],
   pageLabels: [],
+  pageWords: [],
   videoPage: false,
   skippedImages: 0,
   ...over,
@@ -159,6 +160,59 @@ describe('checkPageData', () => {
       'video:not_assessed',
       'page:verified_ai',
     ]);
+  });
+
+  it("shows what one post's page says about AI, without changing any result", async () => {
+    // Reported from real use: an Instagram post captioned "ai generated video", with a video the
+    // frame check could not judge and nothing in the panel that mentioned the caption.
+    const post = page({
+      url: 'https://www.instagram.com/p/DfySaGMKQz5/',
+      videoPage: true,
+      images: [{ url: 'https://example.test/a.jpg', labels: ['made with AI by me'] }],
+      videos: [{ labels: ['Video player'], frameId: 0, index: 0, area: 9 }],
+      pageWords: [
+        'made with AI by me',
+        'ai generated video 🥰🥺',
+        'Meta AI',
+        '#ai',
+        'Is this AI generated?',
+        '#aislop',
+        'Ai generated Profile welcome to my channel',
+        'Another AI-generated clip',
+      ],
+    });
+    const r = await checkPageData(post, caps());
+    // Words already counted next to a picture are not repeated; at most three are shown.
+    expect(r.pageSays).toEqual([
+      'ai generated video 🥰🥺',
+      '#aislop',
+      'Ai generated Profile welcome to my channel',
+    ]);
+    // The video's own result is untouched: nobody can tell that the words are about it.
+    expect(r.items.find((i) => i.kind === 'video')!.outcome).toBe('not_assessed');
+    expect(r.wordsSeen).toHaveLength(8);
+    // On a feed, a profile or any other page the words could be about anything: not shown.
+    const feed = await checkPageData(
+      { ...post, url: 'https://www.instagram.com/', videoPage: false },
+      caps(),
+    );
+    expect(feed.pageSays).toEqual([]);
+  });
+
+  it("says when a picture is a video player's still", async () => {
+    const r = await checkPageData(
+      page({
+        images: [
+          { url: 'https://example.test/still.jpg', labels: [], stillOfVideo: true },
+          { url: 'https://example.test/photo.jpg', labels: [] },
+        ],
+      }),
+      caps(),
+    );
+    const [still, photo] = r.items.filter((i) => i.kind === 'image');
+    expect(still!.note).toContain('still picture shown for a video');
+    expect(still!.debug!.stillOfVideo).toBe(true);
+    expect(photo!.note).toBeUndefined();
   });
 
   it('reports the label a site shows for the whole page', async () => {

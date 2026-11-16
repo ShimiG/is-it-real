@@ -4,7 +4,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { IMAGE_CLASSIFIER_MODEL, PHOTO_GATE_MODEL } from '@isitreal/core';
-import { browserAvailable, launchWithExtension, startServer, type Loaded } from './browser.js';
+import {
+  asPostSite,
+  browserAvailable,
+  launchWithExtension,
+  startServer,
+  type Loaded,
+} from './browser.js';
 
 /**
  * Runs the BUILT extension in a real Chromium, the way a person uses it: open a page, press
@@ -88,6 +94,59 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     expect(text).toContain('Picture 3: No clear signs');
   }, 240_000);
 
+  it("reads one post's page the way a person sees it", async () => {
+    // Reported from real use (Instagram): the pictures checked were stills of other reels far
+    // down the feed, a still under a playing video looked like a separate picture, and a caption
+    // saying "ai generated video" was not mentioned anywhere.
+    const address = `${asPostSite(base)}/p/post-page/`;
+    const { panel } = await loaded.openPanelFor(address);
+    const tabId = Number(new URL(panel.url()).searchParams.get('tabId'));
+    const answer = await panel.evaluate(
+      (tab) =>
+        chrome.tabs.sendMessage(tab, { type: 'extract-page' }, { frameId: 0 }) as Promise<{
+          page: {
+            videoPage: boolean;
+            pageWords: string[];
+            images: { url: string; stillOfVideo?: boolean }[];
+          };
+        }>,
+      tabId,
+    );
+    expect(answer.page.videoPage).toBe(true);
+    // Pictures on screen come before one that is first in the page's code but far below.
+    expect(answer.page.images.map((i) => i.url.split('/').pop())).toEqual([
+      'still.jpg',
+      'on-screen.jpg',
+      'far-down.jpg',
+    ]);
+    expect(answer.page.images.map((i) => i.stillOfVideo === true)).toEqual([true, false, false]);
+    // A caption and tags are picked up; the words of a link to another post are not.
+    expect(answer.page.pageWords).toEqual([
+      'ai generated video 🥰',
+      '#ai',
+      '#aislop',
+      'Is this AI generated?',
+      'Meta AI',
+    ]);
+
+    await panel.getByRole('button', { name: 'Check this page' }).click();
+    await expect.poll(() => panel.locator('.page-says').count(), { timeout: 90_000 }).toBe(1);
+    const said = await panel.locator('.page-says').innerText();
+    expect(said).toContain('Written on this page');
+    expect(said).toContain('“ai generated video 🥰”');
+    expect(said).toContain('“#aislop”');
+    // A bare "#ai" is about the topic; a question and a product name are not statements that
+    // something was made with AI.
+    expect(said).not.toContain('“#ai”');
+    expect(said).not.toContain('Is this');
+    expect(said).not.toContain('Meta AI');
+    expect(said).toContain('We cannot tell who wrote them');
+    const text = await panel.locator('.ai').innerText();
+    // The words change no result: nothing here is called AI-made because of them.
+    expect(text).not.toContain('Likely made with AI');
+    expect(text).toContain('still picture shown for a video');
+  }, 240_000);
+
   it('saves a report with the numbers behind the result, on request', async () => {
     const { panel } = await loaded.openPanelFor(`${base}/scam-page.html`);
     expect(
@@ -115,6 +174,8 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
       }[];
     };
     expect(report.page).toBe(`${base}/scam-page.html`);
+    // Picture addresses are saved without what follows the "?" (often a key to the file).
+    for (const item of report.items) expect(item.source).not.toMatch(/[?#]/);
     expect(report.pictureCheckFiles).toBe('absent');
     expect(report.cutOffs.picture).toBeGreaterThan(5);
     expect(report.cutOffs.videoPlaying).toBeGreaterThan(report.cutOffs.videoFile);

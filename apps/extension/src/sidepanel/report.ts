@@ -12,9 +12,16 @@ import type { ItemDebug, ModelsState, PanelResult, PictureScore } from '../messa
  * as a file and decides whether to pass it on; the extension sends nothing.
  *
  * It holds the page's address, the addresses of its pictures and videos, the results, the short
- * phrases the scam rules matched, and the short label-like texts found on the page (the kind
- * sites use for "AI" labels). It does not hold the page's text or the pictures.
+ * phrases the scam rules matched, and the short texts found on the page that mention AI (the
+ * kind sites use for "AI" labels, and captions and tags). It does not hold the rest of the
+ * page's text or the pictures.
+ *
+ * Addresses of pictures and videos are saved without what follows the "?": on many sites that
+ * part is a time-limited key to the file, which a report has no need to carry.
  */
+export const withoutKey = (address: string): string =>
+  /^https?:/i.test(address) ? address.split(/[?#]/)[0]! : address;
+
 export interface DebugReport {
   what: string;
   extension: string;
@@ -30,6 +37,9 @@ export interface DebugReport {
   scam: PanelResult['scam'];
   /** Short texts anywhere on the page that mention AI or similar words: candidates for a site's own label. */
   labelLikeTextsOnPage: string[];
+  /** Captions, descriptions and tags on the page that mention AI (shortened), and those shown. */
+  wordsAboutAiOnPage: string[];
+  shownAsWrittenOnPage: string[];
   items: {
     kind: string;
     source: string;
@@ -39,6 +49,7 @@ export interface DebugReport {
     evidence?: Record<string, string | number | boolean>;
     /** Short texts next to the item, and the full numbers of each check that ran. */
     textsNextToIt?: string[];
+    stillOfVideo?: boolean;
     checks?: ItemDebug['checks'];
     /** For pictures, when the picture check is set up: size and the two raw numbers. */
     numbers?: PictureScore & { photoLike: boolean; scoreAgainstRealPhotos: number };
@@ -67,14 +78,18 @@ export async function buildReport(
   for (const item of result.items) {
     const entry: DebugReport['items'][number] = {
       kind: item.kind,
-      source: item.source,
+      source: withoutKey(item.source),
       outcome: item.outcome,
       reasons: item.reasons.map((r) => r.code),
       ...(item.note === undefined ? {} : { note: item.note }),
       ...(item.evidence === undefined ? {} : { evidence: item.evidence }),
       ...(item.debug === undefined
         ? {}
-        : { textsNextToIt: item.debug.labels, checks: item.debug.checks }),
+        : {
+            textsNextToIt: item.debug.labels,
+            ...(item.debug.stillOfVideo === true ? { stillOfVideo: true } : {}),
+            checks: item.debug.checks,
+          }),
     };
     if (pictures.includes(item) && result.checks.pictureModel) {
       try {
@@ -94,7 +109,7 @@ export async function buildReport(
     items.push(entry);
   }
   return {
-    what: 'Is It Real? report for the developer. It holds addresses, results and short label-like texts, not the page text or the pictures.',
+    what: 'Is It Real? report for the developer. It holds addresses, results and short texts from the page that mention AI, not the rest of the page text or the pictures.',
     extension: chrome.runtime.getManifest().version,
     engine: result.engine,
     savedAt: new Date().toISOString(),
@@ -111,6 +126,8 @@ export async function buildReport(
     },
     scam: result.scam,
     labelLikeTextsOnPage: result.labelsSeen,
+    wordsAboutAiOnPage: result.wordsSeen,
+    shownAsWrittenOnPage: result.pageSays,
     items,
     picturesNotChecked: result.notChecked,
   };

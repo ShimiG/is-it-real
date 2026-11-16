@@ -227,3 +227,8 @@ footer {
     scroll-behavior: auto !important;
   }
 }
+
+/* What the page itself says about AI: information, not a result. */
+.page-says {
+  border-left-width: 2px;
+}

@@ -21,6 +21,14 @@ const SHORT = 60;
 const LABEL_WORDS =
   /\b(ai|a\.i\.|synthetic|generated|imagined|content credentials|altered)\b|בינה מלאכותית/i;
 
+// Words by which a text may be someone saying "this was made with AI". Only candidates are
+// picked here; the engine decides with the shared rules (packages/core/src/page-claims.ts).
+const CLAIM_WORDS =
+  /#[\w-]*(?:ai|sora|veo|midjourney|diffusion|dall|kling|runway|hailuo|luma)|\b(?:ai|a\.i\.|artificial intelligence)\b|בינה מלאכותית/i;
+/** Longer texts are articles and long comments, not a caption or a tag. */
+const MAX_WORDS = 300;
+export const MAX_PAGE_WORDS = 30;
+
 const clean = (s: string | null | undefined): string => (s ?? '').replace(/\s+/g, ' ').trim();
 
 /** Elements whose text is code or hidden templates, never something a person reads. */
@@ -113,6 +121,47 @@ function labelLikeTexts(doc: Document): string[] {
   return [...found];
 }
 
+/** The text an element holds itself, without the text of the elements inside it. */
+const ownText = (el: Element): string =>
+  clean(
+    [...el.childNodes]
+      .filter((n) => n.nodeType === 3)
+      .map((n) => n.textContent)
+      .join(' '),
+  );
+
+/**
+ * Captions, descriptions and tags anywhere on the page that mention AI. A link's words name the
+ * page it leads to (another video, another article), so they are left out; a tag ("#aislop") is
+ * the exception, because that is how tags are written.
+ */
+export function wordsAboutAi(doc: Document = document): string[] {
+  const found = new Set<string>();
+  if (!doc.body) return [];
+  let seen = 0;
+  for (const el of doc.body.querySelectorAll('*')) {
+    if (++seen > MAX_LABEL_ELEMENTS || found.size >= MAX_PAGE_WORDS) break;
+    if (NOT_TEXT.has(el.tagName)) continue;
+    const v = ownText(el);
+    if (v === '' || v.length > MAX_WORDS || !CLAIM_WORDS.test(v)) continue;
+    if (el.closest('a[href]') !== null && !/^#[^\s#]+$/.test(v)) continue;
+    found.add(v);
+  }
+  return [...found];
+}
+
+/** Part of the box is inside the window: the person can see it now. */
+const onScreen = (r: DOMRect, win: Window): boolean =>
+  r.bottom > 0 && r.right > 0 && r.top < win.innerHeight && r.left < win.innerWidth;
+
+/** The share of box `a` that box `b` covers. */
+function covered(a: DOMRect, b: DOMRect): number {
+  const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+  const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+  const area = a.width * a.height;
+  return w <= 0 || h <= 0 || area <= 0 ? 0 : (w * h) / area;
+}
+
 /** What the quiet check needs: the page's text, links and label-like short texts. Nothing else is read. */
 export function extractQuick(doc: Document = document): QuickPage {
   const main = doc.querySelector<HTMLElement>('article, main, [role="main"]') ?? doc.body;
@@ -139,14 +188,22 @@ export function extractPage(doc: Document = document): PageData {
 
   let skippedImages = 0;
   const seen = new Set<string>();
+  const win = doc.defaultView ?? window;
+  const players = [...doc.querySelectorAll('video')]
+    .map((v) => v.getBoundingClientRect())
+    .filter((r) => r.width >= MIN_SHOWN && r.height >= MIN_SHOWN);
   const images = [...doc.images]
     .filter((img) => img.naturalWidth >= MIN_SIDE && img.naturalHeight >= MIN_SIDE)
-    .filter((img) => {
-      const r = img.getBoundingClientRect();
-      return r.width >= MIN_SHOWN && r.height >= MIN_SHOWN;
-    })
-    .sort((a, b) => b.naturalWidth * b.naturalHeight - a.naturalWidth * a.naturalHeight)
-    .filter((img) => {
+    .map((img) => ({ img, box: img.getBoundingClientRect() }))
+    .filter(({ box }) => box.width >= MIN_SHOWN && box.height >= MIN_SHOWN)
+    .map((e) => ({ ...e, shown: onScreen(e.box, win) }))
+    // What the person is looking at comes first (feeds are long); then the largest files.
+    .sort(
+      (a, b) =>
+        Number(b.shown) - Number(a.shown) ||
+        b.img.naturalWidth * b.img.naturalHeight - a.img.naturalWidth * a.img.naturalHeight,
+    )
+    .filter(({ img }) => {
       const url = img.currentSrc || img.src;
       if (seen.has(url)) return false;
       seen.add(url);
@@ -156,9 +213,11 @@ export function extractPage(doc: Document = document): PageData {
       if (!ok) skippedImages++;
       return ok;
     })
-    .map((img) => ({
+    .map(({ img, box }) => ({
       url: img.currentSrc || img.src,
       labels: shortTexts(boxOf(img)).slice(0, 12),
+      // The still a player shows before or behind its video.
+      ...(players.some((p) => covered(box, p) >= 0.8) ? { stillOfVideo: true } : {}),
     }));
 
   // A streamed video has a blob: address that cannot be fetched as a file; it is still passed
@@ -170,6 +229,7 @@ export function extractPage(doc: Document = document): PageData {
     title: clean(doc.title).slice(0, 200),
     images,
     videos,
+    pageWords: wordsAboutAi(doc),
     skippedImages,
   };
 }

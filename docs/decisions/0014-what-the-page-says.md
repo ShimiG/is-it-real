@@ -23,3 +23,16 @@ The evidence the tool reads so far is of two kinds: declarations (a signed recor
 - It only works on honest posters. A scammer does not tag a fake; this adds nothing against deception. It helps with the large amount of openly AI-made content.
 - A joke tag or a wrong caption gives a wrong hint. Because the words are quoted, the person sees where it came from.
 - **Not measured.** There is no test set of captions and tags, so the false-alarm rate is unknown; the patterns were written against the look-alike phrases found in the reports. Measuring it on real pages is open.
+
+## Amendment (2026-11-16): words elsewhere on one post's page are shown, and decide nothing
+
+Five reports from Instagram (docs/eval/m6-results.md, item 11): a post captioned "ai generated video" was reported with no mention of the caption, because the caption is not next to the video in the page's structure.
+
+Attributing such words to the page's main item was considered and rejected. On the same pages a viewer's comment ("this is ai generated") looks like the caption, and tags and titles of other posts sit nearby. A hint that turns a real video into _Likely made with AI_ because of a comment is a false accusation.
+
+- On one post's own page (a reel, a short, a watch page, a single post) the extension shows, under **Written on this page**, up to three texts from anywhere on the page that say something was made with AI, by the same patterns as above. It says that we cannot tell who wrote them or which item they are about.
+- **They change no result** and do not mark the toolbar button.
+- The words of a link are left out, because they name the page the link leads to (another video, another post). A tag is kept: tags are links by nature.
+- Not shown on feeds, profiles and ordinary pages, where there is no one item the words could plausibly be about.
+- Extension only for now; in the plugin, Claude reads the page text itself.
+- Still unmeasured, like the rest of this record.

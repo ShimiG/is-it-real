@@ -30,6 +30,11 @@ export const STRINGS = {
   notChecked: (n: number) =>
     n === 1 ? '1 more picture was not checked.' : `${n} more pictures were not checked.`,
   noteImageUnreadable: 'We could not load this picture, so only labels next to it were checked.',
+  noteStillOfVideo:
+    'This is the still picture shown for a video on this page, not the video itself.',
+  pageSaysHeading: 'Written on this page',
+  pageSaysAbout:
+    'These words about AI are on this page. We cannot tell who wrote them, or which picture or video they are about.',
   noteVideoUnreadable:
     'We could not load this video file, so only labels shown next to it were checked.',
   noteVideoWatched:
@@ -75,7 +80,7 @@ export const STRINGS = {
     'When this is on, each page is checked for scam warning signs and for the site\'s own "AI" labels as it opens. A mark appears on the Is It Real? button if something is found. Nothing is sent anywhere, and no pictures are fetched.',
   reportButton: 'Save a report for the developer',
   reportAbout:
-    'If a result looks wrong, this saves a file with the address of the page, the addresses of its pictures, short label texts found on the page, and the numbers behind each result. Nothing is sent: you decide whether to pass the file on.',
+    'If a result looks wrong, this saves a file with the address of the page, the addresses of its pictures, short texts found on the page that mention AI, and the numbers behind each result. Nothing is sent: you decide whether to pass the file on.',
   reportPreparing: (done: number, total: number) =>
     `Preparing the report: picture ${done} of ${total}…`,
   reportSaved: 'The report was saved with your downloads.',

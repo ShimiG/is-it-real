@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Instagram</title>
+    <style>
+      .player {
+        position: relative;
+        width: 320px;
+        height: 240px;
+      }
+      .player img,
+      .player video {
+        position: absolute;
+        inset: 0;
+        width: 320px;
+        height: 240px;
+      }
+      .far {
+        position: absolute;
+        top: 6000px;
+        left: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <!-- First in the page's code, but far below what the person sees. -->
+      <div class="far"><img src="/as/far-down.jpg" alt="" width="256" height="256" /></div>
+      <div class="player" aria-label="Video player">
+        <img src="/as/still.jpg" alt="" />
+        <video id="player" muted loop playsinline></video>
+      </div>
+      <section>
+        <span>ai generated video 🥰 <a href="/explore/tags/ai/">#ai</a></span>
+        <a href="/explore/tags/aislop/">#aislop</a>
+        <p>Is this AI generated?</p>
+        <a href="/p/another-post/">AI generated cat video</a>
+        <p>Meta AI</p>
+      </section>
+      <div><img src="/as/on-screen.jpg" alt="" width="256" height="256" /></div>
+    </main>
+    <script>
+      fetch('/video/testsrc.mp4')
+        .then((r) => r.blob())
+        .then((blob) => {
+          const player = document.getElementById('player');
+          player.src = URL.createObjectURL(blob);
+          return player.play();
+        });
+    </script>
+  </body>
+</html>

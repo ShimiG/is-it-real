@@ -211,9 +211,25 @@ export function renderResult(result: PanelResult, actions: CardActions = {}): HT
 
   const ai = el('section', 'ai');
   ai.append(el('h2', 'section-title', STRINGS.aiHeading));
-  if (result.items.length === 0) ai.append(el('p', 'note', STRINGS.nothingToCheck));
   // Watching a video needs the picture check.
-  else ai.append(...cards(result.items, result.checks.pictureModel ? actions : {}));
+  const shown =
+    result.items.length === 0 ? [] : cards(result.items, result.checks.pictureModel ? actions : {});
+  if (result.pageSays.length > 0) {
+    const said = el('section', 'card page-says');
+    said.append(
+      el('h3', 'card-title', STRINGS.pageSaysHeading),
+      list(
+        result.pageSays.map((t) => `“${t}”`),
+        'reasons',
+      ),
+      el('p', 'note', STRINGS.pageSaysAbout),
+    );
+    // After the findings, before the items in which nothing was found.
+    const quiet = shown.findIndex((c) => !/outcome-(?:verified|likely)_ai/.test(c.className));
+    shown.splice(quiet === -1 ? shown.length : quiet, 0, said);
+  }
+  if (shown.length === 0) ai.append(el('p', 'note', STRINGS.nothingToCheck));
+  else ai.append(...shown);
   const hasImages = result.items.some((i) => i.kind === 'image');
   if (result.notChecked > 0) ai.append(el('p', 'note', STRINGS.notChecked(result.notChecked)));
   if (hasImages && !result.checks.contentCredentials)
@@ -256,5 +272,7 @@ export function resultToSpeech(result: PanelResult): string {
   const quiet = named.length - findings.length;
   if (findings.length === 0) parts.push(STRINGS.reminder);
   else if (quiet > 0) parts.push(STRINGS.speechOthers(quiet));
+  if (result.pageSays.length > 0)
+    parts.push(`${STRINGS.pageSaysHeading}:`, ...result.pageSays.map((t) => `${t}.`));
   return parts.join(' ');
 }
