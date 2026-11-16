@@ -64,7 +64,7 @@ async function checkOneImage(
   } catch {
     // A label the site shows next to the image still counts when the file cannot be read.
     const fromLabels = await checkImage(
-      { bytes: new Uint8Array(0), nearbyLabels: ref.labels },
+      { bytes: new Uint8Array(0), nearbyLabels: ref.labels, address: ref.url },
       where,
     );
     return {
@@ -75,7 +75,7 @@ async function checkOneImage(
   const c2pa = await caps.c2pa();
   const statistical = await caps.imageCheck();
   const verdict = await checkImage(
-    { bytes, nearbyLabels: ref.labels },
+    { bytes, nearbyLabels: ref.labels, address: ref.url },
     {
       ...where,
       ...(c2pa === null ? {} : { c2pa }),
@@ -170,6 +170,7 @@ async function checkOneVideo(
       ...(file === null ? {} : { bytes: file }),
       ...(frames === undefined ? {} : { frames }),
       nearbyLabels: ref.labels,
+      ...(ref.url === undefined ? {} : { address: ref.url }),
     },
     {
       ...(hostname === undefined ? {} : { hostname }),

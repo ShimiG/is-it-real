@@ -17,6 +17,8 @@ const isDeclaredAi = (s: Signal): boolean =>
  * 3. Otherwise the strongest statistical score is compared with the conformal threshold:
  *    at/above -> `likely_ai`; below -> `no_clear_signs`. Either way, what provenance found
  *    without declaring AI (a broken signature, a record with no AI claim) is kept as a reason.
+ * Before 2 and 3: when the page itself says the item is AI-made (kind `page_claim`), the outcome
+ * is `likely_ai` with that as the reason. It is the poster's word, so it never gives `verified_ai`.
  * Nothing ever yields "human".
  *
  * M0 note: step 3 uses max(score) as a placeholder; the calibrated combiner arrives in M2/M3.
@@ -37,6 +39,30 @@ export function resolveOutcome(
       alert: true,
       signals,
       reasons: unique(declared.flatMap((s) => s.reasons)),
+    };
+  }
+
+  // What the page itself says about the item (a caption, the uploader's tags, the file name): a
+  // strong hint from whoever posted it, never a declaration (ADR-0014).
+  const claims = signals.filter((s) => s.kind === 'page_claim');
+  if (claims.length > 0) {
+    const context = signals
+      .filter((s) => s.kind === 'provenance' || s.kind === 'platform_label')
+      .flatMap((s) => s.reasons);
+    const flaggedStats = signals.filter(
+      (s) => s.kind === 'statistical' && s.score >= thresholds.likelyAi,
+    );
+    return {
+      modality,
+      outcome: 'likely_ai',
+      confidence: null,
+      alert: false,
+      signals,
+      reasons: unique([
+        ...claims.flatMap((s) => s.reasons),
+        ...flaggedStats.flatMap((s) => s.reasons),
+        ...context,
+      ]),
     };
   }
 

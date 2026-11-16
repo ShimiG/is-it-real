@@ -69,6 +69,8 @@ function evidenceLines(item: PanelItem): string[] {
     lines.push(STRINGS.madeWith(e['generators']));
   if (typeof e['label'] === 'string' && e['label'] !== '')
     lines.push(STRINGS.siteLabel(e['label']));
+  if (typeof e['pageSays'] === 'string' && e['pageSays'] !== '')
+    lines.push(STRINGS.pageSays(e['pageSays'], String(e['saidIn'] ?? '')));
   return lines;
 }
 

@@ -59,6 +59,33 @@ describe('check tools', () => {
     });
   });
 
+  const plainPicture = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '..',
+    '..',
+    'c2pa-node',
+    'test',
+    'fixtures',
+    'plain.jpg',
+  );
+
+  it("takes the page's own words about a picture as a hint, not as a declaration", async () => {
+    const r = await checkImageTool(
+      { path: plainPicture, nearby_labels: ['AI-generated image of a harbour'] },
+      noC2pa,
+    );
+    expect(r.items[0]).toMatchObject({
+      outcome: 'likely_ai',
+      reasons: [{ code: 'page_says_ai' }],
+      evidence: { pageSays: 'AI-generated image of a harbour', saidIn: 'caption' },
+    });
+    const about = await checkImageTool(
+      { path: plainPicture, nearby_labels: ['Free AI image generator'] },
+      noC2pa,
+    );
+    expect(about.items[0]!.outcome).toBe('no_clear_signs');
+  });
+
   it('still uses a platform label when the image cannot be fetched', async () => {
     const r = await checkImageTool(
       {

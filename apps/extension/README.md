@@ -1,6 +1,6 @@
 # Is It Real? (browser extension)
 
-Checks the page you are looking at for **scam warning signs** and for **AI-made text, pictures and video**. It works on its own, without Claude. Version 0.1.2, for Chrome and other Chromium browsers (version 120 or newer).
+Checks the page you are looking at for **scam warning signs** and for **AI-made text, pictures and video**. It works on its own, without Claude. Version 0.1.3, for Chrome and other Chromium browsers (version 120 or newer).
 
 - Everything runs on your computer. Nothing about the pages you visit is sent anywhere.
 - The answers come from fixed rules and measurements, the same ones as in the Claude plugin. What they catch and miss: [EVAL.md](../../EVAL.md).
@@ -34,12 +34,12 @@ Other buttons in the panel:
 
 ## What it checks
 
-| Check              | How                                                                                                                                                                                         |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Scam warning signs | Rules for pressure, threats, gift-card / crypto / wire payments, secrecy, requests for codes, fake support, look-alike web addresses, links that go somewhere else                          |
-| AI pictures        | Content Credentials (signed records from ChatGPT, Gemini, Copilot and others), "made by AI" labels in the file, AI labels the site shows; for plain photos with no label, the picture model |
-| AI video           | The same signatures and labels; a few still frames with the picture model (experimental). Face swaps ("deepfakes") are **not** detected                                                     |
-| AI text            | Writing statistics (about 110 words or more, English only)                                                                                                                                  |
+| Check              | How                                                                                                                                                                                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Scam warning signs | Rules for pressure, threats, gift-card / crypto / wire payments, secrecy, requests for codes, fake support, look-alike web addresses, links that go somewhere else                                                                                                       |
+| AI pictures        | Content Credentials (signed records from ChatGPT, Gemini, Copilot and others), "made by AI" labels in the file, AI labels the site shows; what the page itself says about the picture (caption, file name), as a hint; for plain photos with no label, the picture model |
+| AI video           | The same signatures and labels; the uploader's own tags (such as #aislop), as a hint; a few still frames with the picture model (experimental). Face swaps ("deepfakes") are **not** detected                                                                            |
+| AI text            | Writing statistics (about 110 words or more, English only)                                                                                                                                                                                                               |
 
 ## Privacy and permissions
 

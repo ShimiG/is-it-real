@@ -2,6 +2,7 @@ import { runImageStatisticalCheck, type ImageStatisticalCheck } from './image/cl
 import { checkImageProvenance, type C2paReader } from './image/provenance.js';
 import type { Pixels } from './image/spectral.js';
 import { resolveOutcome } from './outcome.js';
+import { findPageClaim, PAGE_CLAIMS_VERSION } from './page-claims.js';
 import { matchPlatformLabels, PLATFORM_LABELS_VERSION } from './platform-labels.js';
 import { analyzeScam, type ScamInput } from './scam/engine.js';
 import { detectTextStats } from './text/detector.js';
@@ -25,6 +26,8 @@ export interface ImageInput {
   bytes: Uint8Array;
   /** Short strings shown next to the image on the page: badges, captions, alt text. */
   nearbyLabels?: string[];
+  /** The image's own address; its file name can say how it was made. */
+  address?: string;
 }
 
 export interface PageInput extends ScamInput {
@@ -51,6 +54,28 @@ function labelResult(
       score: 1,
       reasons: ['platform_label_ai'],
       details: { platform: hits[0]!.platform, label: hits[0]!.text },
+    },
+  };
+}
+
+const CLAIM_DETECTOR = `page.claim@${PAGE_CLAIMS_VERSION}`;
+
+/** What the page says about the item in words: caption, tags, file name. */
+function claimResult(
+  texts: readonly string[] | undefined,
+  address: string | undefined,
+): DetectorResult | null {
+  const claim = findPageClaim(texts ?? [], address);
+  if (claim === null) return null;
+  return {
+    status: 'assessed',
+    signal: {
+      detector: CLAIM_DETECTOR,
+      modality: 'page',
+      kind: 'page_claim',
+      score: 1,
+      reasons: ['page_says_ai'],
+      details: { pageSays: claim.text, saidIn: claim.where },
     },
   };
 }
@@ -101,7 +126,8 @@ export async function checkImage(
     context.statistical !== undefined && !declared && image.bytes.length > 0
       ? await runImageStatisticalCheck(image.bytes, context.statistical)
       : null;
-  if (label === null && statistical === null) return provenance;
+  const claim = claimResult(image.nearbyLabels, image.address);
+  if (label === null && statistical === null && claim === null) return provenance;
   // Re-resolve with everything. A label counts even when the file itself could not be read.
   const fileResults: DetectorResult[] =
     provenance.outcome === 'not_assessed'
@@ -110,6 +136,7 @@ export async function checkImage(
   return resolveOutcome('image', [
     ...fileResults,
     ...(label === null ? [] : [label]),
+    ...(claim === null ? [] : [claim]),
     ...(statistical === null ? [] : [statistical]),
   ]);
 }
@@ -124,8 +151,10 @@ export interface VideoInput {
   frames?: () => Promise<readonly Pixels[] | null>;
   /** How `frames` were taken: spread over a file (default), or from a video while it played. */
   sampling?: VideoSampling;
-  /** Short strings shown next to the video on the page: badges, captions. */
+  /** Short strings shown with the video on the page: badges, captions, the uploader's tags. */
   nearbyLabels?: string[];
+  /** The video file's own address; its file name can say how it was made. */
+  address?: string;
 }
 
 /**
@@ -156,9 +185,11 @@ export async function checkVideo(
     provenance === null || provenance.outcome === 'not_assessed'
       ? []
       : provenance.signals.map((signal) => ({ status: 'assessed' as const, signal }));
+  const claim = claimResult(video.nearbyLabels, video.address);
   return resolveOutcome('video', [
     ...fileResults,
     ...(label === null ? [] : [label]),
+    ...(claim === null ? [] : [claim]),
     ...(statistical === null ? [] : [statistical]),
   ]);
 }

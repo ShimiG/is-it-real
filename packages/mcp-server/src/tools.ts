@@ -110,7 +110,7 @@ async function checkOneImage(
     const note = err instanceof MediaError ? err.message : 'The image could not be loaded.';
     // A platform label next to the image still counts even when the file cannot be read.
     const fromLabels = await checkImage(
-      { bytes: new Uint8Array(0), nearbyLabels: labels },
+      { bytes: new Uint8Array(0), nearbyLabels: labels, ...(ref.url ? { address: ref.url } : {}) },
       hostname === undefined ? {} : { hostname },
     );
     return itemFromVerdict(fromLabels, source, `Could not read the image file: ${note}`);
@@ -118,7 +118,7 @@ async function checkOneImage(
   const c2pa = await caps.c2pa();
   const statistical = (await caps.imageCheck?.()) ?? null;
   const verdict = await checkImage(
-    { bytes, nearbyLabels: labels },
+    { bytes, nearbyLabels: labels, ...(ref.url ? { address: ref.url } : {}) },
     {
       ...(hostname === undefined ? {} : { hostname }),
       ...(c2pa === null ? {} : { c2pa }),
@@ -174,6 +174,7 @@ async function checkOneVideo(
         ...(loaded === null ? {} : { bytes: loaded.bytes }),
         ...(frames === undefined ? {} : { frames }),
         nearbyLabels: labels,
+        ...(ref.url ? { address: ref.url } : {}),
       },
       {
         ...(hostname === undefined ? {} : { hostname }),

@@ -1,6 +1,6 @@
 {
   "name": "@isitreal/extension",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "Is It Real? browser extension: checks the page you are looking at for scam warning signs and AI-made content, on your computer.",
   "license": "Apache-2.0",

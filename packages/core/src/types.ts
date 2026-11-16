@@ -19,7 +19,14 @@ export const SCAM_RISKS = ['high', 'medium', 'low', 'none'] as const;
 export type ScamRisk = (typeof SCAM_RISKS)[number];
 
 /** How a signal was obtained. Provenance signals can produce `verified_ai` on their own. */
-export const SIGNAL_KINDS = ['provenance', 'platform_label', 'statistical', 'scam_rule'] as const;
+export const SIGNAL_KINDS = [
+  'provenance',
+  'platform_label',
+  /** What the page itself says about the item (caption, hashtag, file name): a hint, not a declaration. */
+  'page_claim',
+  'statistical',
+  'scam_rule',
+] as const;
 export type SignalKind = (typeof SIGNAL_KINDS)[number];
 
 /**
@@ -37,6 +44,7 @@ export const REASON_CODES = [
   'iptc_trained_algorithmic_media',
   'generator_metadata_found',
   'platform_label_ai',
+  'page_says_ai',
   // statistical
   'text_low_burstiness',
   'text_low_lexical_diversity',

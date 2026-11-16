@@ -90,6 +90,12 @@ export const STRINGS = {
   signedBy: (who: string) => `Signed by: ${who}`,
   madeWith: (tool: string) => `Tool named in the signature: ${tool}`,
   siteLabel: (label: string) => `Label on the page: “${label}”`,
+  pageSays: (text: string, where: string) =>
+    where === 'file name'
+      ? `The file is named: “${text}”`
+      : where === 'hashtag'
+        ? `Tag from whoever posted it: “${text}”`
+        : `Written next to it: “${text}”`,
   found: (text: string) => `Found on the page: “${text}”`,
   speechScam: 'Scam check.',
   speechAi: 'Made with AI?',

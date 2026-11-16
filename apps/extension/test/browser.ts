@@ -44,8 +44,10 @@ export async function startServer(
   };
   const server = createServer(async (req, res) => {
     const path = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);
-    const mount = Object.keys(mounts).find((m) => path.startsWith(m))!;
-    const name = path.slice(mount.length);
+    // /as/<any name>: the same plain picture under whatever file name a test needs.
+    const renamed = path.startsWith('/as/');
+    const mount = renamed ? '/c2pa/' : Object.keys(mounts).find((m) => path.startsWith(m))!;
+    const name = renamed ? 'plain.jpg' : path.slice(mount.length);
     try {
       if (name.includes('..')) throw new Error('no');
       const body = await readFile(join(mounts[mount]!, name));

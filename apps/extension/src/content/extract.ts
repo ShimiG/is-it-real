@@ -21,9 +21,20 @@ const LABEL_WORDS = /\b(ai|a\.i\.|synthetic|generated|imagined|content credentia
 
 const clean = (s: string | null | undefined): string => (s ?? '').replace(/\s+/g, ' ').trim();
 
+/** Elements whose text is code or hidden templates, never something a person reads. */
+const NOT_TEXT = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE']);
+
+/**
+ * Sites where a page is about one video, so the page's title is that video's title, with the
+ * uploader's own tags in it.
+ */
+const VIDEO_SITES =
+  /(?:^|\.)(?:youtube\.com|tiktok\.com|instagram\.com|facebook\.com|x\.com|twitter\.com|vimeo\.com|dailymotion\.com)$/;
+
 function shortTexts(root: Element): string[] {
   const out = new Set<string>();
   for (const el of [root, ...root.querySelectorAll('*')]) {
+    if (NOT_TEXT.has(el.tagName)) continue;
     for (const attr of ['alt', 'aria-label', 'title']) {
       const v = clean(el.getAttribute(attr));
       if (v !== '' && v.length <= SHORT) out.add(v);
@@ -47,9 +58,14 @@ export function listVideos(doc: Document = document): Omit<PageVideo, 'frameId'>
     .map((v, index) => {
       const url = videoAddress(v);
       const rect = v.getBoundingClientRect();
+      const labels = shortTexts(boxOf(v)).slice(0, 12);
+      // On a video site the page's title is the main video's title, tags included.
+      const title = clean(doc.title).slice(0, 200);
+      if (index === 0 && title !== '' && VIDEO_SITES.test(doc.location.hostname))
+        labels.push(title);
       return {
         ...(url === undefined ? {} : { url }),
-        labels: shortTexts(boxOf(v)).slice(0, 12),
+        labels,
         index,
         area: Math.round(rect.width * rect.height),
       };
@@ -66,6 +82,7 @@ function labelLikeTexts(doc: Document): string[] {
   let seen = 0;
   for (const el of doc.body.querySelectorAll('*')) {
     if (++seen > MAX_LABEL_ELEMENTS || found.size >= 50) break;
+    if (NOT_TEXT.has(el.tagName)) continue;
     for (const attr of ['aria-label', 'title', 'alt']) {
       const v = clean(el.getAttribute(attr));
       if (v !== '' && v.length <= SHORT && LABEL_WORDS.test(v)) found.add(v);

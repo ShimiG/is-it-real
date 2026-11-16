@@ -24,6 +24,7 @@
   const shortTexts = (root) => {
     const out = new Set();
     for (const el of [root, ...root.querySelectorAll('*')]) {
+      if (/^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE)$/.test(el.tagName)) continue;
       for (const attr of ['alt', 'aria-label', 'title']) {
         const v = clean(el.getAttribute && el.getAttribute(attr));
         if (v && v.length <= SHORT) out.add(v);
@@ -66,11 +67,17 @@
     .filter(({ r }) => r.width >= MIN_SIDE && r.height >= MIN_SIDE)
     .sort((a, b) => b.r.width * b.r.height - a.r.width * a.r.height)
     .slice(0, MAX_VIDEOS)
-    .map(({ v }) => {
+    .map(({ v }, index) => {
       const source = v.querySelector('source[src]');
       const url = v.currentSrc || v.src || (source ? source.src : '');
       const box = v.closest('figure, article, [role="article"], div') || v.parentElement || v;
-      return { url: url || undefined, nearby_labels: shortTexts(box).slice(0, 12) };
+      const labels = shortTexts(box).slice(0, 12);
+      // On a video site the page's title is the main video's title, with the uploader's tags.
+      const videoSite =
+        /(^|\.)(youtube\.com|tiktok\.com|instagram\.com|facebook\.com|x\.com|twitter\.com|vimeo\.com|dailymotion\.com)$/;
+      if (index === 0 && document.title && videoSite.test(location.hostname))
+        labels.push(clean(document.title).slice(0, 200));
+      return { url: url || undefined, nearby_labels: labels };
     });
 
   const labelWords = /\b(ai|a\.i\.|synthetic|generated|imagined|content credentials|altered)\b/i;
@@ -79,6 +86,7 @@
   let seen = 0;
   for (const el of document.body.querySelectorAll('*')) {
     if (++seen > 20000 || labelSet.size >= 50) break;
+    if (/^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE)$/.test(el.tagName)) continue;
     for (const attr of ['aria-label', 'title', 'alt']) {
       const v = clean(el.getAttribute(attr));
       if (v && v.length <= SHORT && labelWords.test(v)) labelSet.add(v);

@@ -29,3 +29,4 @@ export * from './video/frames.js';
 export * from './present.js';
 export * from './image/orientation.js';
 export * from './video/yuv.js';
+export * from './page-claims.js';

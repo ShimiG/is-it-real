@@ -36,11 +36,12 @@ Use the `summary`, `title`, `explanation` and reason texts the tool returns. You
 2. **Then each item** (text, each image, each video, page labels): its title and reasons in one or two short sentences. Group items with the same result.
 3. **What the outcomes mean:**
    - _Made with AI_: a label or digital signature says an AI tool made it. Mention who signed it if the evidence shows it.
-   - _Likely made with AI_: strong statistical signs. A strong hint, not proof.
+   - _Likely made with AI_: strong statistical signs, or the page's own words about the item. A strong hint, not proof.
    - _No clear signs_: nothing was found. It does **not** mean the content is real or made by a person.
-   - _Not checked_: say why (too short, not English, could not be read).
+   - _Not checked_: say why (too short, not English, could not be read, a drawing or painting that the picture check cannot judge).
 4. **Never** say content is real, genuine, human, authentic or safe. Never accuse a person of using AI.
 5. If `checks_available.content_credentials` is false, or an item has a `note`, mention the limitation in one short sentence.
 6. **Video is the weakest check.** Without a label, only a few still frames are measured, and that catches a minority of AI video and no face-swap "deepfakes". For a video with _No clear signs_, always add that this check cannot rule out AI or a deepfake, especially when the video asks for money or shows a famous person recommending something.
+7. **A hint from the page's own words.** When the reason is that the page describes the item as AI-made (a caption, the uploader's tags, the file's name), say that this is the word of whoever posted it, and quote the words from the evidence (`pageSays`).
 
 Keep it short and kind. The person asking may be worried, or may be an older adult who is not comfortable with technology. Avoid jargon such as "C2PA", "manifest" or "conformal"; say "digital signature" or "label" instead.

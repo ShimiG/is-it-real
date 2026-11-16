@@ -86,6 +86,10 @@ describe.skipIf(!browserAvailable())('side panel accessibility', () => {
     expect(await audit(await checked(`${base}/small-sign-page.html`, 'dark'))).toEqual([]);
   }, 240_000);
 
+  it('passes the audit with pictures the page describes as AI-made', async () => {
+    expect(await audit(await checked(`${base}/claims-page.html`))).toEqual([]);
+  }, 240_000);
+
   it('passes the audit with video results and in large-text mode', async () => {
     const panel = await checked(`${base}/video-page.html`);
     await panel.getByRole('button', { name: 'Larger text' }).click();

@@ -68,6 +68,26 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     expect(await colours('.scam', small.panel)).toBe(await colours('.scam', dune.panel));
   }, 240_000);
 
+  it('uses what the page itself says about a picture, as a hint and with the words quoted', async () => {
+    // Reported from real use: pictures on an image generator's own site, named
+    // "ai-generated-image-1.png", got no result at all.
+    const { panel } = await loaded.openPanelFor(`${base}/claims-page.html`);
+    await panel.getByRole('button', { name: 'Check this page' }).click();
+    await expect
+      .poll(() => panel.locator('.ai .card').count(), { timeout: 90_000 })
+      .toBeGreaterThan(2);
+    const text = await panel.locator('.ai').innerText();
+    expect(text).toContain('Picture 1: Likely made with AI');
+    expect(text).toContain('The file is named: “ai-generated-image-1.jpg”');
+    expect(text).toContain('Picture 2: Likely made with AI');
+    expect(text).toContain('Written next to it: “AI-generated image of a mountain lake”');
+    expect(text).toContain('That is the word of whoever posted it, not a signed record.');
+    // Never "Made with AI": that is kept for signatures and platform labels.
+    expect(text).not.toContain('Made with AI\n');
+    // The team photo sits next to the words "AI image generator", which say nothing about it.
+    expect(text).toContain('Picture 3: No clear signs');
+  }, 240_000);
+
   it('saves a report with the numbers behind the result, on request', async () => {
     const { panel } = await loaded.openPanelFor(`${base}/scam-page.html`);
     expect(
