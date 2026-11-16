@@ -76,6 +76,7 @@ export const REASON_CODES = [
   'uncalibrated_bucket',
   'not_a_photo',
   'video_not_plain_footage',
+  'video_streamed',
 ] as const;
 export type ReasonCode = (typeof REASON_CODES)[number];
 
@@ -86,6 +87,7 @@ export const NOT_ASSESSED_REASONS = [
   'uncalibrated_bucket',
   'not_a_photo',
   'video_not_plain_footage',
+  'video_streamed',
 ] as const satisfies readonly ReasonCode[];
 export type NotAssessedReason = (typeof NOT_ASSESSED_REASONS)[number];
 

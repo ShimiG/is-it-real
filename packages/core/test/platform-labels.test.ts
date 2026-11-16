@@ -17,10 +17,33 @@ describe('matchPlatformLabels', () => {
     expect(matchPlatformLabels('www.youtube.com', [sentence])).toEqual([]);
   });
 
-  it('matches the generic label anywhere, normalising whitespace', () => {
-    expect(matchPlatformLabels('news.example', ['  AI-generated\n image '])).toEqual([
-      { platform: 'generic', text: 'AI-generated image' },
+  it('has no rule for unknown sites: their own words are a hint, not a platform label', () => {
+    expect(matchPlatformLabels('news.example', ['  AI-generated\n image '])).toEqual([]);
+    // Normalising whitespace still applies where a rule exists.
+    expect(matchPlatformLabels('www.facebook.com', ['  AI\n info '])).toEqual([
+      { platform: 'meta', text: 'AI info' },
     ]);
+  });
+
+  it("knows Meta's label names, in English and in Hebrew", () => {
+    // Reported from real use: a Facebook reel with the label, on an account set to Hebrew.
+    const seen = [
+      'תוכן שנוצר באמצעות AI',
+      'תווית AI נוספה לתוכן הזה על ידי Mavo',
+      'סיוע בזיהוי תוכן של AI',
+      'מידע נוסף על זיהוי תוכן שנוצר על ידי AI',
+    ];
+    expect(matchPlatformLabels('www.facebook.com', seen).map((h) => h.text)).toEqual([
+      'תוכן שנוצר באמצעות AI',
+      'תווית AI נוספה לתוכן הזה על ידי Mavo',
+    ]);
+    for (const label of ['AI info', 'AI content', 'AI creator', 'AI-generated profile'])
+      expect(matchPlatformLabels('www.instagram.com', [label]), label).toHaveLength(1);
+    expect(
+      matchPlatformLabels('www.facebook.com', ['An AI label was added to this content by Mavo']),
+    ).toHaveLength(1);
+    // Help links and ordinary sentences with "AI" in them are not the label.
+    expect(matchPlatformLabels('www.facebook.com', ['AI', 'כלי AI חדש', 'Meta AI'])).toEqual([]);
   });
 
   it('matches the YouTube disclosure', () => {

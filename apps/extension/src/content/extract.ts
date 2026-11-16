@@ -17,7 +17,9 @@ export const MIN_SIDE = 128;
 /** A picture shown smaller than this on the page is treated as an icon, whatever its file size. */
 export const MIN_SHOWN = 48;
 const SHORT = 60;
-const LABEL_WORDS = /\b(ai|a\.i\.|synthetic|generated|imagined|content credentials|altered)\b/i;
+// Words by which a site's own AI label can be recognised as a candidate (English and Hebrew).
+const LABEL_WORDS =
+  /\b(ai|a\.i\.|synthetic|generated|imagined|content credentials|altered)\b|בינה מלאכותית/i;
 
 const clean = (s: string | null | undefined): string => (s ?? '').replace(/\s+/g, ' ').trim();
 

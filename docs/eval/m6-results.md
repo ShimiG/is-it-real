@@ -1,6 +1,6 @@
 # M6 results: the browser extension
 
-**Date:** 2026-11-11 · Extension 0.1.3 (`apps/extension`), engine `0.8.3-m6` · Decision record: [0013](../decisions/0013-extension-architecture.md) · Working notes: [m6-progress.md](../m6-progress.md)
+**Date:** 2026-11-11 · Extension 0.1.4 (`apps/extension`), engine `0.8.4-m6` · Decision record: [0013](../decisions/0013-extension-architecture.md) · Working notes: [m6-progress.md](../m6-progress.md)
 
 The extension runs the same detection core as the Claude plugin. So this page does not measure detection again (that is in [EVAL.md](../../EVAL.md)); it checks the one thing that could make those numbers untrue in a browser: **does the browser give the checks the same input and the same numbers?** And it reports what is specific to the extension: accessibility, working offline, speed, and the quiet background check.
 
@@ -71,6 +71,7 @@ The owner tried version 0.1.0 on everyday pages and reported two things.
    - From 0.1.3, **what the page itself says about an item is used as a hint** (decision record 0014): a caption or alt text, the uploader's tags, or the file's name. It gives _Likely made with AI_ with the words quoted, never _Made with AI_. This also answers the generator site: its pictures are named `ai-generated-image-N.png`.
    - Its false-alarm rate is not measured; the patterns were written against the look-alike phrases in the reports ("AI-generated video summary", "AI image generator", a bare `#ai`).
 5. On the newspaper page, the one picture that was flagged (score 13.9, photo-like) illustrates an article about AI-made pictures.
+6. **A Facebook reel with Meta's AI label was not recognised.** The owner's Facebook is set to Hebrew. The page reader saw the label ("תוכן שנוצר באמצעות AI"), but the label matcher only knew the English wordings. From 0.1.4 it knows Meta's label names in English and Hebrew, including the newer "AI content" and "AI creator" from Meta's help article. Labels are per language, so every other language is still missing; what is covered is listed in [platform-labels.md](../platform-labels.md). The matcher's rule for "any site" was removed at the same time: it had produced the four false hits in the browsing census, and a text on an unknown site is now a hint (item 4), not a label.
 
 **What this says about the measurements above:** the quiet check was estimated on long texts, not on real pages with their buttons and links, and that estimate was too kind. Two of the first three real pages were wrongly marked. The link fixes remove those two; real pages remain the thing to measure.
 

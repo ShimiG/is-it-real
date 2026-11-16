@@ -1,6 +1,6 @@
 # Evaluation
 
-What "Is It Real?" catches, what it misses, and how that was measured. Version: engine `0.8.3-m6`, plugin 0.5.3, browser extension 0.1.3 (2026-11-16).
+What "Is It Real?" catches, what it misses, and how that was measured. Version: engine `0.8.4-m6`, plugin 0.5.4, browser extension 0.1.4 (2026-11-16).
 
 Every number here can be reproduced: `pnpm eval:fetch` downloads the public datasets (pinned commits), `pnpm eval` prints the report. Details: [M1](docs/eval/m1-results.md), [M2](docs/eval/m2-results.md), [M3 labels](docs/eval/m3-progress.md), [M3 picture model](docs/eval/m3-results.md), [M5 video](docs/eval/m5-results.md), [M6 browser extension](docs/eval/m6-results.md).
 
@@ -95,4 +95,4 @@ Also measured: the side panel passes an automated WCAG audit in every state; all
 
 ## Not measured yet
 
-What the page itself says about an item (captions, uploader tags, file names; decision record 0014): added after reports from real use, and there is no test set for it yet. Video from phone cameras, screen recordings and video calls; real video sites' own re-encoding; lip-sync and face-swap checks; the scam rules on real web pages; the picture model on photos from current phones with heavy processing, and on Midjourney, Flux, Gemini and Grok output; text in languages other than English; current models from vendors other than the one used for the 2026 text set; real scam messages; the extension with real users.
+Platform labels in languages other than English (and Hebrew for Meta): labels are worded per language and each has to be added ([docs/platform-labels.md](docs/platform-labels.md)). What the page itself says about an item (captions, uploader tags, file names; decision record 0014): added after reports from real use, and there is no test set for it yet. Video from phone cameras, screen recordings and video calls; real video sites' own re-encoding; lip-sync and face-swap checks; the scam rules on real web pages; the picture model on photos from current phones with heavy processing, and on Midjourney, Flux, Gemini and Grok output; text in languages other than English; current models from vendors other than the one used for the 2026 text set; real scam messages; the extension with real users.

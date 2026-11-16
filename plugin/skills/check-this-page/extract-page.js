@@ -80,7 +80,8 @@
       return { url: url || undefined, nearby_labels: labels };
     });
 
-  const labelWords = /\b(ai|a\.i\.|synthetic|generated|imagined|content credentials|altered)\b/i;
+  const labelWords =
+    /\b(ai|a\.i\.|synthetic|generated|imagined|content credentials|altered)\b|בינה מלאכותית/i;
   // Label-like short texts anywhere on the page (long feeds put them far down).
   const labelSet = new Set();
   let seen = 0;

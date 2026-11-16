@@ -186,7 +186,13 @@ export async function checkVideo(
       ? []
       : provenance.signals.map((signal) => ({ status: 'assessed' as const, signal }));
   const claim = claimResult(video.nearbyLabels, video.address);
+  // Nothing to look at: no file and no frames. Labels and the page's words can still answer.
+  const streamed: DetectorResult[] =
+    video.bytes === undefined && video.frames === undefined
+      ? [{ status: 'not_assessed', detector: 'video.file', reason: 'video_streamed' }]
+      : [];
   return resolveOutcome('video', [
+    ...streamed,
     ...fileResults,
     ...(label === null ? [] : [label]),
     ...(claim === null ? [] : [claim]),

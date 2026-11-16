@@ -28,8 +28,8 @@ describe('checkImage', () => {
 
   it('a platform label counts even when the file cannot be read', async () => {
     const v = await checkImage(
-      { bytes: enc('not an image'), nearbyLabels: ['AI-generated'] },
-      { hostname: 'news.example' },
+      { bytes: enc('not an image'), nearbyLabels: ['AI info'] },
+      { hostname: 'www.facebook.com' },
     );
     expect(v.outcome).toBe('verified_ai');
   });

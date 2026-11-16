@@ -79,6 +79,8 @@ export const REASON_TEXT: Record<ReasonCode, string> = {
   uncalibrated_bucket: 'We have not tested this kind of content enough to judge it.',
   not_a_photo:
     'This looks like a drawing, a painting, a screenshot or a picture with added text. Our picture check cannot tell human-made pictures of this kind from AI-made ones, so it does not judge them.',
+  video_streamed:
+    'This video is streamed in small pieces, so there is no file to check. Its frames can only be looked at while it plays.',
   video_not_plain_footage:
     'This video looks animated, or has text or graphics over the picture. Our frame check cannot judge video of this kind; it only works on plain camera-style video.',
 };

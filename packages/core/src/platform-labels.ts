@@ -6,21 +6,45 @@
  * patterns live in this one versioned table and are verified by the M0 provenance census.
  */
 
-export const PLATFORM_LABELS_VERSION = '0.1.0';
+export const PLATFORM_LABELS_VERSION = '0.2.0';
 
 export interface PlatformLabelRule {
   platform: string;
-  /** Hostname suffixes this rule applies to. Empty = any site (generic, lower trust). */
+  /** Hostname suffixes this rule applies to. */
   hosts: string[];
   /** Exact-ish label text, matched case-insensitively against the whole short string. */
   patterns: RegExp[];
 }
 
+/**
+ * Labels are shown in the language of the person's account, so every wording has to be listed
+ * per language. Covered so far: English everywhere, and Hebrew for Meta (taken from a real
+ * page; docs/platform-labels.md lists what is known and where it came from).
+ *
+ * There is no rule for "any site": a short text "AI-generated" on an unknown site is the word of
+ * whoever runs it, not a platform's label. Such texts next to an item are read as a hint by
+ * page-claims.ts (ADR-0014).
+ */
 export const PLATFORM_LABEL_RULES: PlatformLabelRule[] = [
   {
     platform: 'meta',
     hosts: ['facebook.com', 'instagram.com', 'threads.net', 'threads.com'],
-    patterns: [/^ai info$/i, /^made with ai$/i, /^ai[- ]generated$/i],
+    patterns: [
+      // On posts, reels, stories and threads (Meta help: "How AI-generated content is identified").
+      /^ai info$/i,
+      /^ai content$/i,
+      /^made with ai$/i,
+      /^imagined with ai$/i,
+      /^ai[- ]generated$/i,
+      // The line that says who added the label.
+      /^(?:an )?ai label was added to this (?:content|post|reel|video|story|thread) by .{1,40}$/i,
+      // On accounts that mostly post AI-made content, and next to their posts.
+      /^ai creator$/i,
+      /^ai[- ]generated profile$/i,
+      // Hebrew: "Content created using AI" and "An AI label was added to this content by ...".
+      /^תוכן שנוצר באמצעות AI$/i,
+      /^תווית AI נוספה לתוכן הזה על ידי .{1,40}$/i,
+    ],
   },
   {
     platform: 'youtube',
@@ -39,11 +63,6 @@ export const PLATFORM_LABEL_RULES: PlatformLabelRule[] = [
     hosts: ['linkedin.com'],
     patterns: [/^content credentials$/i],
   },
-  {
-    platform: 'generic',
-    hosts: [],
-    patterns: [/^ai[- ]generated( image| video| content)?$/i, /^generated (by|with) ai$/i],
-  },
 ];
 
 /** Strings longer than this are ignored: platform badges are short. */
@@ -59,8 +78,8 @@ export function matchPlatformLabels(
   strings: Iterable<string>,
 ): PlatformLabelHit[] {
   const host = hostname.toLowerCase();
-  const rules = PLATFORM_LABEL_RULES.filter(
-    (r) => r.hosts.length === 0 || r.hosts.some((h) => host === h || host.endsWith(`.${h}`)),
+  const rules = PLATFORM_LABEL_RULES.filter((r) =>
+    r.hosts.some((h) => host === h || host.endsWith(`.${h}`)),
   );
   const hits: PlatformLabelHit[] = [];
   const seen = new Set<string>();

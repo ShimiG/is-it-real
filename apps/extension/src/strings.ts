@@ -30,8 +30,6 @@ export const STRINGS = {
   notChecked: (n: number) =>
     n === 1 ? '1 more picture was not checked.' : `${n} more pictures were not checked.`,
   noteImageUnreadable: 'We could not load this picture, so only labels next to it were checked.',
-  noteVideoStreamed:
-    'This video is sent in small pieces, so there is no file to check. Only labels shown next to it were checked.',
   noteVideoUnreadable:
     'We could not load this video file, so only labels shown next to it were checked.',
   noteVideoWatched:

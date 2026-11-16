@@ -154,7 +154,7 @@ async function checkOneVideo(
     } catch {
       notes.push(STRINGS.noteVideoUnreadable);
     }
-  } else notes.push(STRINGS.noteVideoStreamed);
+  }
   const c2pa = await caps.c2pa();
   const frameCheck = await videoFrameCheck(caps);
   const file = bytes;

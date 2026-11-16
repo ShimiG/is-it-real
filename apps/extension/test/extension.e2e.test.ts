@@ -244,7 +244,7 @@ describe.skipIf(!browserAvailable())('extension in Chromium', () => {
     await expect
       .poll(() => panel.locator('.ai .card').count(), { timeout: 90_000 })
       .toBeGreaterThan(0);
-    expect(await panel.locator('.ai').innerText()).toContain('sent in small pieces');
+    expect(await panel.locator('.ai').innerText()).toContain('streamed in small pieces');
   }, 240_000);
 
   it('says when a video is paused instead of waiting forever', async () => {

@@ -36798,6 +36798,7 @@ var REASON_TEXT = {
   unreadable_media: "We could not read this item.",
   uncalibrated_bucket: "We have not tested this kind of content enough to judge it.",
   not_a_photo: "This looks like a drawing, a painting, a screenshot or a picture with added text. Our picture check cannot tell human-made pictures of this kind from AI-made ones, so it does not judge them.",
+  video_streamed: "This video is streamed in small pieces, so there is no file to check. Its frames can only be looked at while it plays.",
   video_not_plain_footage: "This video looks animated, or has text or graphics over the picture. Our frame check cannot judge video of this kind; it only works on plain camera-style video."
 };
 var SCAM_ADVICE = [
@@ -36934,12 +36935,27 @@ function utf16leToAscii(b) {
 }
 
 // ../core/src/platform-labels.ts
-var PLATFORM_LABELS_VERSION = "0.1.0";
+var PLATFORM_LABELS_VERSION = "0.2.0";
 var PLATFORM_LABEL_RULES = [
   {
     platform: "meta",
     hosts: ["facebook.com", "instagram.com", "threads.net", "threads.com"],
-    patterns: [/^ai info$/i, /^made with ai$/i, /^ai[- ]generated$/i]
+    patterns: [
+      // On posts, reels, stories and threads (Meta help: "How AI-generated content is identified").
+      /^ai info$/i,
+      /^ai content$/i,
+      /^made with ai$/i,
+      /^imagined with ai$/i,
+      /^ai[- ]generated$/i,
+      // The line that says who added the label.
+      /^(?:an )?ai label was added to this (?:content|post|reel|video|story|thread) by .{1,40}$/i,
+      // On accounts that mostly post AI-made content, and next to their posts.
+      /^ai creator$/i,
+      /^ai[- ]generated profile$/i,
+      // Hebrew: "Content created using AI" and "An AI label was added to this content by ...".
+      /^תוכן שנוצר באמצעות AI$/i,
+      /^תווית AI נוספה לתוכן הזה על ידי .{1,40}$/i
+    ]
   },
   {
     platform: "youtube",
@@ -36957,18 +36973,13 @@ var PLATFORM_LABEL_RULES = [
     platform: "linkedin",
     hosts: ["linkedin.com"],
     patterns: [/^content credentials$/i]
-  },
-  {
-    platform: "generic",
-    hosts: [],
-    patterns: [/^ai[- ]generated( image| video| content)?$/i, /^generated (by|with) ai$/i]
   }
 ];
 var MAX_LABEL_LENGTH = 60;
 function matchPlatformLabels(hostname3, strings) {
   const host = hostname3.toLowerCase();
   const rules = PLATFORM_LABEL_RULES.filter(
-    (r) => r.hosts.length === 0 || r.hosts.some((h) => host === h || host.endsWith(`.${h}`))
+    (r) => r.hosts.some((h) => host === h || host.endsWith(`.${h}`))
   );
   const hits = [];
   const seen = /* @__PURE__ */ new Set();
@@ -38832,7 +38843,7 @@ function detectTextStats(text, m = TEXT_STATS_MODEL) {
 }
 
 // ../core/src/version.ts
-var ENGINE_VERSION = "0.8.3-m6";
+var ENGINE_VERSION = "0.8.4-m6";
 
 // ../core/src/image/preprocess.ts
 var PRECISION_BITS = 32 - 8 - 2;
@@ -41302,7 +41313,9 @@ var CLAIMS = [
   new RegExp(
     String.raw`\b(?:image|picture|photo|illustration|artwork|art|video|clip)s?:? (?:by|via|from) ${TOOLS}\b`
   ),
-  new RegExp(String.raw`\b${AI}[- ](?:made|created|rendered)\b`)
+  new RegExp(String.raw`\b${AI}[- ](?:made|created|rendered)\b`),
+  // Hebrew: "created with / by AI".
+  /נוצר(?:ה|ו)? (?:באמצעות|בעזרת|על ידי|ע"י) (?:ai|בינה מלאכותית)/
 ];
 var NOT_ABOUT_THIS = new RegExp(
   String.raw`^\W{0,3}(?:\w+\W+){0,2}?(?:summar(?:y|ies)|answers?|overviews?|captions?|subtitles?|translations?|descriptions?|replies|responses?|labels?|detectors?|detection|checkers?|polic(?:y|ies)|generators?|tools?|models?|content (?:policy|label|warning)|or (?:not|real))\b`
@@ -43245,7 +43258,9 @@ async function checkVideo(video, context = {}) {
   }
   const fileResults = provenance === null || provenance.outcome === "not_assessed" ? [] : provenance.signals.map((signal) => ({ status: "assessed", signal }));
   const claim2 = claimResult(video.nearbyLabels, video.address);
+  const streamed = video.bytes === void 0 && video.frames === void 0 ? [{ status: "not_assessed", detector: "video.file", reason: "video_streamed" }] : [];
   return resolveOutcome("video", [
+    ...streamed,
     ...fileResults,
     ...label === null ? [] : [label],
     ...claim2 === null ? [] : [claim2],
@@ -97094,7 +97109,7 @@ async function checkVideoTool(args, caps) {
 
 // src/server.ts
 var SERVER_NAME = "is-it-real";
-var SERVER_VERSION = "0.5.3";
+var SERVER_VERSION = "0.5.4";
 var link = external_exports.object({ text: external_exports.string().max(500), href: external_exports.string().max(4e3) });
 var labels = external_exports.array(external_exports.string().max(200)).max(50).optional().describe(
   'Short texts shown right next to the item (badges, captions, alt text), e.g. "AI info".'

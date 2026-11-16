@@ -32,6 +32,8 @@ const CLAIMS: RegExp[] = [
     String.raw`\b(?:image|picture|photo|illustration|artwork|art|video|clip)s?:? (?:by|via|from) ${TOOLS}\b`,
   ),
   new RegExp(String.raw`\b${AI}[- ](?:made|created|rendered)\b`),
+  // Hebrew: "created with / by AI".
+  /נוצר(?:ה|ו)? (?:באמצעות|בעזרת|על ידי|ע"י) (?:ai|בינה מלאכותית)/,
 ];
 
 /** Words after a claim that turn it into talk ABOUT such content, or a tool for it. */

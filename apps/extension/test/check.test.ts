@@ -120,7 +120,7 @@ describe('checkPageData', () => {
     // No Content Credentials reader here, so the signed file is not recognised; with one it is
     // (see the browser tests). The streamed video is "Made with AI" from the site's label.
     expect(r.items[1]!.reasons.map((x) => x.code)).toEqual(['platform_label_ai']);
-    expect(r.items[1]!.note).toContain('small pieces');
+    // The label answers for the streamed video; without one it would say why it was not checked.
     expect(r.items[0]!.note).toContain('picture check is not set up');
     // A video whose frames were not looked at can be watched while it plays; one that the site
     // already labels as AI needs no second look.
