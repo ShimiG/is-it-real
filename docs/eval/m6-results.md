@@ -1,6 +1,6 @@
 # M6 results: the browser extension
 
-**Date:** 2026-11-11 · Extension 0.1.7 (`apps/extension`), engine `0.8.5-m6` · Decision record: [0013](../decisions/0013-extension-architecture.md) · Working notes: [m6-progress.md](../m6-progress.md)
+**Date:** 2026-11-11 · Extension 0.1.8 (`apps/extension`), engine `0.8.6-m6` · Decision record: [0013](../decisions/0013-extension-architecture.md) · Working notes: [m6-progress.md](../m6-progress.md)
 
 The extension runs the same detection core as the Claude plugin. So this page does not measure detection again (that is in [EVAL.md](../../EVAL.md)); it checks the one thing that could make those numbers untrue in a browser: **does the browser give the checks the same input and the same numbers?** And it reports what is specific to the extension: accessibility, working offline, speed, and the quiet background check.
 

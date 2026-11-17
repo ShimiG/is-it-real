@@ -1,6 +1,6 @@
 # Is It Real? (browser extension)
 
-Checks the page you are looking at for **scam warning signs** and for **AI-made text, pictures and video**. It works on its own, without Claude. Version 0.1.7, for Chrome and other Chromium browsers (version 120 or newer).
+Checks the page you are looking at for **scam warning signs** and for **AI-made text, pictures and video**. It works on its own, without Claude. Version 0.1.8, for Chrome and other Chromium browsers (version 120 or newer).
 
 > **Disclaimer:** Is It Real? works by algorithms: fixed rules and measurements. It is not 100% accurate. It can miss things and it can be wrong, so treat a result as a hint, not as proof.
 

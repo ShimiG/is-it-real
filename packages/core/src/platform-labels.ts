@@ -6,7 +6,7 @@
  * patterns live in this one versioned table and are verified by the M0 provenance census.
  */
 
-export const PLATFORM_LABELS_VERSION = '0.2.0';
+export const PLATFORM_LABELS_VERSION = '0.3.0';
 
 export interface PlatformLabelRule {
   platform: string;
@@ -49,9 +49,18 @@ export const PLATFORM_LABEL_RULES: PlatformLabelRule[] = [
   {
     platform: 'youtube',
     hosts: ['youtube.com'],
-    // Since May 2026 the label sits on the video itself; the element can carry a little more
-    // text after the label ("Learn more"), so only the start is fixed.
-    patterns: [/^altered or synthetic content\b.{0,40}$/i, /^how this content was made$/i],
+    // YouTube help: "Understanding 'How this content was made' disclosures" (read 2026-11-17).
+    // "How this content was made" is only the heading of a section in the expanded description;
+    // the same heading can sit over "Captured with a camera", so the heading is NOT a label.
+    // Neither is "Info from ...", which names who signed whatever the disclosure says.
+    patterns: [
+      // The disclosure, on the player or under that heading. Matched only as the whole text:
+      // a recommended video's title can start with these words.
+      /^made with ai$/i,
+      // The older wording. The element can carry a little more text after the label
+      // ("Learn more"), so only the start is fixed.
+      /^altered or synthetic content\b.{0,40}$/i,
+    ],
   },
   {
     platform: 'tiktok',

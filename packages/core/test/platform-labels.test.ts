@@ -48,5 +48,26 @@ describe('matchPlatformLabels', () => {
 
   it('matches the YouTube disclosure', () => {
     expect(matchPlatformLabels('m.youtube.com', ['Altered or synthetic content'])).toHaveLength(1);
+    // The wording in YouTube's help page of 2026 ("How this content was made" disclosures).
+    expect(
+      matchPlatformLabels('www.youtube.com', [
+        'How this content was made',
+        'Made with AI',
+        'Info from Google',
+      ]),
+    ).toEqual([{ platform: 'youtube', text: 'Made with AI' }]);
+  });
+
+  it("does not take YouTube's section heading or camera disclosure for an AI label", () => {
+    // The same heading is shown over "Captured with a camera": it says nothing about AI.
+    expect(
+      matchPlatformLabels('www.youtube.com', [
+        'How this content was made',
+        'Captured with a camera',
+        'Info from Sony',
+      ]),
+    ).toEqual([]);
+    // A recommended video's title that starts with the same words is not the label.
+    expect(matchPlatformLabels('www.youtube.com', ['Made with AI: 10 short films'])).toEqual([]);
   });
 });

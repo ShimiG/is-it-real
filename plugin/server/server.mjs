@@ -36935,7 +36935,7 @@ function utf16leToAscii(b) {
 }
 
 // ../core/src/platform-labels.ts
-var PLATFORM_LABELS_VERSION = "0.2.0";
+var PLATFORM_LABELS_VERSION = "0.3.0";
 var PLATFORM_LABEL_RULES = [
   {
     platform: "meta",
@@ -36960,9 +36960,18 @@ var PLATFORM_LABEL_RULES = [
   {
     platform: "youtube",
     hosts: ["youtube.com"],
-    // Since May 2026 the label sits on the video itself; the element can carry a little more
-    // text after the label ("Learn more"), so only the start is fixed.
-    patterns: [/^altered or synthetic content\b.{0,40}$/i, /^how this content was made$/i]
+    // YouTube help: "Understanding 'How this content was made' disclosures" (read 2026-11-17).
+    // "How this content was made" is only the heading of a section in the expanded description;
+    // the same heading can sit over "Captured with a camera", so the heading is NOT a label.
+    // Neither is "Info from ...", which names who signed whatever the disclosure says.
+    patterns: [
+      // The disclosure, on the player or under that heading. Matched only as the whole text:
+      // a recommended video's title can start with these words.
+      /^made with ai$/i,
+      // The older wording. The element can carry a little more text after the label
+      // ("Learn more"), so only the start is fixed.
+      /^altered or synthetic content\b.{0,40}$/i
+    ]
   },
   {
     platform: "tiktok",
@@ -38843,7 +38852,7 @@ function detectTextStats(text, m = TEXT_STATS_MODEL) {
 }
 
 // ../core/src/version.ts
-var ENGINE_VERSION = "0.8.5-m6";
+var ENGINE_VERSION = "0.8.6-m6";
 
 // ../core/src/image/preprocess.ts
 var PRECISION_BITS = 32 - 8 - 2;
@@ -97109,7 +97118,7 @@ async function checkVideoTool(args, caps) {
 
 // src/server.ts
 var SERVER_NAME = "is-it-real";
-var SERVER_VERSION = "0.5.6";
+var SERVER_VERSION = "0.5.7";
 var link = external_exports.object({ text: external_exports.string().max(500), href: external_exports.string().max(4e3) });
 var labels = external_exports.array(external_exports.string().max(200)).max(50).optional().describe(
   'Short texts shown right next to the item (badges, captions, alt text), e.g. "AI info".'
