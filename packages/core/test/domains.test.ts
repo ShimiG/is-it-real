@@ -21,6 +21,14 @@ describe('extractHosts', () => {
       extractHosts('Go to https://usps-help.top/x or netflix-billing.com now.Call us'),
     ).toEqual(['usps-help.top', 'netflix-billing.com']);
   });
+
+  it('does not read software names like "Node.js" as addresses', () => {
+    // Reported from real use: a GitHub page's "Node.js" link to nodejs.org was a "mismatch".
+    expect(extractHosts('Requires Node.js 20 and Next.js; see nodejs.org or bit.ly/x')).toEqual([
+      'nodejs.org',
+      'bit.ly',
+    ]);
+  });
 });
 
 describe('checkLookalike', () => {
@@ -123,6 +131,15 @@ describe('checkLinkMismatch', () => {
     expect(
       checkLinkMismatch('www.mybank-online.com', 'https://collect.example/x', 'news.example.org'),
     ).toBe('www.mybank-online.com -> collect.example');
+  });
+
+  it('does not treat a software name as a written address', () => {
+    expect(checkLinkMismatch('Node.js', 'https://nodejs.org/', 'github.com')).toBeNull();
+    expect(checkLinkMismatch('Node.js', 'https://nodejs.org/')).toBeNull();
+    // A real written address on the same site still has to match where the link goes.
+    expect(checkLinkMismatch('www.paypal.com', 'https://paypal-help.example/x', 'github.com')).toBe(
+      'www.paypal.com -> paypal-help.example',
+    );
   });
 });
 

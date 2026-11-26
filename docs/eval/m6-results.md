@@ -1,6 +1,6 @@
 # M6 results: the browser extension
 
-**Date:** 2026-11-11 · Extension 0.1.8 (`apps/extension`), engine `0.8.6-m6` · Decision record: [0013](../decisions/0013-extension-architecture.md) · Working notes: [m6-progress.md](../m6-progress.md)
+**Date:** 2026-11-11 · Extension 0.1.9 (`apps/extension`), engine `0.8.7-m6` · Decision record: [0013](../decisions/0013-extension-architecture.md) · Working notes: [m6-progress.md](../m6-progress.md)
 
 The extension runs the same detection core as the Claude plugin. So this page does not measure detection again (that is in [EVAL.md](../../EVAL.md)); it checks the one thing that could make those numbers untrue in a browser: **does the browser give the checks the same input and the same numbers?** And it reports what is specific to the extension: accessibility, working offline, speed, and the quiet background check.
 
@@ -83,6 +83,7 @@ The owner tried version 0.1.0 on everyday pages and reported two things.
     - **The post's caption said "ai generated video", and the panel never mentioned it.** The caption is not next to any one picture or video, so the rule of item 4 did not apply. Nobody can tell from the page alone whether such words are the poster's caption or a viewer's comment, or which item they mean, so they must not decide a result. From 0.1.6, on one post's own page, they are shown as they are under **Written on this page**, with that caveat, and change nothing else (decision record 0014, amendment). The words of links are left out (they name another post or video); tags are kept.
     - What rightly did not count: a bare `#ai`, "Meta AI" (a product name), and an account name ending in ".ai".
     - The report's picture addresses carried the site's time-limited keys to each file, some for pictures from private messages. From 0.1.6 addresses are saved without what follows the "?".
+12. **A GitHub project page got "some warning signs" for a link (0.1.8).** The link's text was "Node.js" and it went to nodejs.org. The rule reads a link's text as an address when it looks like one, and `Node.js` did: `.js` passed as a domain ending. So "an address" `node.js` seemed to lead to another site. From scam rules 0.1.3 (extension 0.1.9), a two-letter ending counts only if it is one of the country endings that exist on the internet; `.js`, like `.ts`, is not one, so names such as Node.js and Next.js are read as words. A written address that leads elsewhere is still caught on any site, GitHub included (tests). Not done: trusting well-known sites more. On GitHub, YouTube or Facebook the links are written by anyone, so a known site says nothing about the links on it.
 
 **What this says about the measurements above:** the quiet check was estimated on long texts, not on real pages with their buttons and links, and that estimate was too kind. Two of the first three real pages were wrongly marked. The link fixes remove those two; real pages remain the thing to measure.
 

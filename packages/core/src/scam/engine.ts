@@ -9,7 +9,7 @@ import {
 } from './domains.js';
 import { FAMILY_EMERGENCY, NEGATION, REPORTING_SPEECH, SCAM_RULES } from './rules.js';
 
-export const SCAM_ENGINE_VERSION = 'scam-rules@0.1.2';
+export const SCAM_ENGINE_VERSION = 'scam-rules@0.1.3';
 
 export interface ScamInput {
   /** Visible text of the message or page. */

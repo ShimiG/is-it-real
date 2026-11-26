@@ -114,10 +114,28 @@ export function extractHosts(text: string): string[] {
     const tld = host.split('.').pop()!;
     // Avoid "e.g", "U.S" and sentence joins like "today.Call": require a plausible TLD.
     if (!/^(xn--[a-z0-9-]+|[a-z]{2,24})$/.test(tld) || COMMON_WORD_TLDS.has(tld)) continue;
+    // Two-letter endings are country endings, and only those that exist count: "Node.js" and
+    // "Next.js" are names of software, not addresses (.js is no country).
+    if (tld.length === 2 && !COUNTRY_TLDS.has(tld)) continue;
     hosts.add(host);
   }
   return [...hosts];
 }
+
+/** Two-letter endings in use on the internet (IANA root zone, 2026). */
+const COUNTRY_TLDS = new Set(
+  (
+    'ac ad ae af ag ai al am ao aq ar as at au aw ax az ba bb bd be bf bg bh bi bj bm bn bo bq ' +
+    'br bs bt bv bw by bz ca cc cd cf cg ch ci ck cl cm cn co cr cu cv cw cx cy cz de dj dk dm ' +
+    'do dz ec ee eg er es et eu fi fj fk fm fo fr ga gb gd ge gf gg gh gi gl gm gn gp gq gr gs ' +
+    'gt gu gw gy hk hm hn hr ht hu id ie il im in io iq ir is it je jm jo jp ke kg kh ki km kn ' +
+    'kp kr kw ky kz la lb lc li lk lr ls lt lu lv ly ma mc md me mg mh mk ml mm mn mo mp mq mr ' +
+    'ms mt mu mv mw mx my mz na nc ne nf ng ni nl no np nr nu nz om pa pe pf pg ph pk pl pm pn ' +
+    'pr ps pt pw py qa re ro rs ru rw sa sb sc sd se sg sh si sj sk sl sm sn so sr ss st su sv ' +
+    'sx sy sz tc td tf tg th tj tk tl tm tn to tr tt tv tw tz ua ug uk us uy uz va vc ve vg vi ' +
+    'vn vu wf ws ye yt za zm zw'
+  ).split(' '),
+);
 
 /** Things that look like TLDs but are usually sentence fragments ("now.Call", "Mr.Smith"). */
 const COMMON_WORD_TLDS = new Set(['call', 'please', 'you', 'the', 'and', 'smith', 'it', 'we', 'i']);
